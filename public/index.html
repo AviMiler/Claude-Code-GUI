@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Code</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/messages.css">
+  <link rel="stylesheet" href="css/composer.css">
+  <link rel="stylesheet" href="css/panels.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar" aria-label="סשנים">
+      <div class="sidebar-top">
+        <div class="brand">
+          <span class="icon spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2.6v5.6M12 15.8v5.6M2.6 12h5.6M15.8 12h5.6M5.4 5.4l4 4M14.6 14.6l4 4M18.6 5.4l-4 4M9.4 14.6l-4 4"/></svg></span>
+          <span>Claude Code</span>
+        </div>
+        <button id="collapse-sidebar" class="icon-button" type="button" title="הסתרת הסרגל (Ctrl+B)">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg></span>
+        </button>
+      </div>
+      <button id="new-session" class="new-session" type="button">
+        <span class="plus"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></span>
+        סשן חדש <kbd>Ctrl+Shift+O</kbd>
+      </button>
+      <nav class="sidebar-nav" aria-label="קיצורים">
+        <button class="nav-item" type="button" data-panel="resume"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg></span>שיחות קודמות</button>
+        <button class="nav-item" type="button" data-panel="skills"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg></span>Skills</button>
+        <button class="nav-item" type="button" data-panel="agents"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 13v1M15 13v1M2 14h2M20 14h2"/></svg></span>סוכנים</button>
+        <button class="nav-item" type="button" data-panel="mcp"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a6 6 0 0 1-12 0V8z"/></svg></span>שרתי MCP</button>
+        <button class="nav-item" type="button" data-panel="plugins"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.44 13.06a2 2 0 1 0 0-2.12L19 11V7a2 2 0 0 0-2-2h-4l-.06-.44a2 2 0 1 0-2.12 0L10.76 5H7a2 2 0 0 0-2 2v3.76l.44.06a2 2 0 1 1 0 2.12L5 13v4a2 2 0 0 0 2 2h4l.06-.44a2 2 0 1 1 2.12 0L13 19h4a2 2 0 0 0 2-2v-4z"/></svg></span>פלאגינים</button>
+      </nav>
+      <div class="sidebar-search">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+        <input id="session-search" type="search" placeholder="חיפוש סשנים" aria-label="חיפוש סשנים" dir="auto">
+      </div>
+      <div class="session-groups" id="session-list"></div>
+      <div class="sidebar-footer">
+        <button id="open-settings" class="icon-button" type="button" title="הגדרות (Ctrl+,)"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></span></button>
+        <button id="theme-toggle" class="icon-button" type="button" title="מראה (/theme)"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span></button>
+        <span class="version" id="version-label"></span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar" id="topbar"></header>
+      <section class="thread" id="thread">
+        <div class="welcome" id="welcome"></div>
+        <div class="thread-column messages" id="messages" aria-live="polite" hidden></div>
+      </section>
+      <div class="composer-area" id="composer-area">
+        <div class="prompt-cards" id="prompt-cards" aria-live="assertive"></div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

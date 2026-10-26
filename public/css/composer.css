@@ -1,0 +1,77 @@
+/* Composer, its chips, popover menus (slash, @, dropdowns) and the prompt cards above it. */
+.composer-area { position: relative; width: min(var(--column), 100%); margin: 0 auto; padding: 0 24px 14px; }
+.composer { position: relative; display: grid; gap: 4px; padding: 10px 10px 8px 12px; padding-inline: 14px 10px; border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl); background: var(--surface); box-shadow: var(--shadow-md); transition: border-color .15s, box-shadow .15s; }
+.composer:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--border-strong)); }
+.composer textarea { width: 100%; min-height: 26px; max-height: 40vh; padding: 4px 2px; border: 0; background: none; font-size: 15.5px; line-height: 1.55; resize: none; }
+.composer textarea:focus { outline: none; }
+.composer textarea::placeholder { color: var(--faint); }
+.composer-bar { display: flex; gap: 6px; align-items: center; }
+.composer-bar .grow { flex: 1; }
+.composer-chip { display: inline-flex; gap: 6px; align-items: center; height: 30px; padding: 0 10px; border: 1px solid transparent; border-radius: 999px;
+  background: transparent; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.composer-chip:hover { background: var(--surface-2); color: var(--text); }
+.composer-chip .icon { width: 15px; height: 15px; }
+.composer-chip .chevron { width: 12px; height: 12px; opacity: .7; }
+.composer-chip.mode-plan { background: var(--info-soft); color: var(--info); }
+.composer-chip.mode-acceptEdits { color: var(--text-2); }
+.composer-chip.mode-bypassPermissions { background: var(--danger-soft); color: var(--danger); }
+.composer-chip.mode-auto { background: var(--warning-soft); color: var(--warning); }
+.round-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--muted); }
+.round-button:hover { background: var(--surface-2); color: var(--text); }
+.round-button .icon { width: 17px; height: 17px; }
+.send-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; }
+.send-button:hover { background: var(--accent-strong); }
+.send-button:disabled { background: var(--surface-3); color: var(--faint); cursor: default; }
+.send-button .icon { width: 18px; height: 18px; }
+.send-button.stop { background: var(--text); color: var(--bg); }
+.context-ring { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; }
+.context-ring:hover { background: var(--surface-2); }
+.context-ring svg { width: 18px; height: 18px; transform: rotate(-90deg); }
+.context-ring .track { stroke: var(--surface-3); } .context-ring .fill { stroke: var(--accent); transition: stroke-dasharray .4s; }
+.composer-hint { margin: 6px 0 0; color: var(--faint); font-size: 12px; text-align: center; }
+.composer-hint kbd { font-size: 10.5px; }
+
+/* Popover menus */
+.popover { position: fixed; z-index: 50; min-width: 280px; max-width: min(460px, 92vw); max-height: min(420px, 60vh); padding: 5px; overflow-y: auto;
+  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-lg); animation: fade-in .12s ease-out; }
+.menu-section { margin: 6px 8px 2px; color: var(--faint); font-size: 11.5px; font-weight: 600; letter-spacing: .02em; }
+.menu-item { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; width: 100%; padding: 7px 9px;
+  border: 0; border-radius: var(--radius-sm); background: none; text-align: start; }
+.menu-item .icon { width: 16px; height: 16px; color: var(--muted); }
+.menu-item .title { overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.menu-item .title code { font-size: 13px; font-weight: 600; }
+.menu-item .hint { overflow: hidden; color: var(--faint); font: 12px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; direction: ltr; unicode-bidi: isolate; }
+.menu-item .desc { grid-column: 2 / 4; overflow: hidden; color: var(--muted); font-size: 12.5px; line-height: 1.4; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.menu-item .check { width: 16px; height: 16px; color: var(--accent); }
+.menu-item:hover, .menu-item.active { background: var(--surface-2); }
+.menu-item.disabled { opacity: .55; }
+.menu-item .tag { padding: 0 6px; border-radius: 4px; background: var(--surface-3); color: var(--muted); font-size: 11px; }
+.menu-empty { padding: 10px; color: var(--muted); font-size: 13px; }
+.menu-footer { display: flex; gap: 12px; margin: 4px 4px 0; padding: 6px 6px 2px; border-top: 1px solid var(--border); color: var(--faint); font-size: 11.5px; }
+.segmented { display: flex; gap: 2px; margin: 4px 6px 6px; padding: 2px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.segmented button { flex: 1; padding: 3px 6px; white-space: nowrap; border: 0; border-radius: 5px; background: none; color: var(--muted); font-size: 12.5px; }
+.segmented button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* Prompt cards: permission requests, questions, plan approval */
+.prompt-cards { display: grid; gap: 8px; margin-bottom: 8px; }
+.prompt-card { padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-md); animation: fade-in .15s ease-out; }
+.prompt-card.attention { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong)); }
+.prompt-card h3 { display: flex; gap: 8px; align-items: center; margin: 0 0 6px; font-size: 14.5px; }
+.prompt-card h3 .icon { width: 18px; height: 18px; color: var(--accent); }
+.prompt-card p { margin: 0 0 8px; color: var(--muted); font-size: 13.5px; }
+.prompt-card .tool-pre { max-height: 180px; margin-bottom: 10px; }
+.prompt-card .plan { max-height: 40vh; overflow-y: auto; margin-bottom: 10px; padding: 10px 14px; border-radius: var(--radius); background: var(--code-block); }
+.card-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.card-actions input { flex: 1; min-width: 160px; padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); font-size: 13.5px; }
+.question { margin-bottom: 10px; }
+.question .q-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+.question .q-head .tag { padding: 0 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-size: 11.5px; }
+.options { display: grid; gap: 6px; }
+.option { display: grid; gap: 1px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); text-align: start; }
+.option:hover { border-color: var(--border-strong); }
+.option.on { border-color: var(--accent); background: var(--accent-soft); }
+.option b { font-size: 14px; font-weight: 600; } .option span { color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 860px) { .composer-area { padding-inline: 12px; } .composer-chip .label { display: none; } }
+.menu-item .desc { text-align: right; }

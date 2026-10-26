@@ -1,0 +1,8 @@
+# Runtime data: sessions and per-session settings
+data/
+
+# Copy of the project prepared for the closed machine (not source)
+לשליחה/
+
+node_modules/
+*.log

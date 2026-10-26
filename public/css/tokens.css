@@ -1,0 +1,63 @@
+/* Design tokens: Claude desktop palette (ivory + clay), light and dark. */
+:root {
+  --bg: #FAF9F5; --bg-sidebar: #F3F2EC; --surface: #FFFFFF; --surface-2: #F0EEE6; --surface-3: #E6E3D9;
+  --border: rgba(31, 30, 29, .12); --border-strong: rgba(31, 30, 29, .24);
+  --text: #1F1E1D; --text-2: #3D3D3A; --muted: #73726C; --faint: #9C9A92;
+  --accent: #D97757; --accent-strong: #C6613F; --accent-soft: rgba(217, 119, 87, .13); --on-accent: #FFFFFF;
+  --success: #3A7D44; --success-soft: rgba(58, 125, 68, .12);
+  --danger: #B53A2F; --danger-soft: rgba(181, 58, 47, .10);
+  --warning: #A86A12; --warning-soft: rgba(196, 135, 30, .14);
+  --info: #2F6EAB; --info-soft: rgba(47, 110, 171, .11);
+  --code-bg: #F2F0E8; --code-block: #F7F6F1;
+  --diff-add: rgba(46, 160, 67, .14); --diff-del: rgba(218, 54, 51, .12);
+  --shadow-sm: 0 1px 2px rgba(31, 30, 29, .06);
+  --shadow-md: 0 4px 18px rgba(31, 30, 29, .08), 0 1px 3px rgba(31, 30, 29, .06);
+  --shadow-lg: 0 18px 60px rgba(31, 30, 29, .18), 0 2px 8px rgba(31, 30, 29, .08);
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Iowan Old Style", Georgia, "Frank Ruhl Libre", "David", "Times New Roman", serif;
+  --font-mono: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  --radius-sm: 6px; --radius: 10px; --radius-lg: 16px; --radius-xl: 22px;
+  --column: 768px; --sidebar-width: 280px;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #262624; --bg-sidebar: #1F1E1D; --surface: #30302E; --surface-2: #383835; --surface-3: #44443F;
+  --border: rgba(250, 249, 245, .10); --border-strong: rgba(250, 249, 245, .20);
+  --text: #F5F4EF; --text-2: #DEDCD2; --muted: #A6A39A; --faint: #7D7B73;
+  --accent-soft: rgba(217, 119, 87, .18);
+  --success: #7BC489; --success-soft: rgba(123, 196, 137, .14);
+  --danger: #EE8A7E; --danger-soft: rgba(238, 138, 126, .13);
+  --warning: #E3B062; --warning-soft: rgba(227, 176, 98, .14);
+  --info: #8DB8E8; --info-soft: rgba(141, 184, 232, .13);
+  --code-bg: #1F1E1D; --code-block: #232321;
+  --diff-add: rgba(70, 180, 90, .18); --diff-del: rgba(230, 80, 70, .18);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
+  --shadow-md: 0 4px 18px rgba(0, 0, 0, .32), 0 1px 3px rgba(0, 0, 0, .3);
+  --shadow-lg: 0 18px 60px rgba(0, 0, 0, .5), 0 2px 8px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 var(--font-ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+kbd { padding: 0 5px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; font: 11px var(--font-mono); color: var(--muted); }
+/* Code, commands and paths are always left-to-right islands inside the Hebrew UI ("/skills", not "skills/"). */
+code, .msg-user .slash { font-family: var(--font-mono); direction: ltr; unicode-bidi: isolate; }
+::selection { background: var(--accent-soft); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border: 3px solid transparent; border-radius: 10px; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.icon { display: inline-flex; flex: none; align-items: center; justify-content: center; }
+.icon svg { width: 100%; height: 100%; }
+.spark { color: var(--accent); }
+.spinning { animation: spin 2.4s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { opacity: .35; } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

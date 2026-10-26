@@ -1,0 +1,7 @@
+{
+  "port": 3738,
+  "claudePath": "dev/fake-claude.cmd",
+  "model": "",
+  "defaultCwd": "",
+  "env": {}
+}

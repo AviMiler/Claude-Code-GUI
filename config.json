@@ -1,0 +1,17 @@
+{
+  "port": 3737,
+  "claudePath": "C:\\Users\\206861775\\AppData\\Local\\Programs\\ClaudeCode\\claude-bin.exe",
+  "model": "qwen3.8:27b",
+  "defaultCwd": "",
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://172.27.5.5:11436",
+    "ANTHROPIC_AUTH_TOKEN": "ollama",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "qwen3.8:27b",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "qwen3.8:27b",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "qwen3.8:27b",
+    "API_TIMEOUT_MS": "1200000",
+    "CLAUDE_ENABLE_STREAM_WATCHDOG": "0",
+    "CLAUDE_DISABLE_TELEMETRY": "1",
+    "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1"
+  }
+}
