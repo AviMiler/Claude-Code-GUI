@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-27 (documentation)
+- Documented: everything added on 2026-10-27 in AGENT_CONTEXT.md (state, what was and was not tested, gotchas, next steps), ARCHITECTURE.md (warm-up step, models, responsiveness, new endpoints in Security, session fields), PROJECT_MAP.md (file roles) and DEPENDENCIES.md (optional model server)
+
 ## 2026-10-27 (copy messages)
 - Added: an icon-only copy button under every message of the user and every answer of Claude (shown on hover; a check mark confirms); Claude's answers copy as their original Markdown (public/js/render-items.js, thread.js)
 
