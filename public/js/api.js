@@ -14,11 +14,19 @@ const query = params => new URLSearchParams(Object.entries(params).filter(([, va
 
 export const api = {
   state: () => request('GET', '/api/state'),
+  /** Starts the CLI ahead of the message being typed: { sessionId } or the draft { cwd, mode, model, effort }. */
+  warm: target => request('POST', '/api/warm', target),
+  /** Models of the system: { source: 'cli'|'server', models, current, error }. */
+  models: () => request('GET', '/api/models'),
   createSession: body => request('POST', '/api/sessions', body),
   updateSession: (id, body) => request('PATCH', `/api/sessions/${id}`, body),
   deleteSession: id => request('DELETE', `/api/sessions/${id}`),
+  /** @returns {Promise<{ok:boolean, queued:boolean}>} queued: the session was busy, the message waits in its queue. */
   sendMessage: (id, text) => request('POST', `/api/sessions/${id}/messages`, { text }),
+  /** @returns {Promise<{stopped:boolean, queued:string[]}>} queued: messages taken off the queue by the stop. */
   stop: id => request('POST', `/api/sessions/${id}/stop`),
+  removeQueued: (id, queueId) => request('DELETE', `/api/sessions/${id}/queue/${queueId}`),
+  resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
   clear: id => request('POST', `/api/sessions/${id}/clear`),
   fork: id => request('POST', `/api/sessions/${id}/fork`),
   answerPermission: (id, requestId, answer) => request('POST', `/api/sessions/${id}/permissions/${requestId}`, answer),
@@ -43,6 +51,8 @@ export const api = {
   importTranscript: (cwd, id, mode) => request('POST', '/api/transcripts/import', { cwd, id, mode }),
   files: (scope, q) => request('GET', `/api/files?${query({ ...scope, q })}`),
   git: scope => request('GET', `/api/git?${query(scope)}`),
+  folders: (path, hidden) => request('GET', `/api/folders?${query({ path, hidden: hidden ? '1' : '' })}`),
+  createFolder: (path, name) => request('POST', '/api/folders', { path, name }),
 };
 
 /** Opens the live event stream. EventSource reconnects by itself; onOpen fires on every (re)connect. */

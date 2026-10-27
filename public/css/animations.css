@@ -1,0 +1,74 @@
+/*
+ * Claude's spark (.claude-mark) in each state. Every ray is its own path with --i = 0..7 clockwise from the top
+ * (icons.js), so a state can move single rays, not only the whole mark.
+ * Working line (thread.js, data-state): starting · thinking · writing · tool · waiting, then done / error / stopped.
+ * Elsewhere: the welcome page (idle), the sidebar brand (busy / waiting), fresh results and errors.
+ */
+.claude-mark svg { overflow: visible; }
+.claude-mark .ray { transform-box: view-box; transform-origin: 12px 12px; }
+.working .claude-mark { transition: color .3s; }
+
+/* starting: the CLI is starting up — the rays light up one after another */
+.working[data-state="starting"] { color: var(--muted); }
+.working[data-state="starting"] .claude-mark { color: var(--accent); }
+.working[data-state="starting"] .ray { animation: ray-boot 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * .2s); }
+
+/* thinking: a slow turn while the rays breathe in a wave */
+.working[data-state="thinking"] .claude-mark { animation: spin 7s linear infinite; }
+.working[data-state="thinking"] .ray { animation: ray-breathe 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * -.225s); }
+
+/* writing: a quick beat, like typing */
+.working[data-state="writing"] .claude-mark { animation: bob .45s ease-in-out infinite alternate; }
+.working[data-state="writing"] .ray { animation: ray-beat .45s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.056s); }
+
+/* tool: ticking like a gear while a tool runs */
+.working[data-state="tool"] .claude-mark { animation: spin 2.4s steps(16) infinite; }
+.working[data-state="tool"] .ray:nth-child(odd) { animation: ray-beat .6s ease-in-out infinite alternate; }
+
+/* waiting: hops and wiggles to ask for attention */
+.working[data-state="waiting"] { color: var(--warning); }
+.working[data-state="waiting"] .claude-mark { animation: hop 1.6s ease-in-out infinite; }
+
+/* end of the turn: a burst when done, a shake on error, a quiet fold when stopped; then the line fades */
+.working.ending { animation: fade-out .9s ease-in forwards; }
+.working[data-state="done"] .ray { animation: ray-burst .7s cubic-bezier(.2, .9, .3, 1.4) both; animation-delay: calc(var(--i) * .03s); }
+.working[data-state="error"] { color: var(--danger); }
+.working[data-state="error"] .claude-mark { animation: shake .45s ease-in-out; }
+.working[data-state="stopped"] { color: var(--muted); }
+.working[data-state="stopped"] .ray { animation: ray-fold .5s ease-in forwards; }
+
+/* welcome page: floats and twinkles; a hover makes it spin */
+.welcome .claude-mark { animation: float 4.5s ease-in-out infinite; cursor: default; }
+.welcome .claude-mark .ray { animation: twinkle 3.4s ease-in-out infinite; animation-delay: calc(var(--i) * -.68s); }
+.welcome .claude-mark:hover svg { animation: spin .9s cubic-bezier(.3, 1.3, .5, 1); }
+
+/* sidebar brand: turns while any session works, hops when one waits for approval */
+.brand.busy .claude-mark { animation: spin 7s linear infinite; }
+.brand.busy .claude-mark .ray { animation: ray-breathe 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * -.225s); }
+.brand.waiting .claude-mark { color: var(--warning); animation: hop 1.6s ease-in-out infinite; }
+
+/* items that arrive live (thread.js adds .fresh) */
+.turn-meta.fresh .icon { animation: pop .45s cubic-bezier(.2, .9, .3, 1.6); }
+.error-card.fresh { animation: shake .45s ease-in-out; }
+
+@keyframes ray-boot { 0%, 100% { opacity: .15; } 30% { opacity: 1; } }
+@keyframes ray-breathe { 0%, 100% { transform: scale(.55); opacity: .55; } 50% { transform: scale(1); opacity: 1; } }
+@keyframes ray-beat { from { transform: scale(.78); } to { transform: scale(1.08); } }
+@keyframes ray-burst { 0% { transform: scale(1); } 45% { transform: scale(1.45); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes ray-fold { to { transform: scale(.35); opacity: .4; } }
+@keyframes twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.72); } }
+@keyframes bob { to { transform: translateY(-2px); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes hop {
+  0%, 55%, 100% { transform: translateY(0) rotate(0); }
+  12% { transform: translateY(-5px) rotate(-14deg); }
+  26% { transform: translateY(0) rotate(10deg); }
+  40% { transform: translateY(-2px) rotate(-5deg); }
+}
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+@keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes fade-out { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .claude-mark, .claude-mark svg, .claude-mark .ray, .working.ending, .turn-meta.fresh .icon, .error-card.fresh { animation: none !important; }
+}

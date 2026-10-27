@@ -1,7 +1,7 @@
 /** Frontend entry point: receives live events, keeps the views in sync, and wires the composer and menus. */
 import { api, subscribe } from './api.js';
 import { h } from './dom.js';
-import { state, activeSession, getCatalog, getCommands } from './state.js';
+import { state, activeSession, currentScope, getCatalog, getCommands, getModels, peekModels } from './state.js';
 import { createThread } from './thread.js';
 import { createComposer } from './composer.js';
 import { renderSidebar } from './sidebar.js';
@@ -19,10 +19,11 @@ applyTheme();
 const byId = id => document.getElementById(id);
 const els = {
   app: byId('app'), list: byId('session-list'), search: byId('session-search'), topbar: byId('topbar'), scroller: byId('thread'),
-  messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'),
+  messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'), brand: byId('brand'),
 };
 const thread = createThread({ scroller: els.scroller, messages: els.messages });
-const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id), insert: (text, options) => composer.insert(text, options) });
+const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
+  insert: (text, options) => composer.insert(text, options), restore: texts => composer.restore(texts) });
 const runCommand = createCommandRunner(actions);
 
 const composer = createComposer(els.composerArea, {
@@ -33,6 +34,9 @@ const composer = createComposer(els.composerArea, {
     return actions.send(text);
   },
   onStop: () => actions.stop(),
+  onQueueRemove: entry => actions.removeQueued(entry),
+  onQueueEdit: entry => actions.editQueued(entry),
+  onQueueResume: () => actions.resumeQueue(),
   onCommand: command => runCommand(command, '', { fromMenu: true }),
   onCycleMode: () => actions.cycleMode(),
   onContext: () => actions.openPanel('usage'),
@@ -43,15 +47,16 @@ const composer = createComposer(els.composerArea, {
       icon: mode.icon, title: mode.label, desc: mode.description, checked: mode.value === current, onSelect: () => actions.setMode(mode.value),
     })), { icon: 'shield', title: 'כללי הרשאה…', hint: '/permissions', onSelect: () => actions.openPanel('permissions') }]);
   },
+  onTyping: () => warmUp(),
   onModelMenu: async anchor => {
     const settings = activeSession() || state.draft;
-    const catalog = await getCatalog();
-    const current = settings.model || state.config.model || 'default';
+    const { models, current: systemCurrent } = peekModels() || await getModels();
+    const current = settings.model || state.config.model || systemCurrent || 'default';
     const effort = h('div', { class: 'segmented' }, EFFORT_LEVELS.slice(0, 5).map(level => h('button', {
       type: 'button', class: (settings.effort || '') === level.value ? 'on' : '',
       onClick: () => { actions.updateSettings({ effort: level.value }); document.querySelector('.popover')?.remove(); },
     }, level.label)));
-    showDropdown(anchor, [{ section: 'מודל' }, ...(catalog?.models || []).map(model => ({
+    showDropdown(anchor, [{ section: 'מודל' }, ...models.map(model => ({
       icon: 'cpu', title: model.displayName || model.value, desc: model.description, checked: model.value === current,
       onSelect: () => actions.updateSettings({ model: model.value === 'default' ? '' : model.value }),
     })), { icon: 'pencil', title: 'מודל מותאם…', onSelect: async () => {
@@ -72,8 +77,30 @@ const composer = createComposer(els.composerArea, {
 });
 
 function modelLabel(settings) {
-  const value = settings.model || state.config.model || state.runtime.get(settings.id)?.model || '';
+  const value = settings.model || state.config.model || peekModels()?.current || state.runtime.get(settings.id)?.model || '';
   return value || 'ברירת מחדל';
+}
+
+// Starting Claude Code takes seconds; it starts while the first words are typed, so Enter does not wait for it.
+let lastWarm = { key: '', at: 0 };
+function warmUp() {
+  const session = activeSession();
+  if (session?.status === 'running') return;
+  const { draft } = state;
+  const target = session ? { sessionId: session.id }
+    : { cwd: draft.cwd || state.config.defaultCwd, mode: draft.mode, model: draft.model, effort: draft.effort };
+  const key = JSON.stringify(target);
+  if (key === lastWarm.key && Date.now() - lastWarm.at < 60000) return;
+  lastWarm = { key, at: Date.now() };
+  api.warm(target).catch(() => {});
+}
+
+// Menus read the catalog from cache; fetch it shortly after a view settles, not when a menu opens.
+let prefetchTimer = null;
+function prefetchCatalog() {
+  clearTimeout(prefetchTimer);
+  const scope = currentScope();
+  prefetchTimer = setTimeout(() => { if (JSON.stringify(scope) === JSON.stringify(currentScope())) getCatalog(scope); }, 800);
 }
 
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
@@ -93,17 +120,19 @@ function refresh() {
   if (!session && !editing(els.welcome)) {
     renderWelcome(els.welcome, {
       cwd: state.draft.cwd, defaultCwd: state.config.defaultCwd,
-      onFolder: cwd => { state.draft.cwd = cwd; },
+      onFolder: cwd => { state.draft.cwd = cwd; prefetchCatalog(); },
       onSuggestion: async text => { const command = findCommand(await getCommands(), text.slice(1)); if (command) runCommand(command, '', { fromMenu: true }); },
     });
   }
   const settings = session || state.draft;
-  composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), isRunning: session?.status === 'running',
-    contextPercent: session ? state.context.get(session.id) ?? -1 : -1, hasSession: Boolean(session) });
+  composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), modelSwitchable: peekModels()?.switchable ?? true, isRunning: session?.status === 'running',
+    contextPercent: session ? state.context.get(session.id) ?? -1 : -1, hasSession: Boolean(session), queue: session?.queue || [] });
   const cardsBefore = els.cards.childElementCount;
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
   const waiting = [...state.sessions.values()].filter(item => item.pendingPermissions?.length).length;
+  els.brand.classList.toggle('waiting', waiting > 0);
+  els.brand.classList.toggle('busy', !waiting && [...state.sessions.values()].some(item => item.status === 'running'));
   document.title = `${waiting ? `(${waiting}) ` : ''}${session ? `${session.name} – ` : ''}Claude Code`;
 }
 
@@ -116,6 +145,7 @@ function selectSession(id) {
   thread.show(activeSession());
   refresh();
   composer.focus();
+  prefetchCatalog();
 }
 
 function toggleSidebar() {
@@ -133,10 +163,12 @@ async function loadState() {
   let remembered = null;
   try { remembered = localStorage.getItem(ACTIVE_KEY); } catch { /* storage may be blocked */ }
   selectSession(state.activeId || remembered);
+  getModels().then(refresh).catch(() => {});
 }
 
-const eventView = { thread, refresh, selectSession, fetchContext: id => api.control({ sessionId: id }, 'get_context_usage')
-  .then(usage => { state.context.set(id, usage.percentage ?? Math.round((usage.totalTokens / usage.maxTokens) * 100)); refresh(); })
+// ifRunning: the context ring must never start a CLI process by itself (e.g. right after one crashed).
+const eventView = { thread, refresh, selectSession, fetchContext: id => api.control({ sessionId: id }, 'get_context_usage', { ifRunning: true })
+  .then(usage => { if (!usage) return; state.context.set(id, usage.percentage ?? Math.round((usage.totalTokens / usage.maxTokens) * 100)); refresh(); })
   .catch(() => {}) };
 subscribe(event => handleEvent(event, eventView), () => loadState().catch(error => console.error('[app] cannot load state:', error)));
 

@@ -5,13 +5,24 @@ import { renderMarkdown } from './markdown.js';
 import { renderTool, attachToolResult } from './render-tools.js';
 
 const LOOKS_LIKE_MARKDOWN = /(^|\n)(#{1,4} |\|.*\||[-*] |\*\*)/;
+const copySources = new WeakMap(); // copy button -> the message's original text (Markdown for Claude's answers)
+
+/** "Copy" under a message (shown on hover); the thread's click handler copies copySourceOf(button). */
+function copyButton(text) {
+  const button = h('button', { type: 'button', class: 'icon-button', title: 'העתקה', 'aria-label': 'העתקת ההודעה', dataset: { copyMessage: '' } }, icon('copy'));
+  copySources.set(button, text);
+  return h('div', { class: 'msg-actions' }, button);
+}
+
+/** Text a message copy button stands for (null for any other element). */
+export const copySourceOf = button => copySources.get(button) ?? null;
 
 function renderUser(item) {
   const bubble = h('div', { class: 'bubble', dir: 'auto' });
   const slash = item.text.match(/^(\/[^\s]+)([\s\S]*)$/);
   if (slash) bubble.append(h('span', { class: 'slash' }, slash[1]), slash[2]);
   else bubble.textContent = item.text;
-  return h('div', { class: 'msg-user' }, bubble);
+  return h('div', { class: 'msg-user' }, bubble, copyButton(item.text));
 }
 
 export function renderAssistantText(text, live = false) {
@@ -21,6 +32,11 @@ export function renderAssistantText(text, live = false) {
 export function renderThinking(text, open = false) {
   return h('details', { class: 'thinking', open },
     h('summary', null, icon('bulb'), open ? 'חושב…' : 'חשיבה'), h('div', { class: 'thinking-body', dir: 'auto' }, text));
+}
+
+/** Claude's answer and its copy button; the button sits outside the Markdown so live re-renders never touch it. */
+function withCopy(node, text) {
+  return h('div', { class: 'msg-assistant-wrap' }, node, copyButton(text));
 }
 
 function renderResult(item) {
@@ -44,7 +60,7 @@ function renderCommandOutput(item) {
 function build(item) {
   switch (item.kind) {
     case 'user': return renderUser(item);
-    case 'text': return renderAssistantText(item.text);
+    case 'text': return item.parent ? renderAssistantText(item.text) : withCopy(renderAssistantText(item.text), item.text);
     case 'thinking': return renderThinking(item.text);
     case 'tool': return renderTool(item);
     case 'result': return renderResult(item);
@@ -59,15 +75,18 @@ function build(item) {
  * Appends one item. Items of a subagent (item.parent) go inside the parent tool row.
  * @param {HTMLElement} container The messages element.
  * @param {{kind:string, parent?:string}} item
+ * @returns {HTMLElement|null} the new element (null for a tool result, which goes into its tool row)
  */
 export function appendItem(container, item) {
-  if (item.kind === 'tool-result') return attachToolResult(container, item);
+  if (item.kind === 'tool-result') { attachToolResult(container, item); return null; }
   const parentRow = item.parent && container.querySelector(`[data-tool-id="${CSS.escape(item.parent)}"] > .tool-children`);
   const target = parentRow || container;
   if (item.kind === 'tool' && item.name === 'TodoWrite') {
     container.querySelectorAll('.todo-card.latest').forEach(card => card.classList.remove('latest'));
   }
-  target.append(build(item));
+  const node = build(item);
+  target.append(node);
+  return node;
 }
 
 /** Plain-text Markdown export of a whole conversation (for /export). */

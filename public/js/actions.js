@@ -9,7 +9,8 @@ import { toast, ask } from './ui.js';
 import { guardedApi, confirmMode, confirmOutwardCommand, isCancelled, CANCELLED_MESSAGE } from './risk.js';
 
 /**
- * @param {{refresh:()=>void, selectSession:(id:string|null)=>void, insert:(text:string, options?:object)=>void}} view
+ * @param {{refresh:()=>void, selectSession:(id:string|null)=>void, insert:(text:string, options?:object)=>void,
+ *   restore:(texts:string[])=>void}} view restore puts messages back into the composer (from the queue).
  */
 export function createActions(view) {
   const report = error => {
@@ -34,20 +35,41 @@ export function createActions(view) {
     insert: (text, options) => view.insert(text, options),
     openPanel: id => openPanel(id, panelContext),
 
+    /** Sends now, or queues the message when the session is still working (sent after the running turn). */
     async send(text) {
       try {
         await confirmOutwardCommand(text);
         const session = activeSession() || await createFromDraft(text);
-        await api.sendMessage(session.id, text);
+        await api.sendMessage(session.id, text); // a busy session queues it; the queue shows above the composer
         return true;
       } catch (error) {
         report(error);
         return false;
       }
     },
+    /** Stops the turn; queued messages come back into the composer instead of being sent. */
     async stop() {
       const session = activeSession();
-      if (session?.status === 'running') await api.stop(session.id).catch(report);
+      if (session?.status !== 'running') return;
+      const result = await api.stop(session.id).catch(report);
+      if (result?.queued?.length) {
+        view.restore(result.queued);
+        toast('ההודעות שבתור הוחזרו לתיבת הכתיבה');
+      }
+    },
+    removeQueued(entry) {
+      const session = activeSession();
+      if (session) api.removeQueued(session.id, entry.id).catch(report);
+    },
+    /** Takes a queued message back into the composer for editing. */
+    async editQueued(entry) {
+      const session = activeSession();
+      if (!session) return;
+      await api.removeQueued(session.id, entry.id).then(() => view.restore([entry.text])).catch(report);
+    },
+    resumeQueue() {
+      const session = activeSession();
+      if (session) api.resumeQueue(session.id).catch(report);
     },
     async clear() {
       const session = activeSession();

@@ -1,18 +1,23 @@
 /**
  * The "/" command menu and the "@" mention menu (files, folders, agents) of the composer.
- * Typing "/" at the start lists every command; typing "@" anywhere lists files and agents.
+ * Typing "/" at the start lists every command; "/" after a space in the middle of the text lists Skills and
+ * custom commands only (picked ones stay part of the sentence; built-ins run only as the whole message);
+ * typing "@" anywhere lists files and agents.
  */
 import { h } from './dom.js';
 import { api } from './api.js';
 import { createListMenu } from './popover.js';
-import { GROUPS, filterCommands } from './command-catalog.js';
-import { currentScope, getCatalog, getCommands } from './state.js';
+import { GROUPS, buildCommands, filterCommands } from './command-catalog.js';
+import { currentScope, getCatalog, getCommands, peekCatalog } from './state.js';
 
 const SLASH_TOKEN = /^\/([^\s]*)$/;
+const INLINE_SLASH_TOKEN = /(^|\s)\/([^\s/]*)$/;
+const INLINE_GROUPS = new Set(['skill', 'plugin', 'mcp']);
 const MENTION_TOKEN = /(^|\s)@([^\s@]*)$/;
 const MAX_PER_GROUP = 40;
 
-const footer = () => h('div', { class: 'menu-footer' }, h('span', null, '↑↓ ניווט'), h('span', null, 'Enter / Tab בחירה'), h('span', null, 'Esc סגירה'));
+const footer = (loading = false) => h('div', { class: 'menu-footer' }, h('span', null, '↑↓ ניווט'), h('span', null, 'Enter / Tab בחירה'),
+  h('span', null, 'Esc סגירה'), loading ? h('span', { class: 'menu-loading' }, 'טוען Skills מ-Claude Code…') : null);
 
 function commandEntries(commands, onPick) {
   const entries = [];
@@ -54,11 +59,27 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
     onChange();
   }
 
+  /** Built-in commands show at once; Skills and custom commands join when the CLI catalog arrives. */
   async function showCommands(query) {
     const id = ++requestId;
-    const commands = filterCommands(await getCommands(), query);
+    const draw = (catalog, loading) => menu.update(
+      commandEntries(filterCommands(buildCommands(catalog), query), command => { menu.close(); onCommand(command); }), footer(loading));
+    const cached = peekCatalog();
+    if (cached !== undefined) return draw(cached, false);
+    draw(null, true);
+    const catalog = await getCatalog();
+    if (id === requestId && menu.isOpen()) draw(catalog, false);
+    return undefined;
+  }
+
+  /** Skills in the middle of a sentence: the pick replaces the "/query" token and the text around it stays. */
+  async function showInlineSkills(query) {
+    const id = ++requestId;
+    const commands = filterCommands(await getCommands(), query).filter(command => INLINE_GROUPS.has(command.group));
     if (id !== requestId) return;
-    menu.update(commandEntries(commands, command => { menu.close(); onCommand(command); }), footer());
+    // A path such as "/usr/bin" in a sentence is not a request for the menu.
+    if (!commands.length) { menu.close(); return; }
+    menu.update(commandEntries(commands, command => { menu.close(); replaceToken(INLINE_SLASH_TOKEN, `/${command.name} `); }), footer());
   }
 
   async function showMentions(query) {
@@ -86,9 +107,11 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
   function refresh() {
     const head = beforeCaret();
     const slash = textarea.value.match(SLASH_TOKEN) && head === textarea.value ? head.match(SLASH_TOKEN) : null;
+    const inline = slash ? null : head.match(INLINE_SLASH_TOKEN);
     const mention = head.match(MENTION_TOKEN);
     clearTimeout(mentionTimer);
     if (slash) return showCommands(slash[1]);
+    if (inline) return showInlineSkills(inline[2]);
     if (mention) { mentionTimer = setTimeout(() => showMentions(mention[2]), 120); return undefined; }
     requestId++;
     menu.close();
