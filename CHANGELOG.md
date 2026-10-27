@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 (folder browser fixes)
+- Fixed: an API route missing on a server that was not restarted after an update answered a bare "נתיב לא קיים"; it now names the route and says to restart `node server.js` (lib/api-routes.js)
+- Fixed: the folder browser stayed empty when its starting folder did not exist; it now opens the default (or home) folder, and its error stays visible in the list (public/js/folder-browser.js, lib/workspace-info.js)
+- Fixed: a path pasted with Explorer's "Copy as path" quotes was not found
+
 ## 2026-10-27 (documentation)
 - Documented: everything added on 2026-10-27 in AGENT_CONTEXT.md (state, what was and was not tested, gotchas, next steps), ARCHITECTURE.md (warm-up step, models, responsiveness, new endpoints in Security, session fields), PROJECT_MAP.md (file roles) and DEPENDENCIES.md (optional model server)
 
