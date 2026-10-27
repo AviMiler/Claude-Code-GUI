@@ -27,7 +27,7 @@ const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
-  askSide: (sessionId, question) => sideQuestions.ask(sessionId, question) });
+  askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });
 const runCommand = createCommandRunner(actions);
 
 const composer = createComposer(els.composerArea, {
