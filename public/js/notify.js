@@ -98,21 +98,22 @@ function showDesktop(kind, session, onOpen) {
   }
 }
 
-/** True when the user is not looking at this session right now (tab hidden, window unfocused, or another session open). */
-function isAway(sessionId, activeId) {
-  return document.hidden || !document.hasFocus() || sessionId !== activeId;
+/** True when the user is not looking at the session right now (tab hidden, window unfocused, or not in a pane on screen). */
+function isAway(onScreen) {
+  return document.hidden || !document.hasFocus() || !onScreen;
 }
 
 /**
  * Notifies about a session event through the channels the user chose.
  * @param {NotifyKind} kind
  * @param {{id:string, name:string}} session
- * @param {{activeId:string|null, onOpen:(sessionId:string)=>void}} options onOpen runs when a desktop notification is clicked
+ * @param {{onScreen:boolean, onOpen:(sessionId:string)=>void}} options onScreen: the session is shown in the main pane or
+ *   the split pane; onOpen runs when a desktop notification is clicked
  */
-export function notify(kind, session, { activeId, onOpen }) {
+export function notify(kind, session, { onScreen, onOpen }) {
   const preferences = notifyPreferences();
   if (!preferences[PREFERENCE_BY_KIND[kind]]) return;
-  if (preferences.when === 'away' && !isAway(session.id, activeId)) return;
+  if (preferences.when === 'away' && !isAway(onScreen)) return;
   if (preferences.sound) playTone(kind, preferences.volume);
   if (preferences.desktop) showDesktop(kind, session, onOpen);
 }

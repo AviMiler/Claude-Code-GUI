@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (file viewer; earlier: per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-27 (split view; earlier: file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -18,7 +18,8 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
    `--resume <id>` keeps the conversation) and writes `{"type":"user",...}` to stdin
 4. Each stdout line: `control_response` settles a pending request; `control_request` `can_use_tool` becomes a
    permission prompt; everything else -> `event-translator` -> UI items / streaming deltas -> SSE (`/api/events`)
-5. Browser `events.js` updates state and views; a permission answer goes back as `control_response`
+5. Browser `events.js` updates state and views; a permission answer goes back as `control_response`. With the split view open, the
+   events of the pane's session (item, delta, status, runtime, permission, permission-resolved) go to the pane's thread too (`view.paneThread(id)`)
 6. `result` ends the turn; the process stays warm and closes itself after `idleMinutes` — except while it has running
    background tasks (see Background tasks); the timer is re-armed when the last one ends
 7. A message sent while a turn runs goes to `session.queue`; the end of the turn sends the next one (step 2).
@@ -174,6 +175,11 @@ the right to run commands as that user.
 - Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the
   per-browser preferences (localStorage) and fires desktop / sound; `page-status.js` owns the tab title count and brand state. Frontend only
 - Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`
+- Split view: `split-view.js` (`createSplitView`) owns a second pane (`#split-pane`) with its own `createThread` instance, prompt cards and a mini composer
+  (send / stop only); its session id and open state are per browser in localStorage (`claude-gui.split-session`, `claude-gui.split-open`). `events.js` builds the list of
+  threads showing an event's session (main thread if active + `view.paneThread(id)`); `notify.js` gets `onScreen` (main or pane) for the "away" rule and unread
+  marks are set only when the session is on screen nowhere. The same session is never in both panes (swap). `/btw` and the search bar stay main-only. Frontend only
+- Warm-up: `warm-up.js` (moved from `app.js`) starts Claude Code while a message is typed and prefetches the catalog before a menu opens
 - Session search: `session-search.js` (pure: sessions + query -> hits with snippets) feeds `sidebar.js`; `search-hits.js` shows the bar and
   outlines in the open thread. Every rendered item node in `thread.js` carries `data-item-index` (its index in `session.items`; `events.js`
   passes it for live items), which is how a hit finds its message. Frontend only

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-27 (split view)
+- Added: two sessions side by side (feature 12 of 12). A topbar button / Ctrl+\ opens a second pane with a session picker, swap ("פתיחה בחלון הראשי") and close, its own live thread, its own permission/question/plan cards and a mini composer (text, send, stop; Enter sends, queue while busy, stop returns queued texts). No attachments, slash menus, `@` or `/btw` in the pane. Why: user request (one session plans, another executes). Files: public/js/split-view.js (new), public/css/split.css (new), events.js (events go to every thread showing the session), notify.js (`onScreen`: a pane session counts as on screen), app.js, chrome.js, icons.js (`columns`), index.html
+- Per browser (localStorage `claude-gui.split-open`, `claude-gui.split-session`); the same session is never in both panes; below 1000 px the toggle refuses and an open split closes. No server change
+- Refactor: warm-up and catalog prefetch moved verbatim from app.js to public/js/warm-up.js (app.js 183 -> 162 lines, still over the budget)
+- Verify found and fixed: the pane composer skipped the outward-command confirmation; choosing a session into the pane did not clear its sidebar unread dot. No deviation from the plan. Not checked: search bar with the split open, light/dark appearance of the pane
+
 ## 2026-10-27 (images in resumed conversations)
 - Added: importing a past conversation ("שיחות קודמות") now shows the images the user sent, as thumbnails (click = full size), instead of "[תמונה]". Each base64 image is stored through `images.saveImages` (magic bytes, 5 MB) one by one and attached to the user item like a composer image; an image that fails validation or comes by URL/file reference keeps the "[תמונה]" / "[N תמונות]" marker. Why: user request (feature 11 of 12). Files: lib/transcripts.js
 - Listing and titles still use the text marker. Limits: images inside tool results still show "[תמונה]"; re-importing stores the images again (new ids); images of items cut by the 3000-item cap are swept at startup. No deviation from the plan

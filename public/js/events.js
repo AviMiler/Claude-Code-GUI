@@ -29,11 +29,16 @@ function turnOutcome(session) {
 
 /**
  * @param {{type:string, sessionId?:string}} event
- * @param {{thread:object, refresh:()=>void, selectSession:(id:string|null)=>void, fetchContext:(id:string)=>void, onTurnFailed:()=>void}} view
+ * @param {{thread:object, refresh:()=>void, selectSession:(id:string|null)=>void, fetchContext:(id:string)=>void,
+ *   onTurnFailed:()=>void, paneThread:(sessionId:string)=>object|null}} view paneThread: the split pane's thread
+ *   when it shows this session (split-view.js)
  */
 export function handleEvent(event, view) {
   const session = event.sessionId ? state.sessions.get(event.sessionId) : null;
   const isActive = event.sessionId && event.sessionId === state.activeId;
+  // Every thread on screen that shows this session: the main one and/or the split pane.
+  const threads = [isActive ? view.thread : null, view.paneThread(event.sessionId)].filter(Boolean);
+  const onScreen = threads.length > 0;
 
   switch (event.type) {
     case 'session':
@@ -48,36 +53,36 @@ export function handleEvent(event, view) {
       if (!session) return undefined;
       session.items.push(event.item);
       session.updatedAt = Date.now();
-      if (isActive) view.thread.append(event.item, session.items.length - 1, session.items);
+      threads.forEach(thread => thread.append(event.item, session.items.length - 1, session.items));
       if (event.item.kind === 'divider' || event.item.kind === 'command-output') view.fetchContext(event.sessionId);
       break;
     case 'delta':
-      if (isActive) view.thread.delta(event);
+      threads.forEach(thread => thread.delta(event));
       return undefined; // no other view depends on streaming text
     case 'status':
       if (!session) return undefined;
       session.status = event.status;
       if (event.status === 'running') session.turnStartedAt = Date.now();
-      if (isActive) view.thread.setRunning(event.status === 'running', { startedAt: session.turnStartedAt });
+      threads.forEach(thread => thread.setRunning(event.status === 'running', { startedAt: session.turnStartedAt }));
       if (event.status === 'idle') {
-        if (!isActive || document.hidden) state.unread.add(event.sessionId);
+        if (!onScreen || document.hidden) state.unread.add(event.sessionId);
         view.fetchContext(event.sessionId);
         const outcome = turnOutcome(session);
-        if (outcome) notify(outcome, session, { activeId: state.activeId, onOpen: view.selectSession });
+        if (outcome) notify(outcome, session, { onScreen, onOpen: view.selectSession });
         if (outcome === 'error') view.onTurnFailed(); // was it the model server? (model-health.js)
       }
       break;
     case 'runtime':
       state.runtime.set(event.sessionId, event.info);
-      if (isActive) view.thread.activity(); // the CLI is up and working on the turn
+      threads.forEach(thread => thread.activity()); // the CLI is up and working on the turn
       break;
     case 'permission':
       if (!session) return undefined;
       if (!(session.pendingPermissions || []).some(p => p.requestId === event.prompt.requestId)) {
-        notify('waiting', session, { activeId: state.activeId, onOpen: view.selectSession });
+        notify('waiting', session, { onScreen, onOpen: view.selectSession });
       }
       session.pendingPermissions = [...(session.pendingPermissions || []).filter(p => p.requestId !== event.prompt.requestId), event.prompt];
-      if (isActive) view.thread.setRunning(true, { startedAt: session.turnStartedAt, waiting: true });
+      threads.forEach(thread => thread.setRunning(true, { startedAt: session.turnStartedAt, waiting: true }));
       break;
     case 'tasks':
       if (!session) return undefined;
@@ -87,8 +92,8 @@ export function handleEvent(event, view) {
     case 'permission-resolved':
       if (!session) return undefined;
       session.pendingPermissions = (session.pendingPermissions || []).filter(prompt => prompt.requestId !== event.requestId);
-      if (isActive && session.status === 'running') {
-        view.thread.setRunning(true, { startedAt: session.turnStartedAt, waiting: session.pendingPermissions.length > 0 });
+      if (session.status === 'running') {
+        threads.forEach(thread => thread.setRunning(true, { startedAt: session.turnStartedAt, waiting: session.pendingPermissions.length > 0 }));
       }
       break;
     default:

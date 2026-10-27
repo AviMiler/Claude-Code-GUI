@@ -12,7 +12,7 @@ Requirements the user confirmed as permanent. Each new permanent feature gets a 
 The user chooses what to be told about. Frontend only, no server changes.
 - Channels (each on/off): desktop notification (browser Notification API; click focuses the tab and opens that session), sound (generated with WebAudio, no audio files; volume setting; rising tone = done, double = waiting, falling = error), tab-title count.
 - Events (each on/off): turn finished, waiting for the user's approval (permission, AskUserQuestion, plan card), error (crash, failed start, or a result with isError). A turn the user stopped notifies nothing.
-- When: "away" (default: tab hidden or unfocused, or another session is on screen) or "always".
+- When: "away" (default: tab hidden or unfocused, or the session is not on screen) or "always". A session shown in the main pane or in the split-view pane counts as on screen (no notification, no unread mark).
 - Tab title shows "(N)" = sessions waiting for approval plus sessions finished and unread; this replaced the earlier waiting-only count, and can be turned off.
 - Settings are per browser (localStorage `claude-gui.notifications`) and edited in the settings modal, panel "התראות" (also a bell button in the sidebar footer). The panel has a test button and shows/requests the desktop permission.
 - Defaults: desktop off, sound off, title on, volume 60, all three events on, when = away.
@@ -119,3 +119,14 @@ Importing a past CLI conversation ("שיחות קודמות", `lib/transcripts.j
 - Deleting the session removes its imported images (cleanup by references); unreferenced ones are swept at startup.
 - Known limits: images inside tool results (for example Claude reading an image file) still show "[תמונה]" in the tool output; re-importing the same transcript stores the images again with new ids; images of items cut by the 3000-item import cap become unreferenced and are swept at startup.
 - Code: `imageBlocks`, `userText(line, markedImages)`, `storeImages`, `userItem` in `lib/transcripts.js`.
+
+## Split view (confirmed permanent, 2026-10-27)
+The user can watch and drive two sessions side by side, for example one planning and one executing. Frontend only, no server changes: the server already streams every session's events to the browser. No extra model call.
+- Toggle: a topbar button (icon `columns`) and Ctrl+\ open or close a second pane beside the main thread. Below 1000 px the toggle refuses with a toast, and an open split closes when the window gets that narrow.
+- The pane has a header (session picker listing the other sessions, "פתיחה בחלון הראשי" swap, close), its own live thread (streaming text, thinking, tool rows, working line, changed-files card, stats, file viewer links), the session's own permission / question / plan cards, and a compact composer: text, send, stop. Enter sends, Shift+Enter is a newline; a message sent while that session works is queued on the server like in the main composer; stop returns the queued texts to the box. The "git diff" button of the pane's changed-files card swaps the session into the main pane and opens the diff panel.
+- Pane composer limits, on purpose: no attachments, no slash menu or GUI commands, no `@` mentions, no model / mode chips, no `/btw`. A message that starts an outward slash command gets the same confirmation as in the main composer. To use those, swap the session into the main pane.
+- The same session is never in both panes: choosing the main session in the picker swaps them; picking the pane's session in the sidebar changes only the main pane, and the pane then shows an empty state. A sidebar pick always changes the main pane only. Choosing a session into the pane clears its unread mark.
+- Events of the pane's session (item, delta, status, runtime, permission, permission-resolved) update the pane as well as the main thread. Notifications treat a pane session as on screen (see Notifications); a third session still notifies.
+- The `/btw` card and the search-hits bar belong to the main pane only.
+- Per browser (localStorage): `claude-gui.split-open` and `claude-gui.split-session`; reload restores both.
+- Code: `public/js/split-view.js` (`createSplitView`), `public/css/split.css`, `<aside id="split-pane">` in `public/index.html`, the split button in `chrome.js` (icon `columns` in `icons.js`), routing in `events.js` (`view.paneThread`), `notify.js` (`onScreen`), wiring and Ctrl+\ in `app.js`.

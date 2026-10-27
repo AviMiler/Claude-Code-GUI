@@ -1,6 +1,6 @@
 /** Frontend entry point: receives live events, keeps the views in sync, and wires the composer and menus. */
 import { api, subscribe } from './api.js';
-import { state, activeSession, currentScope, getCatalog, getCommands, getModels, peekModels } from './state.js';
+import { state, activeSession, getCommands, getModels, peekModels } from './state.js';
 import { createThread } from './thread.js';
 import { createComposer } from './composer.js';
 import { renderSidebar } from './sidebar.js';
@@ -17,6 +17,8 @@ import { createSideQuestions } from './side-question.js';
 import { createSearchHits } from './search-hits.js';
 import { enableFileLinks } from './file-viewer.js';
 import { createModelHealth } from './model-health.js';
+import { createSplitView } from './split-view.js';
+import { warmUp, prefetchCatalog } from './warm-up.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -29,6 +31,7 @@ const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 enableFileLinks(els.messages, () => state.activeId);
 const modelHealth = createModelHealth(byId('model-health'));
+const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openPanel: id => actions.openPanel(id), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });
@@ -59,28 +62,6 @@ function modelLabel(settings) {
   return value || 'ברירת מחדל';
 }
 
-// Starting Claude Code takes seconds; it starts while the first words are typed, so Enter does not wait for it.
-let lastWarm = { key: '', at: 0 };
-function warmUp() {
-  const session = activeSession();
-  if (session?.status === 'running') return;
-  const { draft } = state;
-  const target = session ? { sessionId: session.id }
-    : { cwd: draft.cwd || state.config.defaultCwd, mode: draft.mode, model: draft.model, effort: draft.effort };
-  const key = JSON.stringify(target);
-  if (key === lastWarm.key && Date.now() - lastWarm.at < 60000) return;
-  lastWarm = { key, at: Date.now() };
-  api.warm(target).catch(() => {});
-}
-
-// Menus read the catalog from cache; fetch it shortly after a view settles, not when a menu opens.
-let prefetchTimer = null;
-function prefetchCatalog() {
-  clearTimeout(prefetchTimer);
-  const scope = currentScope();
-  prefetchTimer = setTimeout(() => { if (JSON.stringify(scope) === JSON.stringify(currentScope())) getCatalog(scope); }, 800);
-}
-
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {
   const session = activeSession();
@@ -90,7 +71,7 @@ function refresh() {
   if (!editing(els.topbar)) renderTopbar(els.topbar, session, {
     onToggleSidebar: toggleSidebar, onRename: name => actions.rename(name), onOpenPanel: id => actions.openPanel(id),
     onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
-    onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
+    onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onSplit: () => split.toggle(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');
   els.welcome.hidden = Boolean(session);
@@ -109,6 +90,7 @@ function refresh() {
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
   renderPageStatus(els.brand);
+  split.refresh();
 }
 watchPageVisibility(refresh);
 
@@ -151,7 +133,7 @@ async function loadState() {
 }
 
 // ifRunning: the context ring must never start a CLI process by itself (e.g. right after one crashed).
-const eventView = { thread, refresh, selectSession, onTurnFailed: () => modelHealth.afterFailedTurn(), fetchContext: id => api.control({ sessionId: id }, 'get_context_usage', { ifRunning: true })
+const eventView = { thread, refresh, selectSession, onTurnFailed: () => modelHealth.afterFailedTurn(), paneThread: id => split.threadFor(id), fetchContext: id => api.control({ sessionId: id }, 'get_context_usage', { ifRunning: true })
   .then(usage => { if (!usage) return; state.context.set(id, usage.percentage ?? Math.round((usage.totalTokens / usage.maxTokens) * 100)); refresh(); })
   .catch(() => {}) };
 subscribe(event => handleEvent(event, eventView), () => loadState().catch(error => console.error('[app] cannot load state:', error)));
@@ -173,6 +155,7 @@ document.addEventListener('keydown', event => {
   else if (mod && event.shiftKey && event.key.toLowerCase() === 'o') { event.preventDefault(); selectSession(null); }
   else if (mod && event.key.toLowerCase() === 'b') { event.preventDefault(); toggleSidebar(); }
   else if (mod && event.key === ',') { event.preventDefault(); actions.openPanel('model'); }
+  else if (mod && event.key === '\\') { event.preventDefault(); split.toggle(); }
   else if (event.key === 'Escape' && !event.defaultPrevented && activeSession()?.status === 'running'
     && !document.querySelector('.modal-backdrop, .popover, dialog[open]')) actions.stop();
 });

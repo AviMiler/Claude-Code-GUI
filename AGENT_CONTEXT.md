@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding the model server health dot (on top of the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding the split view, the last of the 12 user-approved features of this batch (on top of images in resumed conversations, per-turn stats, the model server health dot, the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -24,7 +24,10 @@ Built for a corporate Windows machine without another terminal.
   per-turn "files changed" card after each result (Edit/MultiEdit/Write/NotebookEdit; that turn's diffs on click),
   file viewer: open button on Read/Edit/MultiEdit/Write/NotebookEdit tool rows and card rows (line numbers, relevant lines highlighted; read-only, session folders only),
   model server health dot in the sidebar footer (green up / red down / grey unknown; polled every 60 s, rechecked after a failed turn),
-  per-turn stats on the result line (time, output tokens/s, tokens in/out, rounds, tool calls, cost; tooltip breakdown)
+  per-turn stats on the result line (time, output tokens/s, tokens in/out, rounds, tool calls, cost; tooltip breakdown),
+  images the user sent are shown (thumbnails) when a past CLI conversation is imported ("שיחות קודמות"),
+  split view: a second pane beside the main thread with another session (own live thread, approval cards, mini composer text/send/stop;
+  topbar button or Ctrl+\; picker, swap, per browser; refuses below 1000 px; a pane session counts as on screen for notifications)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -44,7 +47,10 @@ Built for a corporate Windows machine without another terminal.
   and whether 2.1.246 supports `side_question` is unknown (the GUI then shows a neutral "not available" note);
   background tasks with the real CLI: event shapes come from reading the 2.1.311 binary, 2.1.246 may lack the task events,
   `stop_task` or `get_task_output` (neutral notes exist, untested), and the real field name of the `get_task_output`
-  response is unknown (the panel reads output/content/text/tail defensively)
+  response is unknown (the panel reads output/content/text/tail defensively);
+  the features of the 12-feature batch were all checked in a browser against the fake CLI only (search, pinning, templates, changed-files card, health dot,
+  file viewer, stats, imported images, split view); the real CLI and the real model server have not been tried with them. Split view: the search-hits bar with the
+  split open and light/dark screenshots of the pane were not checked
 - ❌ Known limits: images inside tool results of resumed CLI conversations still show "[תמונה]" (images the user sent are shown); non-image files reach the model
   only as paths it must read; terminal-only commands (login, ide, remote-control, ...) are
   listed but only explained; partial streamed text of a stopped turn is not kept
@@ -63,6 +69,12 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Split view (feature 12 of 12, the last of the batch): a second pane beside the main thread with another session, opened by a topbar button or Ctrl+\.
+  New public/js/split-view.js (header with picker / swap / close, own `createThread`, approval cards, mini composer: Enter sends, queue while busy, stop returns the texts;
+  outward slash commands confirmed; no attachments / slash menus / `@` / `/btw`), public/css/split.css; events.js routes the pane session's events to the pane too;
+  notify.js `onScreen` (pane = on screen, no unread); app.js, chrome.js, icons.js (`columns`), index.html. Frontend only. Refactor: warm-up and catalog prefetch moved verbatim
+  from app.js to new public/js/warm-up.js (app.js 183 -> 162, still over budget). No deviation. Verify found two issues, fixed: pane skipped the outward-command confirmation; choosing a
+  session into the pane did not clear its sidebar unread dot. Not checked: search bar with the split open (code untouched), light/dark look of the pane.
 - 2026-10-27 — Images in resumed conversations (feature 11 of 12): importing a past CLI transcript now stores the user's base64 images via `images.saveImages` (one call per image) and attaches them as `images` on the user item, so thumbnails and full-size view work; failed/URL/file-ref images keep a "[תמונה]"/"[N תמונות]" marker. lib/transcripts.js only (`imageBlocks`, `userText(line, markedImages)`, `storeImages`, `userItem`). Listing/titles unchanged (text marker).
   Limits kept: images in tool results still "[תמונה]"; re-import stores images again (new ids); images of items cut by the 3000-item cap are swept at startup. Stage 3 first pass found `titleOf` passing the map index as `markedImages` (fixed with `line => userText(line)`); re-verified Go in a browser. No deviation.
 - 2026-10-27 — Per-turn stats (feature 10 of 12): the result meta line now shows total time · output tokens/s (output ÷ API time, total time when unknown) · input(incl. cache) → output · rounds (>1) ·
@@ -153,10 +165,17 @@ Built for a corporate Windows machine without another terminal.
 - [ ] On the corporate machine: try `/btw` (does 2.1.246 support `side_question`? real response shape)
 - [ ] On the corporate machine: try `/tasks` (does 2.1.246 emit task events and support `stop_task` / `get_task_output`? real output response field)
 - [ ] On the corporate machine: check the health dot against the real model server (does `/v1/models` answer 2xx? otherwise the dot is red although turns work)
+- [ ] On the corporate machine: try imported images (does a real past transcript with images show thumbnails?) and the split view with two real sessions (both stream at once; permission card in the pane)
+- [ ] Look at the new screens in the light theme and at a narrow window (split pane, changed-files card, stats line, file viewer, health dot); only the dark theme was inspected
+- [ ] Check the search-hits bar with the split view open (main pane only is intended)
 - [ ] Fix the credentials-in-ANTHROPIC_BASE_URL problem of `/api/models` (see Known security issues, item 3)
-- [ ] Split `lib/session-service.js` (283 lines) and `lib/session-runtime.js` (243) — over the ~150-line budget
+- [ ] File-size debt (~150-line budget): `lib/session-service.js` (283 lines), `lib/session-runtime.js` (243), `public/js/app.js` (162, was 183 before warm-up.js)
 
 ## Gotchas / Watch Out
+- Split view: `events.js` updates every thread showing the event's session, so any new live view update must go through that list (main thread if active + `view.paneThread(id)`),
+  not only `view.thread`. The same session must never be in both panes (`split-view.js` swaps). Unread marks are set only when the session is on screen nowhere; after
+  changing the pane's session call `onChange` (page refresh) or the sidebar keeps a stale unread dot. `/btw` and the search bar are main-pane only on purpose. The pane has its own
+  delegated file-viewer listener bound to the pane's session
 - File viewer: `lib/file-view.js` is the only GET that returns file contents, so keep its checks: roots come from the session on the server (never from the request),
   real paths compared with a separator boundary (case-insensitive on win32/darwin), read from the resolved path, `cwd` ignored. Render content with textContent only.
   Edit marks are found by searching the CURRENT file for `new_string`, so a later change leaves no marks (not an error). One delegated listener (`enableFileLinks`, app.js)

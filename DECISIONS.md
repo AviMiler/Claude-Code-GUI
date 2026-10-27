@@ -19,3 +19,8 @@
 **Decision:** Full-text search scans `session.items` in the browser (public/js/session-search.js), newest 3000 items per session, count capped at 99.
 **Alternatives considered:** A server-side search endpoint or index over `data/sessions.json`.
 **Why:** `/api/state` and SSE already give the browser every item, so no new route, no index to keep in sync with live streaming, and results stay current as items arrive. The cost is a scan per query, bounded by the cap and a 150 ms debounce.
+
+## [2026-10-27] The split-view pane has a mini composer, and extras stay main-only
+**Decision:** The second pane has a live thread, its approval cards and a compact composer (text, send, stop). Attachments, slash menus, `@`, chips and `/btw` stay in the main composer; a swap button makes the pane's session the main one.
+**Alternatives considered:** A read-only second pane; a full second composer with every feature.
+**Why:** The use case (one session plans, another executes) needs sending to both, so read-only is not enough. A full second composer would duplicate menus, attachments and commands that are wired to the single active session, for little gain; one-click swap covers them.
