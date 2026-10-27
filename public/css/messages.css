@@ -105,3 +105,14 @@
 .focus-view .tool, .focus-view .thinking, .focus-view .notice { display: none; }
 .todo-card:not(.latest) { display: none; }
 .tool[data-status="stopped"] .tool-state { color: var(--faint); }
+/* Images sent with a user message */
+.msg-images { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 85%; margin-bottom: 6px; }
+.msg-images img { display: block; max-width: 220px; max-height: 180px; border: 1px solid var(--border); border-radius: var(--radius); object-fit: cover; }
+.msg-images a:hover img { border-color: var(--border-strong); }
+.msg-files { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 85%; margin-bottom: 6px; }
+.msg-file { display: inline-flex; gap: 6px; align-items: center; max-width: 260px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); font-size: 13px; text-decoration: none; }
+.msg-file:hover { border-color: var(--border-strong); }
+.msg-file .icon { flex: none; width: 16px; height: 16px; color: var(--accent); }
+.msg-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-file small { flex: none; color: var(--faint); }

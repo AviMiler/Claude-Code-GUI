@@ -23,11 +23,12 @@ const els = {
 };
 const thread = createThread({ scroller: els.scroller, messages: els.messages });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
-  insert: (text, options) => composer.insert(text, options), restore: texts => composer.restore(texts) });
+  insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries) });
 const runCommand = createCommandRunner(actions);
 
 const composer = createComposer(els.composerArea, {
-  async onSubmit(text) {
+  async onSubmit(text, attachments = []) {
+    if (attachments.length) return actions.send(text, attachments); // with attachments it is a message to Claude, never a GUI command
     const slash = parseSlash(text);
     const command = slash && findCommand(await getCommands(), slash.name);
     if (command && command.run !== 'send') { await runCommand(command, slash.args); return true; }
@@ -66,7 +67,8 @@ const composer = createComposer(els.composerArea, {
     { icon: 'sliders', title: 'סגנון, סוכן ותיקיות…', hint: '/model', onSelect: () => actions.openPanel('model') }]);
   },
   onPlusMenu: anchor => showDropdown(anchor, [
-    { icon: 'at', title: 'צירוף קובץ או תיקייה', hint: '@', onSelect: () => composer.insert('@') },
+    { icon: 'paperclip', title: 'העלאת קבצים ותמונות', desc: 'כל סוג קובץ. אפשר גם לגרור לתיבה או להדביק (Ctrl+V)', onSelect: () => composer.pickFiles() },
+    { icon: 'at', title: 'הפניה לקובץ או תיקייה מהפרויקט', hint: '@', onSelect: () => composer.insert('@') },
     { icon: 'bot', title: 'הזמנת סוכן', hint: '@agent-', onSelect: () => composer.insert('@agent-') },
     { icon: 'slash', title: 'פקודות', hint: '/', onSelect: () => composer.insert('/', { replace: !composer.textarea.value }) },
     { icon: 'sparkles', title: 'Skills', hint: '/skills', onSelect: () => actions.openPanel('skills') },

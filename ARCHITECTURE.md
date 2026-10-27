@@ -10,8 +10,10 @@ sessions are kept in memory and saved to `data/sessions.json`.
 ## Data Flow
 0. While the user types, `POST /api/warm` starts the CLI ahead of time: the session's own process, or (on the welcome
    page) a spare process with the draft settings that `createSession` adopts when cwd, mode, model and effort match
-1. User sends text -> `POST /api/sessions/:id/messages`
-2. `session-service` stores a user item, marks the session running, calls `session-runtime.sendMessage`
+1. User sends text and attachments -> `POST /api/sessions/:id/messages` `{ text, images?, files? }` (base64 or `{ ref }`)
+2. `session-service` stores the attachments (`lib/images.js` -> `data/images/`, `lib/uploads.js` -> `data/uploads/`),
+   stores a user item with references, marks the session running, calls `session-runtime.sendMessage` with the CLI
+   content: image blocks + the text, followed by the paths of attached files
 3. `session-runtime` starts the process if needed (`cli-args` builds the flags from the detected capabilities,
    `--resume <id>` keeps the conversation) and writes `{"type":"user",...}` to stdin
 4. Each stdout line: `control_response` settles a pending request; `control_request` `can_use_tool` becomes a
@@ -20,6 +22,13 @@ sessions are kept in memory and saved to `data/sessions.json`.
 6. `result` ends the turn; the process stays warm and closes itself after `idleMinutes`
 7. A message sent while a turn runs goes to `session.queue`; the end of the turn sends the next one (step 2).
    Stop empties the queue first and hands the texts back to the browser
+
+## Attachments
+- Images (PNG, JPEG, GIF, WebP): image content blocks in the user turn, so the model sees them (needs a vision model).
+  The browser shrinks them to ≤1568 px / ≤3.75 MB first (`public/js/attachments.js`)
+- Any other file: stored as `data/uploads/<uuid>/<name>`; the message ends with "[Attached files – read them with the
+  Read tool]" and the full paths. Every session process gets `--add-dir <data/uploads>`, so Read needs no prompt
+- Items and queue entries hold references only; `sessions.json` never holds file bytes
 
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
@@ -54,6 +63,7 @@ sessions are kept in memory and saved to `data/sessions.json`.
 | Probe process for catalogs of idle sessions | Looking at a session must not keep a 100–300 MB process alive |
 | Warm-up while typing (spare process for a new session) | CLI startup takes seconds; typing is intent, so the cost is paid before Enter |
 | Queue on the server, not in the browser | Survives tab switches and reloads; every tab sees the same queue |
+| Files by path, images as content blocks | Read handles text, code, PDF and notebooks with any model; images are the one kind the model must receive itself |
 | Model list from the model server | The CLI's aliases all point to one local model behind a custom base URL; only real models are worth a menu |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
@@ -67,6 +77,11 @@ the right to run commands as that user.
 - Binds to 127.0.0.1 only; Host check blocks DNS rebinding; Origin check blocks cross-site POST/PUT/DELETE
   (this covers the process-starting `POST /api/warm` and folder creation `POST /api/folders`)
 - Folder creation accepts a single name only (no separators, `.` or `..`) inside an existing folder
+- Attachments: image bytes must match the declared type (magic bytes; no SVG); uploaded file names are sanitized
+  (Windows-reserved characters and names) and each file has its own folder; `{ ref }` must be a stored uuid;
+  `/api/uploads/...` is always a download (`application/octet-stream`, `Content-Disposition: attachment`, nosniff),
+  so an uploaded HTML file never runs in the GUI's origin; images are served with their own type and nosniff
+- Request bodies up to 90 MB (attachments as base64); 10 images (5 MB each) and 10 files (25 MB each) per message
 - Static files cannot escape `public/`; Claude's files are reachable only by kind with validated names; writes need an explicit folder
 - `claude` subcommands: whitelist of commands *and* options (`lib/cli-commands.js`); `mcp add` passes through only after `--`
 - git runs with repository-configured programs disabled (fsmonitor, external diff, textconv)
@@ -80,7 +95,7 @@ the right to run commands as that user.
 **Known and accepted (not fixed on purpose — closed network)**
 | Issue | Impact | Fix when needed |
 |---|---|---|
-| Cross-site GET allowed (simple GETs carry no Origin) | A web page in the same browser can start `claude` probes in any folder (`/api/catalog?cwd=`), run git there, list files and folders (`/api/files`, `/api/folders`), make the server ask the model server for its models (`/api/models`), exhaust memory. It cannot read responses. | Startup token required on every /api call; reject `Sec-Fetch-Site: cross-site`; process-starting endpoints as POST |
+| Cross-site GET allowed (simple GETs carry no Origin) | A web page in the same browser can start `claude` probes in any folder (`/api/catalog?cwd=`), run git there, list files and folders (`/api/files`, `/api/folders`), load attachments whose uuid it knows (`/api/images`, `/api/uploads` — uuids are not guessable), make the server ask the model server for its models (`/api/models`), exhaust memory. It cannot read responses. | Startup token required on every /api call; reject `Sec-Fetch-Site: cross-site`; process-starting endpoints as POST |
 | No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders and edit ~/.claude settings | Same startup token |
 
 **Outside this computer**
@@ -97,7 +112,8 @@ the right to run commands as that user.
 - Event format isolation: `lib/event-translator.js` (live events and saved transcripts)
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, divider, notice (`stopped: true` when a
   stop ended the turn), error
-- Session fields beyond settings: `queue` ([{ id, text, at }], persisted), `status`, `costUsd`, `claudeSessionId`
+- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`
+- User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`
 - SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved
 - Claude's spark: `thread.js` sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
   done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)

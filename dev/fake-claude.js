@@ -119,6 +119,9 @@ function handle(line) {
   }
   if (message.type === 'user') {
     const content = message.message.content;
-    queue = queue.then(() => turn(typeof content === 'string' ? content : content.map(block => block.text).join('')));
+    const images = Array.isArray(content) ? content.filter(block => block.type === 'image') : [];
+    const text = typeof content === 'string' ? content : content.map(block => block.text || '').join('');
+    const seen = images.map(image => `${image.source.media_type} ${Math.round(image.source.data.length * 0.75 / 1024)}KB`);
+    queue = queue.then(() => turn(images.length ? `${text} [${images.length} images: ${seen.join(', ')}]` : text));
   }
 }

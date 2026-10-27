@@ -3,6 +3,7 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { renderMarkdown } from './markdown.js';
 import { renderTool, attachToolResult } from './render-tools.js';
+import { imageUrl, fileUrl, formatSize } from './attachments.js';
 
 const LOOKS_LIKE_MARKDOWN = /(^|\n)(#{1,4} |\|.*\||[-*] |\*\*)/;
 const copySources = new WeakMap(); // copy button -> the message's original text (Markdown for Claude's answers)
@@ -17,12 +18,26 @@ function copyButton(text) {
 /** Text a message copy button stands for (null for any other element). */
 export const copySourceOf = button => copySources.get(button) ?? null;
 
+/** Thumbnails of the images sent with a message; a click opens the full image in a new tab. */
+function messageImages(images) {
+  return h('div', { class: 'msg-images' }, images.map(image => h('a', { href: imageUrl(image), target: '_blank', rel: 'noopener', title: image.name },
+    h('img', { src: imageUrl(image), alt: image.name, loading: 'lazy' }))));
+}
+
+/** Files sent with a message: name and size; a click downloads the stored copy. */
+function messageFiles(files) {
+  return h('div', { class: 'msg-files' }, files.map(file => h('a', { class: 'msg-file', href: fileUrl(file), download: file.name, title: file.path },
+    icon('file'), h('span', { dir: 'auto' }, file.name), h('small', null, formatSize(file.size)))));
+}
+
 function renderUser(item) {
-  const bubble = h('div', { class: 'bubble', dir: 'auto' });
+  const images = item.images?.length ? messageImages(item.images) : null;
+  const files = item.files?.length ? messageFiles(item.files) : null;
+  const bubble = item.text ? h('div', { class: 'bubble', dir: 'auto' }) : null;
   const slash = item.text.match(/^(\/[^\s]+)([\s\S]*)$/);
-  if (slash) bubble.append(h('span', { class: 'slash' }, slash[1]), slash[2]);
-  else bubble.textContent = item.text;
-  return h('div', { class: 'msg-user' }, bubble, copyButton(item.text));
+  if (slash && !images) bubble.append(h('span', { class: 'slash' }, slash[1]), slash[2]);
+  else if (bubble) bubble.textContent = item.text;
+  return h('div', { class: 'msg-user' }, images, files, bubble, item.text ? copyButton(item.text) : null);
 }
 
 export function renderAssistantText(text, live = false) {
@@ -93,7 +108,10 @@ export function appendItem(container, item) {
 export function exportMarkdown(session) {
   const lines = [`# ${session.name}`, '', `תיקייה: \`${session.cwd}\``, ''];
   for (const item of session.items) {
-    if (item.kind === 'user') lines.push('## 🧑 משתמש', '', item.text, '');
+    if (item.kind === 'user') {
+      lines.push('## 🧑 משתמש', '', ...(item.images || []).map(image => `[תמונה: ${image.name}]`),
+        ...(item.files || []).map(file => `[קובץ: ${file.name}]`), item.text, '');
+    }
     else if (item.kind === 'text' && !item.parent) lines.push('## ✻ Claude', '', item.text, '');
     else if (item.kind === 'tool') lines.push(`> כלי: **${item.name}** \`${JSON.stringify(item.input).slice(0, 200)}\``, '');
     else if (item.kind === 'command-output') lines.push('```', item.text, '```', '');
