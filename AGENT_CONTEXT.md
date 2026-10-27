@@ -49,6 +49,8 @@ Built for a corporate Windows machine without another terminal.
 ## Last Changes
 - 2026-10-27 — Images and files attached to messages (lib/images.js, lib/uploads.js, public/js/attachments.js);
   every session gets `--add-dir data/uploads`; body limit 90 MB.
+- 2026-10-27 — Folder browser: a missing start folder opens the default/home folder, Explorer's quoted paths work,
+  and an unknown /api route says to restart the server (the cause of "no paths found" after an update).
 - 2026-10-27 — Icon-only copy button under every user message and Claude answer (copies the original Markdown).
 - 2026-10-27 — CLI warm-up while typing (spare process for new sessions), non-blocking `/` and model menus, catalog
   prefetch, model list from the model server (lib/model-list.js), state animations of Claude's spark (css/animations.css).
@@ -64,6 +66,8 @@ Built for a corporate Windows machine without another terminal.
 - `server.js` — starts the HTTP server (loopback only)
 - `public/js/app.js` — frontend entry (ES modules, no build step)
 - Run: `node server.js`, open http://127.0.0.1:3737. Set `claudePath` (and `model`/`env` if needed) in `config.json`.
+- After pulling an update: restart `node server.js`. Files in `public/` are read from disk on every load, but API
+  routes load only at startup, so a new screen against an old server fails (the 404 says so).
 - Develop without an API key: `CLAUDE_GUI_CONFIG=dev/config.fake.json CLAUDE_GUI_DATA=<temp dir> node server.js` (port 3738).
   `dev/fake-claude.cmd` runs on Windows only; elsewhere point `claudePath` at a shell script that runs
   `node dev/fake-claude.js "$@"`. Add `"FAKE_CLAUDE_STARTUP_MS": "2500"` under `env` to feel the real startup delay.
@@ -93,6 +97,8 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Background tasks panel (`/tasks`) from `task_started` / `task_notification` events
 
 ## Gotchas / Watch Out
+- Stale server: `public/` changes take effect on reload, `lib/` changes only after restarting `node server.js`.
+  An unknown /api route answers "נתיב API לא קיים: … צריך להפעיל מחדש את השרת" — keep that message when touching routing
 - Warm-up: typing calls POST /api/warm. A spare process (id `spare-…`) is used by `createSession` only if cwd, mode,
   model and effort match exactly; it closes after 3 idle minutes. Never key anything else on the runtime's sessionId
   before adoption — `adoptSpare` changes it
