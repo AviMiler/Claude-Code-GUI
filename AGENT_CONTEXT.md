@@ -45,7 +45,7 @@ Built for a corporate Windows machine without another terminal.
   background tasks with the real CLI: event shapes come from reading the 2.1.311 binary, 2.1.246 may lack the task events,
   `stop_task` or `get_task_output` (neutral notes exist, untested), and the real field name of the `get_task_output`
   response is unknown (the panel reads output/content/text/tail defensively)
-- ❌ Known limits: images of resumed CLI conversations are not shown (only "[תמונה]"); non-image files reach the model
+- ❌ Known limits: images inside tool results of resumed CLI conversations still show "[תמונה]" (images the user sent are shown); non-image files reach the model
   only as paths it must read; terminal-only commands (login, ide, remote-control, ...) are
   listed but only explained; partial streamed text of a stopped turn is not kept
 - ⚠️ Known security issues, accepted on purpose (closed network, single user; details in ARCHITECTURE.md → Security):
@@ -63,6 +63,8 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Images in resumed conversations (feature 11 of 12): importing a past CLI transcript now stores the user's base64 images via `images.saveImages` (one call per image) and attaches them as `images` on the user item, so thumbnails and full-size view work; failed/URL/file-ref images keep a "[תמונה]"/"[N תמונות]" marker. lib/transcripts.js only (`imageBlocks`, `userText(line, markedImages)`, `storeImages`, `userItem`). Listing/titles unchanged (text marker).
+  Limits kept: images in tool results still "[תמונה]"; re-import stores images again (new ids); images of items cut by the 3000-item cap are swept at startup. Stage 3 first pass found `titleOf` passing the map index as `markedImages` (fixed with `line => userText(line)`); re-verified Go in a browser. No deviation.
 - 2026-10-27 — Per-turn stats (feature 10 of 12): the result meta line now shows total time · output tokens/s (output ÷ API time, total time when unknown) · input(incl. cache) → output · rounds (>1) ·
   tool calls · cost (>0), with a native tooltip breakdown. `translateResult` also keeps `durationApiMs`, `usage.cacheRead`, `usage.cacheWrite`. Tool calls counted on the frontend
   (`countToolCalls` in new public/js/turn-stats.js, passed by thread.js via `appendItem(..., { toolCalls })`); nothing else stored. render-items.js, thread.js, event-translator.js.

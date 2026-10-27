@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 (images in resumed conversations)
+- Added: importing a past conversation ("שיחות קודמות") now shows the images the user sent, as thumbnails (click = full size), instead of "[תמונה]". Each base64 image is stored through `images.saveImages` (magic bytes, 5 MB) one by one and attached to the user item like a composer image; an image that fails validation or comes by URL/file reference keeps the "[תמונה]" / "[N תמונות]" marker. Why: user request (feature 11 of 12). Files: lib/transcripts.js
+- Listing and titles still use the text marker. Limits: images inside tool results still show "[תמונה]"; re-importing stores the images again (new ids); images of items cut by the 3000-item cap are swept at startup. No deviation from the plan
+- Fixed during verify: `titleOf` passed the map index to `userText` as the image count; now `lines.map(line => userText(line))`
+
 ## 2026-10-27 (per-turn stats)
 - Added: the meta line of each finished turn now shows total time · output tokens per second · input → output tokens (input includes cache) · rounds (when more than 1) · tool calls · cost (when above 0), with a tooltip giving the full breakdown (model time vs tools/other time, cache read/write, speed). Why: user request (feature 10 of 12); with a local model speed matters more than cost. Files: lib/event-translator.js (`translateResult` also keeps `durationApiMs`, `usage.cacheRead`, `usage.cacheWrite`), public/js/turn-stats.js (new), render-items.js (`renderResult`, `appendItem(container, item, context)`), thread.js
 - Speed uses API time; when it is unknown (older saved items, fake CLI) it uses total time and the tooltip says so. Tool calls are counted on the frontend, nothing new stored. Failed turns keep the old "נכשל" line. No deviation from the plan

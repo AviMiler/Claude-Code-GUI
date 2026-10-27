@@ -108,3 +108,14 @@ Each finished turn shows its performance on the `result` meta line. With a local
 - Server stores three more fields on the `result` item: `durationApiMs` (from `duration_api_ms`), `usage.cacheRead` and `usage.cacheWrite` (from `cache_read_input_tokens` and `cache_creation_input_tokens`).
 - The result node keeps its `data-item-index`, so search is unaffected.
 - Code: `public/js/turn-stats.js` (`turnStats`, `countToolCalls(items, resultIndex)`), `renderResult` and `appendItem(container, item, context)` in `public/js/render-items.js`, `resultContext` in `public/js/thread.js`, `translateResult` in `lib/event-translator.js`.
+
+## Images in resumed conversations (confirmed permanent, 2026-10-27)
+Importing a past CLI conversation ("שיחות קודמות", `lib/transcripts.js`) shows the images the user sent in it, instead of the "[תמונה]" marker. Server only; the existing thumbnails and full-size view are reused. No model call.
+- On import, each base64 image block (PNG, JPEG, GIF, WebP) of a typed user line is stored through `saveImages` in `lib/images.js` (same rules: magic bytes must match the type, up to 5 MB) and attached to the user item as `images: [{ id, mediaType, name }]`, exactly like a message typed in the GUI. An image-only line has empty text plus `images`.
+- Images are stored one by one (one `saveImages` call each), so the 10-per-call cap does not apply: one imported message can hold more than 10 images. Imported items are never re-sent, so this is harmless.
+- An image that fails validation, or that is given by URL or file reference instead of base64, keeps a marker in the text ("[תמונה]" / "[N תמונות]", counting only the failed ones) and the reason is logged ("[transcripts] image not imported: ...").
+- Lines whose text starts with "<" (command output and the like) are unchanged: no marker, nothing stored.
+- Listing and titles keep the text marker and decode no images; images are stored only on import.
+- Deleting the session removes its imported images (cleanup by references); unreferenced ones are swept at startup.
+- Known limits: images inside tool results (for example Claude reading an image file) still show "[תמונה]" in the tool output; re-importing the same transcript stores the images again with new ids; images of items cut by the 3000-item import cap become unreferenced and are swept at startup.
+- Code: `imageBlocks`, `userText(line, markedImages)`, `storeImages`, `userItem` in `lib/transcripts.js`.

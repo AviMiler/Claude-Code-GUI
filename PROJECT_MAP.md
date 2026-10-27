@@ -56,7 +56,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/model-health.js` | Is the model server up? `checkModelServer(config, {refresh})`: the same read-only GET /v1/models, only for a custom base URL (Anthropic/none -> `unknown`, no request); up = 2xx, down = timeout / connection error / any non-2xx; cached 15 s; URL shown without credentials, token never returned. |
 | `lib/cli-commands.js` | Whitelisted `claude mcp|plugin|doctor|auth ...` subcommands. |
 | `lib/claude-files.js` | Read/write settings, CLAUDE.md, agents, skills, commands, output styles by kind. |
-| `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import (images marked as "[תמונה]"). |
+| `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import (the user's images are stored via `lib/images.js` and shown as thumbnails; failed ones marked "[תמונה]"; listing/titles use the text marker). |
 | `lib/workspace-info.js` | Folder browser listing/creation, file search for @-mentions, git status/diff. |
 | `lib/api-routes.js` | Route table and session routes (messages with attachments, queue, stop, warm, side-question, permissions...); serves `/api/images` and `/api/uploads` as raw bytes. |
 | `lib/templates.js` | Prompt templates the user saves and reuses, in `data/templates.json` next to `sessions.json`: list (newest first), save (create or update; name 80, text 20000, 200 max; temp file + rename), remove (404 when missing). |

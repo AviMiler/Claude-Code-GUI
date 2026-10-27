@@ -29,6 +29,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
   The browser shrinks them to ≤1568 px / ≤3.75 MB first (`public/js/attachments.js`)
 - Any other file: stored as `data/uploads/<uuid>/<name>`; the message ends with "[Attached files – read them with the
   Read tool]" and the full paths. Every session process gets `--add-dir <data/uploads>`, so Read needs no prompt
+- Imported CLI transcripts (`lib/transcripts.js`): the user's base64 images are stored through `saveImages` (same validation), one call per image, and referenced on the user item; failed or URL images keep a "[תמונה]" marker
 - Items and queue entries hold references only; `sessions.json` never holds file bytes
 
 ## Side questions (/btw)
