@@ -26,7 +26,7 @@ function greeting() {
 /**
  * @param {HTMLElement} bar
  * @param {object|null} session
- * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onNewSession}} handlers
+ * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onNewSession}} handlers
  */
 export function renderTopbar(bar, session, handlers) {
   const toggle = h('button', { type: 'button', class: 'icon-button', title: 'סרגל צד (Ctrl+B)', onClick: handlers.onToggleSidebar }, icon('sidebar'));
@@ -49,6 +49,7 @@ export function renderTopbar(bar, session, handlers) {
   const more = h('button', { type: 'button', class: 'icon-button', title: 'עוד' }, icon('more'));
   more.addEventListener('click', () => showDropdown(more, [
     { icon: 'pencil', title: 'שינוי שם', hint: '/rename', onSelect: () => handlers.onRename() },
+    { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', onSelect: handlers.onPin },
     { icon: 'branch', title: 'ענף חדש מהשיחה', hint: '/fork', onSelect: handlers.onFork },
     { icon: 'refresh', title: 'שיחה חדשה (ניקוי הקשר)', hint: '/clear', onSelect: handlers.onClear },
     { icon: 'download', title: 'ייצוא ל-Markdown', hint: '/export', onSelect: handlers.onExport },

@@ -108,6 +108,10 @@ export function createActions(view) {
       const newName = name || await ask({ title: 'שינוי שם', value: session.name, confirmLabel: 'שמירה' });
       if (newName) await api.updateSession(session.id, { name: newName });
     },
+    /** Pins a session to the top of the sidebar (or unpins it). */
+    setPinned(id, pinned) {
+      api.updateSession(id, { pinned }).catch(report);
+    },
     async remove() {
       const session = activeSession();
       if (!session || !await ask({ title: `למחוק את "${session.name}"?`, text: 'השיחה תימחק מהממשק. ב-Claude Code היא נשארת וניתן לפתוח אותה שוב מ"שיחות קודמות".', confirmLabel: 'מחיקה', danger: true })) return;

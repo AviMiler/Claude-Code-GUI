@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 (pinned sessions, grouping by project)
+- Added: pin a session (row button, or topbar "עוד" menu) so it shows first under "מוצמדים"; a "לפי תאריך / לפי פרויקט" switch groups the sidebar by date or by folder (collision titles "parent/name", full path as tooltip); search works in both. Why: user request (feature 5 of 12). Files: public/js/session-groups.js (new), sidebar.js, actions.js, chrome.js, app.js, icons.js, css/layout.css, `updateSession` in lib/session-service.js (accepts boolean `pinned`; no CLI restart)
+- Changed: date grouping logic moved from sidebar.js to session-groups.js; a fork does not inherit `pinned`; grouping choice is per browser (localStorage `claude-gui.sidebar-grouping`)
+- Known nits: no optimistic update (UI changes on the server broadcast); two paths sharing their last two segments still get the same group title
+
 ## 2026-10-27 (full-text session search)
 - Added: the sidebar search also matches message text (user messages, Claude's answers, shell commands), case-insensitive and ignoring niqqud; content matches show a snippet and "· N התאמות"; opening one shows a bar in the thread ("k מתוך N", ▲ ▼, Esc) and outlines the matching messages (public/js/session-search.js, search-hits.js, sidebar.js, thread.js `data-item-index`, events.js, app.js, css/layout.css). Why: user request (feature 4 of 12). Frontend only; newest 3000 items per session scanned, count capped at 99
 - Changed: Enter in the sidebar search box opens the first result; search is debounced 150 ms

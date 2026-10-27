@@ -44,3 +44,12 @@ The sidebar search ("חיפוש סשנים") finds sessions by the text of their
 - A session that matches by content shows under its row a 2-line snippet around the first match with the match marked, and "· N התאמות". Nothing found: "אין סשנים או הודעות תואמים". Enter in the search box opens the first result.
 - Opening a result opens the session with a sticky bar at the top of the thread: "k מתוך N", previous/next (▲ ▼), close. The matching messages are outlined and the current one is scrolled to. Enter / Shift+Enter / Esc work while the focus is in the bar. Selecting another session clears the bar.
 - Code: `public/js/session-search.js` (pure search), `public/js/search-hits.js` (bar and highlights), `sidebar.js` (results), `thread.js` (`data-item-index` on every item node), `events.js`, `app.js`, `css/layout.css`.
+
+## Sidebar: pinned sessions and grouping by project (confirmed permanent, 2026-10-27)
+The user keeps important sessions on top and can view the session list by date or by project folder.
+- Pin: a boolean `pinned` on the session, saved in `data/sessions.json` and changed through `PATCH /api/sessions/:id` (non-boolean values are ignored). It is not a CLI setting: pinning never restarts or touches the CLI process, and does not change the session's recency. A fork does NOT inherit `pinned`.
+- Pin/unpin from a pin button on the session row (shown on hover, always visible when pinned) and from the topbar "עוד" menu ("הצמדה למעלה בסרגל" / "ביטול הצמדה").
+- Pinned sessions show first, in a group "מוצמדים", and ONLY there (not again in their date or folder group). In the pinned group the folder line under the name is shown.
+- A switch at the top of the sidebar chooses the grouping: "לפי תאריך" (default: היום / אתמול / 7 ימים ...) or "לפי פרויקט" (one group per folder, titled by the folder name with the full path as a tooltip; if two folders share a name the title is "parent/name"; groups ordered by most recent activity, sessions inside by recency; the folder line under each name is hidden). The choice is per browser (localStorage `claude-gui.sidebar-grouping`: `date` | `project`). Search works the same in both groupings.
+- Frontend plus one accepted field on the existing PATCH route. The UI changes on the server broadcast (no optimistic update).
+- Code: `public/js/session-groups.js` (grouping), `sidebar.js`, `actions.js` (`setPinned`), `chrome.js` (menu item), `app.js` (`onPin`/`onRegroup`), `icons.js` (`pin`), `css/layout.css`, `updateSession` in `lib/session-service.js`.

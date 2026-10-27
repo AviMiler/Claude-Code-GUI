@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (session search)_
+_Last updated: 2026-10-27 (pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -135,7 +135,9 @@ the right to run commands as that user.
   every request, routes load only at startup, so after an update a new screen may call a route the old server lacks
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, divider, notice (`stopped: true` when a
   stop ended the turn), error
-- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`
+- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks)
+- Sidebar grouping: `session-groups.js` (pure: sessions + mode -> groups: pinned first, then by date or by project folder) feeds `sidebar.js`;
+  the mode is per browser in localStorage `claude-gui.sidebar-grouping`. Frontend only
 - User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`
 - SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks
 - `tasks` are in the session meta (`/api/state`, `session` events) but not in `data/sessions.json`

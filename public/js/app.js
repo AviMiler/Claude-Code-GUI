@@ -80,13 +80,13 @@ function prefetchCatalog() {
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {
   const session = activeSession();
-  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar });
+  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar, onPin: (id, pinned) => actions.setPinned(id, pinned), onRegroup: refresh });
   // Never rebuild a bar or page the user is typing in (title, folder); it would lose the edit.
   const editing = node => node.contains(document.activeElement) && node.dataset.sessionId === String(session?.id ?? '');
   if (!editing(els.topbar)) renderTopbar(els.topbar, session, {
     onToggleSidebar: toggleSidebar, onRename: name => actions.rename(name), onOpenPanel: id => actions.openPanel(id),
     onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
-    onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(),
+    onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');
   els.welcome.hidden = Boolean(session);

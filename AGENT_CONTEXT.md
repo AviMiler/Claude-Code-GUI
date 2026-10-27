@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding full-text session search (on top of the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding pinned sessions and grouping by project (on top of full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -55,6 +55,9 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Pinned sessions and grouping by project (feature 5 of 12): `pinned` boolean via PATCH (no CLI restart, not inherited by forks),
+  "מוצמדים" group first (only there), "לפי תאריך / לפי פרויקט" switch (localStorage `claude-gui.sidebar-grouping`), pin button on rows and in the
+  topbar "עוד" menu. New public/js/session-groups.js; sidebar.js, actions.js, chrome.js, app.js, icons.js, layout.css. Verified in a browser against the fake CLI.
 - 2026-10-27 — Full-text session search (feature 4 of 12): the sidebar search matches message text (user, Claude, shell commands; niqqud and case ignored),
   shows snippet + count, opens the session with a "k מתוך N" bar (▲ ▼, Esc). Frontend only: public/js/session-search.js, search-hits.js, `data-item-index`
   on thread items. Also moved the chip dropdowns from app.js to chip-menus.js (app.js still 175 lines, over budget). Verified in Chromium against the fake CLI.
