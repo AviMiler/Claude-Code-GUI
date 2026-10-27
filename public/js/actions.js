@@ -29,16 +29,16 @@ export function createActions(view) {
     openPanel: id => openPanel(id, panelContext),
 
     /**
-     * Sends now, or queues the message when the session is still working (sent after the running turn).
+     * Sends now; while the session works, into the running turn as a correction ('correct') or after it ('queue').
      * @param {object[]} [attachments] composer attachments: images and files (attachments.js)
+     * @param {'correct'|'queue'} [delivery] none: the queue (the Changes pane's comments wait for the turn's end)
      */
-    async send(text, attachments = []) {
+    async send(text, attachments = [], delivery) {
       try {
         await confirmOutwardCommand(text);
         const session = activeSession() || await createFromDraft(text, attachments);
         const { images, files } = forServer(attachments);
-        // a busy session queues it; the queue shows above the composer
-        await api.sendMessage(session.id, text, images, files);
+        await api.sendMessage(session.id, text, images, files, delivery);
         return true;
       } catch (error) {
         report(error);

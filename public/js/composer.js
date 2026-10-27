@@ -1,42 +1,22 @@
 /**
- * The message box: auto-growing text area, mode and model chips, context ring, send/stop, keyboard shortcuts,
- * the queue of messages typed while Claude works (sent one by one after the running turn),
- * and attachments (paste, drop on the box, or the + menu) shown above the text: images as thumbnails, other files as chips.
+ * The message box: auto-growing text area, mode and model chips, context ring (context-ring.js), send/stop, keyboard
+ * shortcuts, the queue (composer-queue.js) and attachments (composer-attachments.js). While Claude works, Enter sends a
+ * correction into the running turn and Alt+Enter puts the message in the queue for after it.
  */
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { modeInfo } from './modes.js';
 import { attachComposerMenus } from './composer-menus.js';
-import { prepareAttachment, checkRoom, formatSize } from './attachments.js';
-import { toast } from './ui.js';
-
-const RING_LENGTH = 2 * Math.PI * 9;
-
-function contextRing() {
-  const svg = `<svg viewBox="0 0 24 24"><circle class="track" cx="12" cy="12" r="9" fill="none" stroke-width="3"/>`
-    + `<circle class="fill" cx="12" cy="12" r="9" fill="none" stroke-width="3" stroke-linecap="round" stroke-dasharray="0 ${RING_LENGTH}"/></svg>`;
-  return h('button', { type: 'button', class: 'context-ring', title: 'ניצול הקשר', html: svg, hidden: true });
-}
-
-function queueList(queue, running, handlers) {
-  const rows = queue.map((entry, index) => h('div', { class: 'queue-row' },
-    h('span', { class: 'queue-index' }, String(index + 1)),
-    h('span', { class: 'queue-text', dir: 'auto', title: entry.text },
-      entry.images?.length ? h('span', { class: 'queue-images' }, icon('image'), String(entry.images.length)) : null,
-      entry.files?.length ? h('span', { class: 'queue-images' }, icon('file'), String(entry.files.length)) : null, entry.text),
-    h('button', { type: 'button', class: 'icon-button', title: 'עריכה (מחזיר לתיבת הכתיבה)', onClick: () => handlers.onQueueEdit(entry) }, icon('pencil')),
-    h('button', { type: 'button', class: 'icon-button', title: 'הסרה מהתור', onClick: () => handlers.onQueueRemove(entry) }, icon('x'))));
-  const head = h('div', { class: 'queue-head' }, icon('list'),
-    h('span', null, running ? `בתור (${queue.length}) – יישלחו כש-Claude יסיים` : `בתור (${queue.length}) – התור עצר`),
-    running ? null : h('button', { type: 'button', class: 'btn small primary', onClick: handlers.onQueueResume }, 'שליחת הבאה'));
-  return [head, ...rows];
-}
+import { queueList, sendTitle } from './composer-queue.js';
+import { contextRing, drawContextRing } from './context-ring.js';
+import { createHistory } from './composer-history.js';
+import { createAttachments } from './composer-attachments.js';
 
 /**
  * @param {HTMLElement} root Container (.composer-area).
- * @param {{onSubmit:(text:string, images:object[])=>Promise<boolean>, onStop:()=>void, onCommand:(command:object)=>void,
- *   onModeMenu:(anchor:HTMLElement)=>void, onModelMenu:(anchor:HTMLElement)=>void, onPlusMenu:(anchor:HTMLElement)=>void,
- *   onContext:()=>void, onCycleMode:()=>void, getHistory:()=>string[],
+ * @param {{onSubmit:(text:string, attachments:object[], options:{delivery?:'correct'|'queue'})=>Promise<boolean>, onStop:()=>void,
+ *   onCommand:(command:object)=>void, onModeMenu:(anchor:HTMLElement)=>void, onModelMenu:(anchor:HTMLElement)=>void,
+ *   onPlusMenu:(anchor:HTMLElement)=>void, onContext:()=>void, onCycleMode:()=>void, getHistory:()=>string[],
  *   onQueueRemove:(entry:object)=>void, onQueueEdit:(entry:object)=>void, onQueueResume:()=>void, onTyping?:()=>void}} handlers
  */
 export function createComposer(root, handlers) {
@@ -54,96 +34,48 @@ export function createComposer(root, handlers) {
     h('div', { class: 'composer-bar' }, plus, modeChip, h('span', { class: 'grow' }), ring, modelChip, stop, send));
   const hint = h('p', { class: 'composer-hint' }, h('kbd', null, '/'), ' פקודות ו-Skills · ', h('kbd', null, '@'), ' קבצים וסוכנים · ',
     h('kbd', null, 'Shift+Tab'), ' מצב הרשאות · ', h('kbd', null, 'Ctrl+V'), ' קבצים ותמונות · ', h('kbd', null, 'Esc'), ' עצירה · ',
-    h('kbd', null, 'Enter'), ' בזמן עבודה – לתור');
+    h('kbd', null, 'Enter'), ' בזמן עבודה – תיקון מיידי · ', h('kbd', null, 'Alt+Enter'), ' – לתור');
   root.append(queueBox, form, hint);
 
   let running = false;
-  let historyIndex = -1;
-  let attachments = []; // { kind: 'image'|'file', data | ref, name, size, preview? } — see attachments.js
   const autosize = () => {
     textarea.style.height = 'auto';
     const max = innerHeight * 0.4;
     textarea.style.height = `${Math.min(textarea.scrollHeight, max)}px`;
     textarea.style.overflowY = textarea.scrollHeight > max ? 'auto' : 'hidden';
-    const empty = !textarea.value.trim() && !attachments.length;
+    const empty = !textarea.value.trim() && !files.get().length;
     send.disabled = empty;
     send.hidden = running && empty; // while Claude works, an empty box shows only the stop button
   };
+  const files = createAttachments({ form, strip, textarea, onChange: autosize, onTyping: handlers.onTyping });
+  const history = createHistory(textarea, handlers.getHistory, autosize);
   // A command picked from the menu replaces what was typed to find it ("/sk" -> /skills).
   const menus = attachComposerMenus(textarea, form, {
     onCommand: command => { textarea.value = ''; autosize(); handlers.onCommand(command); },
     onChange: autosize,
   });
 
-  function drawAttachments() {
-    strip.hidden = !attachments.length;
-    strip.replaceChildren(...attachments.map(attachment => h('div', {
-      class: `attachment ${attachment.kind}`, title: attachment.size ? `${attachment.name} · ${formatSize(attachment.size)}` : attachment.name,
-    },
-      attachment.kind === 'image' ? h('img', { src: attachment.preview, alt: attachment.name })
-        : [icon('file'), h('span', { class: 'attachment-name', dir: 'auto' }, attachment.name)],
-      h('button', { type: 'button', class: 'attachment-remove', title: 'הסרה', 'aria-label': `הסרת ${attachment.name}`,
-        onClick: () => { attachments = attachments.filter(item => item !== attachment); drawAttachments(); textarea.focus(); } }, icon('x')))));
-    autosize();
-  }
-
-  /** Adds files of any type; each is read (images shrunk if needed) before it shows. */
-  async function attach(files) {
-    for (const file of [...(files || [])]) {
-      try {
-        const attachment = await prepareAttachment(file);
-        checkRoom(attachments, attachment);
-        attachments = [...attachments, attachment];
-        drawAttachments();
-      } catch (error) {
-        toast(error.message, 'error');
-      }
-    }
-    if (attachments.length) handlers.onTyping?.();
-  }
-
-  // While a turn runs, the message is queued by the server and sent when the turn ends.
-  async function submit() {
+  /** @param {'correct'|'queue'} delivery what a message does while Claude works (into the turn, or after it) */
+  async function submit(delivery) {
     const text = textarea.value.trim();
-    if (!text && !attachments.length) return;
-    const sent = attachments;
+    if (!text && !files.get().length) return;
+    const sent = files.get();
     textarea.value = '';
-    attachments = [];
-    drawAttachments();
-    historyIndex = -1;
-    const accepted = await handlers.onSubmit(text, sent);
+    files.set([]);
+    history.reset();
+    const accepted = await handlers.onSubmit(text, sent, { delivery: running ? delivery : undefined });
     if (!accepted) {
       if (!textarea.value) textarea.value = text;
-      attachments = [...sent, ...attachments];
-      drawAttachments();
+      files.set([...sent, ...files.get()]);
     }
   }
 
   form.addEventListener('submit', event => {
     event.preventDefault();
-    submit();
+    submit('correct');
   });
   stop.addEventListener('click', () => handlers.onStop());
-  picker.addEventListener('change', () => { attach(picker.files); picker.value = ''; });
-  // Files on the clipboard (a screenshot, "copy image", files copied in Explorer) are attached; pasted text still goes into the box.
-  textarea.addEventListener('paste', event => {
-    const files = [...(event.clipboardData?.files || [])];
-    if (!files.length) return;
-    if (!event.clipboardData.getData('text/plain')) event.preventDefault();
-    attach(files);
-  });
-  form.addEventListener('dragover', event => {
-    if (![...(event.dataTransfer?.types || [])].includes('Files')) return;
-    event.preventDefault();
-    form.classList.add('dropping');
-  });
-  form.addEventListener('dragleave', event => { if (!form.contains(event.relatedTarget)) form.classList.remove('dropping'); });
-  form.addEventListener('drop', event => {
-    if (!event.dataTransfer?.files.length) return;
-    event.preventDefault();
-    form.classList.remove('dropping');
-    attach(event.dataTransfer.files);
-  });
+  picker.addEventListener('change', () => { files.add(picker.files); picker.value = ''; });
   textarea.addEventListener('input', () => {
     autosize();
     if (textarea.value.trim()) handlers.onTyping?.(); // lets the CLI start while the message is written
@@ -151,21 +83,10 @@ export function createComposer(root, handlers) {
   textarea.addEventListener('keydown', event => {
     if (event.isComposing) return;
     if (menus.handleKey(event)) { event.preventDefault(); return; }
-    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submit(); return; }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submit(event.altKey ? 'queue' : 'correct'); return; }
     if (event.key === 'Tab' && event.shiftKey) { event.preventDefault(); handlers.onCycleMode(); return; }
     if (event.key === 'Escape' && running) { event.preventDefault(); handlers.onStop(); return; }
-    const history = handlers.getHistory();
-    if (event.key === 'ArrowUp' && (!textarea.value || historyIndex >= 0) && history.length) {
-      event.preventDefault();
-      historyIndex = Math.min(historyIndex + 1, history.length - 1);
-      textarea.value = history[history.length - 1 - historyIndex];
-      autosize();
-    } else if (event.key === 'ArrowDown' && historyIndex >= 0) {
-      event.preventDefault();
-      historyIndex -= 1;
-      textarea.value = historyIndex >= 0 ? history[history.length - 1 - historyIndex] : '';
-      autosize();
-    }
+    history.handleKey(event);
   });
   plus.addEventListener('click', () => handlers.onPlusMenu(plus));
   modeChip.addEventListener('click', () => handlers.onModeMenu(modeChip));
@@ -194,8 +115,7 @@ export function createComposer(root, handlers) {
      */
     restore(entries) {
       textarea.value = [...entries.map(entry => entry.text), textarea.value.trim()].filter(Boolean).join('\n\n');
-      attachments = [...entries.flatMap(entry => entry.attachments || []), ...attachments];
-      drawAttachments();
+      files.set([...entries.flatMap(entry => entry.attachments || []), ...files.get()]);
       textarea.focus();
       textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
       autosize();
@@ -211,16 +131,12 @@ export function createComposer(root, handlers) {
       modelChip.title = switchable ? 'מודל ומאמץ' : `${modelLabel} – המודל היחיד שזמין במערכת`;
       modelChip.replaceChildren(...[icon('cpu'), h('span', { class: 'label' }, modelLabel), switchable && icon('chevron-down', 'chevron')].filter(Boolean));
       stop.hidden = !running;
-      send.title = running ? 'הוספה לתור (Enter) – תישלח כש-Claude יסיים' : 'שליחה (Enter)';
+      send.title = sendTitle(running);
       send.classList.toggle('queue-send', running);
       queueBox.hidden = !queue.length;
       queueBox.replaceChildren(...(queue.length ? queueList(queue, running, handlers) : []));
       textarea.placeholder = hasSession ? 'השב ל-Claude…' : 'במה נעבוד? תאר משימה כדי להתחיל סשן חדש…';
-      ring.hidden = !(contextPercent >= 0);
-      if (contextPercent >= 0) {
-        ring.title = `ניצול הקשר: ${contextPercent}%`;
-        ring.querySelector('.fill').setAttribute('stroke-dasharray', `${(RING_LENGTH * Math.min(contextPercent, 100)) / 100} ${RING_LENGTH}`);
-      }
+      drawContextRing(ring, contextPercent);
       autosize();
     },
   };

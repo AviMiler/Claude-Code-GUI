@@ -29,10 +29,13 @@ export const api = {
   /** @returns {Promise<{worktreeRemoved:boolean, worktreeError?:string}>} archiving also removes a clean worktree */
   archive: id => request('POST', `/api/sessions/${id}/archive`),
   unarchive: id => request('POST', `/api/sessions/${id}/unarchive`),
-  /** @returns {Promise<{ok:boolean, queued:boolean}>} queued: the session was busy, the message waits in its queue. */
-  /** images / files: [{ data, mediaType?, name }] or [{ ref, name }] (see attachments.js forServer). */
-  sendMessage: (id, text, images, files) => request('POST', `/api/sessions/${id}/messages`,
-    { text, ...(images?.length && { images }), ...(files?.length && { files }) }),
+  /**
+   * images / files: [{ data, mediaType?, name }] or [{ ref, name }] (see attachments.js forServer). delivery while the
+   * session works: 'correct' joins the running turn, 'queue' (or nothing) waits for its end.
+   * @returns {Promise<{ok:boolean, queued:boolean, corrected?:boolean}>}
+   */
+  sendMessage: (id, text, images, files, delivery) => request('POST', `/api/sessions/${id}/messages`,
+    { text, ...(images?.length && { images }), ...(files?.length && { files }), ...(delivery && { delivery }) }),
   /** @returns {Promise<{stopped:boolean, queued:string[]}>} queued: messages taken off the queue by the stop. */
   stop: id => request('POST', `/api/sessions/${id}/stop`),
   removeQueued: (id, queueId) => request('DELETE', `/api/sessions/${id}/queue/${queueId}`),

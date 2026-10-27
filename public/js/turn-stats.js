@@ -6,13 +6,16 @@ import { formatTokens } from './dom.js';
 
 const seconds = ms => `${(ms / 1000).toFixed(1)} שנ׳`;
 
+/** Where a turn begins: a user message, but not a correction sent into a running turn (it belongs to that turn). */
+export const isTurnStart = item => item.kind === 'user' && !item.correction;
+
 /**
  * Tool calls of the turn that ends at `resultIndex` (top level and inside subagents), from the last user message on.
  * @param {object[]} items session.items @param {number} resultIndex @returns {number}
  */
 export function countToolCalls(items, resultIndex) {
   let count = 0;
-  for (let index = resultIndex - 1; index >= 0 && items[index].kind !== 'user'; index -= 1) {
+  for (let index = resultIndex - 1; index >= 0 && !isTurnStart(items[index]); index -= 1) {
     if (items[index].kind === 'tool') count += 1;
   }
   return count;

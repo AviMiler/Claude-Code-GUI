@@ -73,14 +73,15 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     selectMain(current.id);
   }
 
-  async function submit() {
+  /** @param {'correct'|'queue'} delivery while the session works: into the running turn (Enter) or after it (Alt+Enter) */
+  async function submit(delivery) {
     const current = session();
     const text = input.value.trim();
     if (!current || !text) return;
     input.value = '';
     try {
       await confirmOutwardCommand(text); // the same warning as the main composer for commands that reach the cloud
-      await api.sendMessage(current.id, text);
+      await api.sendMessage(current.id, text, null, null, delivery);
     } catch (error) {
       input.value = text;
       toast(error.message, isCancelled(error) ? 'info' : 'error');
@@ -122,10 +123,10 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
   title.addEventListener('click', pick);
   swap.addEventListener('click', swapPanes);
   close.addEventListener('click', () => setOpen(false));
-  send.addEventListener('click', submit);
+  send.addEventListener('click', () => submit('correct'));
   stop.addEventListener('click', stopTurn);
   input.addEventListener('keydown', event => {
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submit(); }
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submit(event.altKey ? 'queue' : 'correct'); }
   });
   NARROW.addEventListener('change', () => { if (NARROW.matches && app.classList.contains('split')) setOpen(false); });
   if (recall(OPEN_KEY) && !NARROW.matches) setOpen(true);

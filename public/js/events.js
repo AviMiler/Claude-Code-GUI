@@ -5,6 +5,7 @@
  */
 import { state, forgetCatalog } from './state.js';
 import { notify } from './notify.js';
+import { isTurnStart } from './turn-stats.js';
 
 /** Window event fired when a session's background tasks change (panels/panel-tasks.js listens while open). */
 export const TASKS_EVENT = 'claude-gui:tasks';
@@ -21,7 +22,7 @@ function mergeSession(update) {
 function turnOutcome(session) {
   const items = session.items;
   let start = items.length;
-  while (start > 0 && items[start - 1].kind !== 'user') start -= 1;
+  while (start > 0 && !isTurnStart(items[start - 1])) start -= 1;
   const turn = items.slice(start);
   if (turn.some(item => item.kind === 'notice' && item.stopped)) return null;
   return turn.some(item => item.kind === 'error' || (item.kind === 'result' && item.isError)) ? 'error' : 'done';

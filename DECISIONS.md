@@ -1,5 +1,34 @@
 # Decisions
 
+## [2026-10-27] Enter while Claude works is a mid-turn correction; the GUI queue moved to Alt+Enter (user decision)
+**Decision:** While a turn runs, Enter (main and split composers) writes the message straight to the live CLI as a correction (`{type:'user', message, uuid}`), which the CLI drains into the running turn at its next step; Alt+Enter keeps the old GUI queue (sent at the end of the turn). The GUI queue's edit, remove and "שליחת הבאה" are unchanged; there is no "send now" control, so nothing else injects.
+**Alternatives considered:** (1) Keep Enter = queue and give corrections another key. (2) Make the GUI queue itself inject ("send now"). (3) Corrections for every sender.
+**Why:** The user was asked (AskUserQuestion, "כשקלוד עובד ואתה שולח הודעה – מה יקרה?") and chose "Enter = תיקון מיידי (Recommended)", described as the behaviour of Desktop and the terminal; the batch rule is to follow Desktop. The queue stays for messages that should wait. The cost: a muscle-memory change for Enter, and the real CLI's behaviour is not verified (see the entry about the hold below).
+
+## [2026-10-27] Only the composers send corrections; an absent `delivery` means queue (the Changes pane keeps the queue)
+**Decision:** `POST /messages` takes `delivery: 'correct' | 'queue'`. The main and split composers send `correct` on Enter and `queue` on Alt+Enter; every other sender (the Changes pane's comment message, the command runner) sends nothing, which means queue, the old behaviour. A `correct` that the runtime cannot take falls back to the queue or a normal turn.
+**Alternatives considered:** (1) Default to correct, so the Changes pane and every sender follow Enter. (2) Corrections only for typed text, never for attachments.
+**Why:** Decided in Stage 1 without asking the user (they should hear it). The Changes pane's comments cite diff lines that the running turn may still be changing, and the pane refreshes at turn end, so a mid-turn delivery would be the error-prone one; spec L167 already said queued. Templates are inserted into the composer and never sent, so they follow whatever key the user presses. An unknown caller keeps the old behaviour. One flag if the user wants the Changes pane to correct.
+
+## [2026-10-27] A turn with corrections still waiting is held open; fallback after 20 s; corrections need `--replay-user-messages`
+**Decision:** The runtime (`lib/runtime-corrections.js`) tracks the uuids it sent. A replay event with that uuid marks one taken in. When a successful `result` arrives while some still wait, the CLI will run another turn for them, so the GUI keeps the turn open (`turnActive` stays true; no turn-end hook, no notification, no `dispatchNext`). If no assistant, stream or replay event arrives within 20 s (`HOLD_MS`) the tracking is cleared and the turn ends; if a turn then starts anyway the session is set running again (`onTurnResume`). The flag `--replay-user-messages` is added only when `--help` lists it; without it Enter falls back to the queue, since nobody could tell when a correction was taken in. Stop cancels the waiting uuids with `cancel_async_message` and names the lost corrections in a notice.
+**Alternatives considered:** (1) End the turn at the first result and let the next turn arrive as an unannounced run. (2) A 5 s fallback (my Stage 1 estimate). (3) Rely on the CLI's interrupt to sweep unconsumed messages. (4) Match corrections by order or count if the uuid does not come back.
+**Why:** Ending at the first result would fire the notification, the idle timer, model-health and the GUI queue in the middle of a conversation the CLI is still having. The fallback is 20 s in the build (my Stage 1 estimate was 5 s; the local model can be slow, which is the likely reason); a next turn that comes later is handled by `onTurnResume`. `cancel_async_message` makes Stop deterministic instead of trusting an unverified sweep. The cost: if the real CLI does not return the uuid, every turn that got a correction ends 20 s late, and a stop exactly during a hold with no next turn ends only through the 6 s kill timer. All of this was simulated with the fake CLI; the real 2.1.246 is unverified.
+
+## [2026-10-27] `priority` is not sent with a correction, only `uuid`
+**Decision:** The stdin message carries `uuid` (needed to match the replay) and no `priority`.
+**Alternatives considered:** Send `priority: 'next'` as first proposed.
+**Why:** The 2.1.246 binary's queue defaults inbound user messages to "next", so the field adds nothing, and whether the stdin parser accepts it is unknown. Less unverified surface.
+
+## [2026-10-27] `session-runtime.js` split into four modules for the size budget
+**Decision:** `lib/session-runtime.js` (243 lines) is now 147: `lib/runtime-events.js` (`handleMessage`, `handleExit`, `endTurn`), `lib/runtime-permissions.js` (the `can_use_tool` prompts and answers), `lib/runtime-spare.js` (`createSpare`, the warmed spare process) and the new `lib/runtime-corrections.js`.
+**Alternatives considered:** Only the spare split I first proposed; it would have left about 200 lines plus the new hooks.
+**Why:** The rule is that a file touched while over about 150 lines gets split. The extra permissions extraction was identified in Stage 1.
+## [2026-10-27] D8 (prompt suggestions) is dropped
+**Decision:** The planned D8 feature, prompt suggestions, is not built and not in the spec.
+**Alternatives considered:** Build it as the 8th of the 16 Desktop-parity features.
+**Why:** The user said "לא צריך את זה". Nothing was written for it, so nothing needs removing.
+
 ## [2026-10-27] The row's "⋯" menu replaces D6's separate archive button
 **Decision:** A sidebar row has the pin and a "⋯" button (right-click opens the same menu); "העברה לארכיון" is an item of that menu and the separate archive button of D6 is gone (`archiveButton` became `restoreButton`, used for archived rows only, beside their "⋯").
 **Alternatives considered:** (1) Keep the archive button and add the menu. (2) Replace the restore button too. (3) Ask the user first.

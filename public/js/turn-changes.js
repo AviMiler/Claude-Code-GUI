@@ -6,6 +6,7 @@ import { h, folderName } from './dom.js';
 import { icon } from './icons.js';
 import { diffLines, renderDiff } from './render-tools.js';
 import { fileLinkButton } from './file-viewer.js';
+import { isTurnStart } from './turn-stats.js';
 
 /** Diff lines of one tool call, or null for tools that do not write files. */
 function diffsOf(item) {
@@ -27,7 +28,7 @@ function diffsOf(item) {
  */
 export function turnChanges(items, resultIndex) {
   let start = resultIndex;
-  while (start > 0 && items[start - 1].kind !== 'user') start -= 1;
+  while (start > 0 && !isTurnStart(items[start - 1])) start -= 1;
   const turn = items.slice(start, resultIndex);
   const failed = new Set(turn.filter(item => item.kind === 'tool-result' && item.isError).map(item => item.toolUseId));
   const files = new Map();

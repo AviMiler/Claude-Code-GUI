@@ -38,7 +38,9 @@ function renderUser(item) {
   const slash = item.text.match(/^(\/[^\s]+)([\s\S]*)$/);
   if (slash && !images) bubble.append(h('span', { class: 'slash' }, slash[1]), slash[2]);
   else if (bubble) bubble.textContent = item.text;
-  return h('div', { class: 'msg-user' }, images, files, bubble, item.text ? copyButton(item.text) : null);
+  // A correction sent while Claude worked (it joined the running turn at its next step).
+  const label = item.correction ? h('span', { class: 'correction-label' }, icon('pencil'), 'תיקון באמצע התור') : null;
+  return h('div', { class: `msg-user${item.correction ? ' correction' : ''}` }, label, images, files, bubble, item.text ? copyButton(item.text) : null);
 }
 
 export function renderAssistantText(text, live = false) {

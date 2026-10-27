@@ -12,12 +12,13 @@ import { warmUp } from './warm-up.js';
  */
 export function createMainComposer(area, { actions, runCommand }) {
   const composer = createComposer(area, {
-    async onSubmit(text, attachments = []) {
-      if (attachments.length) return actions.send(text, attachments); // with attachments it is a message to Claude, never a GUI command
+    // delivery: while Claude works, Enter corrects the running turn and Alt+Enter queues (composer.js).
+    async onSubmit(text, attachments = [], { delivery } = {}) {
+      if (attachments.length) return actions.send(text, attachments, delivery); // with attachments it is a message to Claude, never a GUI command
       const slash = parseSlash(text);
       const command = slash && findCommand(await getCommands(), slash.name);
       if (command && command.run !== 'send') { await runCommand(command, slash.args); return true; }
-      return actions.send(text);
+      return actions.send(text, [], delivery);
     },
     onStop: () => actions.stop(),
     onQueueRemove: entry => actions.removeQueued(entry),
