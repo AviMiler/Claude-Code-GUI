@@ -89,13 +89,17 @@ export function pickFolder(start) {
         `${current.folders.length} תיקיות`].filter(Boolean).join(' · ');
     }
 
-    async function go(folder) {
+    // Explorer's "Copy as path" wraps the path in quotes.
+    const cleanPath = text => String(text || '').trim().replace(/^"(.*)"$/, '$1');
+
+    async function go(folder, { firstTry = false } = {}) {
       const id = ++requestId;
       status.textContent = 'טוען…';
       try {
-        const listing = await api.folders(folder, showHidden);
+        const listing = await api.folders(cleanPath(folder), showHidden);
         if (id !== requestId) return;
         current = listing;
+        status.classList.remove('error');
         pathInput.value = listing.path;
         up.disabled = !listing.parent;
         filter.value = '';
@@ -110,10 +114,14 @@ export function pickFolder(start) {
         listBox.scrollTop = 0;
       } catch (error) {
         if (id !== requestId) return;
+        // The error stays until the next folder opens: it is the only hint of what went wrong.
         status.textContent = error.message;
         status.classList.add('error');
-        setTimeout(() => status.classList.remove('error'), 2500);
-        if (!current) pathInput.value = folder || '';
+        if (current) return;
+        pathInput.value = cleanPath(folder);
+        listBox.replaceChildren(h('div', { class: 'menu-empty', dir: 'auto' }, error.message));
+        // The starting folder may not exist (e.g. a typo in the welcome page): open the default/home folder instead.
+        if (firstTry && cleanPath(folder)) go('', { firstTry: false });
       }
     }
 
@@ -152,6 +160,6 @@ export function pickFolder(start) {
     document.body.append(dialog);
     dialog.showModal();
     filter.focus();
-    go(start || '');
+    go(start || '', { firstTry: true });
   });
 }
