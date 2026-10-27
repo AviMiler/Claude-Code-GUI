@@ -79,7 +79,7 @@ _Last updated: 2026-10-27_
 | `public/js/sidebar.js` | Session list grouped by date, with search. |
 | `public/js/chrome.js` | Top bar and welcome page. |
 | `public/js/attachments.js` | Composer attachments: read files, shrink images, limits, conversion to what the server stores and back (queue restore). |
-| `public/js/folder-browser.js` | "Open folder" dialog (welcome page, /add-dir) over GET/POST /api/folders. |
+| `public/js/folder-browser.js` | "Open folder" dialog (welcome page, /add-dir) over GET/POST /api/folders; falls back to the default/home folder, accepts Explorer's quoted paths. |
 | `public/js/ui.js` | Toasts, confirm/prompt dialogs, theme. |
 | `public/js/risk.js` | Confirmations before significant actions (`guardedApi`, risky modes, account/cloud commands). |
 | `public/js/dom.js` | `h()` element helper and small utilities. |

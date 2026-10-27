@@ -110,6 +110,8 @@ the right to run commands as that user.
 
 ## Patterns
 - Event format isolation: `lib/event-translator.js` (live events and saved transcripts)
+- Unknown /api route -> 404 that names the route and says to restart the server: `public/` is served from disk on
+  every request, routes load only at startup, so after an update a new screen may call a route the old server lacks
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, divider, notice (`stopped: true` when a
   stop ended the turn), error
 - Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`

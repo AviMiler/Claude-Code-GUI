@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-27 (documentation)
+- Documented: the folder browser fixes and the "restart the server after an update" rule (AGENT_CONTEXT.md entry points, gotchas, last changes; ARCHITECTURE.md patterns; PROJECT_MAP.md)
+
 ## 2026-10-27 (images and file attachments)
 - Added: attach files of any type to a message — "העלאת קבצים ותמונות" in the + menu, paste (Ctrl+V: screenshots, copied images or files) or drag onto the composer; up to 10 images and 10 files, 60 MB per message (public/js/attachments.js, composer.js)
 - Added: images (PNG, JPEG, GIF, WebP; BMP converted) go to the model as image content blocks; larger than 1568 px or 3.75 MB they are shrunk in the browser first. Stored in `data/images/`, shown as thumbnails in the message (click = full size) (lib/images.js)
