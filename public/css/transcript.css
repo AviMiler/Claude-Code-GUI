@@ -1,0 +1,12 @@
+/* Transcript view modes (js/transcript/): Normal hides thinking; Normal and Thinking show runs of tool calls as one group. */
+.messages[data-view="normal"] details.thinking { display: none; } /* a subagent's too, inside its open row */
+details.tool-group { margin: 2px 0 8px; }
+details.tool-group > summary { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border-radius: var(--radius-sm); color: var(--muted);
+  font-size: 13.5px; cursor: pointer; list-style: none; }
+details.tool-group > summary::-webkit-details-marker { display: none; }
+details.tool-group > summary:hover { background: var(--surface-2); color: var(--text); }
+details.tool-group > summary .tool-target { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); font-family: inherit;
+  direction: inherit; } /* Hebrew verbs, not a path */
+details.tool-group > summary .tool-state.error { color: var(--danger); }
+details.tool-group > .tool-group-rows { padding-inline-start: 14px; border-inline-start: 2px solid var(--border); margin-inline-start: 8px; }
+.focus-view details.tool-group { display: none; }

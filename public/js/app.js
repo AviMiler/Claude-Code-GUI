@@ -2,15 +2,14 @@
 import { api, subscribe } from './api.js';
 import { state, activeSession, getCommands, getModels, peekModels } from './state.js';
 import { createThread } from './thread.js';
-import { createComposer } from './composer.js';
+import { createMainComposer } from './main-composer.js';
 import { renderSidebar } from './sidebar.js';
 import { renderTopbar, renderWelcome } from './chrome.js';
 import { renderPromptCards } from './prompt-cards.js';
 import { createActions } from './actions.js';
 import { createCommandRunner } from './command-runner.js';
-import { findCommand, parseSlash } from './command-catalog.js';
-import { applyTheme } from './ui.js';
-import { createChipMenus } from './chip-menus.js';
+import { findCommand } from './command-catalog.js';
+import { applyTheme, toast } from './ui.js';
 import { handleEvent } from './events.js';
 import { renderPageStatus, watchPageVisibility } from './page-status.js';
 import { createSideQuestions } from './side-question.js';
@@ -18,8 +17,10 @@ import { createSearchHits } from './search-hits.js';
 import { enableFileLinks } from './file-viewer.js';
 import { createModelHealth } from './model-health.js';
 import { createSplitView } from './split-view.js';
-import { warmUp, prefetchCatalog } from './warm-up.js';
+import { prefetchCatalog } from './warm-up.js';
 import { createPanes } from './panes/panes.js';
+import { bindShortcuts } from './shortcuts.js';
+import { viewModeLabel } from './transcript/view-mode.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -40,25 +41,7 @@ const actions = createActions({ refresh: () => refresh(), selectSession: id => s
   askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });
 const runCommand = createCommandRunner(actions);
 
-const composer = createComposer(els.composerArea, {
-  async onSubmit(text, attachments = []) {
-    if (attachments.length) return actions.send(text, attachments); // with attachments it is a message to Claude, never a GUI command
-    const slash = parseSlash(text);
-    const command = slash && findCommand(await getCommands(), slash.name);
-    if (command && command.run !== 'send') { await runCommand(command, slash.args); return true; }
-    return actions.send(text);
-  },
-  onStop: () => actions.stop(),
-  onQueueRemove: entry => actions.removeQueued(entry),
-  onQueueEdit: entry => actions.editQueued(entry),
-  onQueueResume: () => actions.resumeQueue(),
-  onCommand: command => runCommand(command, '', { fromMenu: true }),
-  onCycleMode: () => actions.cycleMode(),
-  onContext: () => actions.openPanel('usage'),
-  getHistory: () => (activeSession()?.items || []).filter(item => item.kind === 'user').map(item => item.text),
-  onTyping: () => warmUp(),
-  ...createChipMenus({ actions, getComposer: () => composer }),
-});
+const composer = createMainComposer(els.composerArea, { actions, runCommand });
 
 function modelLabel(settings) {
   const value = settings.model || state.config.model || peekModels()?.current || state.runtime.get(settings.id)?.model || '';
@@ -78,6 +61,7 @@ function refresh() {
     onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onSplit: () => split.toggle(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
     onToggleDetails: () => panes.toggle('details'), detailsOpen: panes.isOpen('details'),
     onToggleChanges: () => panes.toggle('changes'), changesOpen: panes.isOpen('changes'),
+    viewMode: () => thread.view.mode(), onViewMode: mode => thread.view.setMode(mode),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');
   els.welcome.hidden = Boolean(session);
@@ -156,15 +140,10 @@ els.search.addEventListener('keydown', event => {
   if (event.key === 'Enter') { event.preventDefault(); clearTimeout(searchTimer); refresh(); els.list.querySelector('.session-row')?.click(); }
 });
 document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => actions.openPanel(button.dataset.panel)));
-document.addEventListener('keydown', event => {
-  const mod = event.ctrlKey || event.metaKey;
-  if (mod && event.key.toLowerCase() === 'k') { event.preventDefault(); composer.insert('/', { replace: !composer.textarea.value }); }
-  else if (mod && event.shiftKey && event.key.toLowerCase() === 'o') { event.preventDefault(); selectSession(null); }
-  else if (mod && event.key.toLowerCase() === 'b') { event.preventDefault(); toggleSidebar(); }
-  else if (mod && event.key === ',') { event.preventDefault(); actions.openPanel('model'); }
-  else if (mod && event.key === '\\') { event.preventDefault(); split.toggle(); }
-  else if (mod && event.shiftKey && event.code === 'KeyD') { event.preventDefault(); panes.toggle('changes'); } // code: any keyboard layout
-  else if (event.key === 'Escape' && !event.defaultPrevented && activeSession()?.status === 'running'
-    && !document.querySelector('.modal-backdrop, .popover, dialog[open]')) actions.stop();
+bindShortcuts({
+  slashMenu: () => composer.insert('/', { replace: !composer.textarea.value }), newSession: () => selectSession(null),
+  toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(), toggleChanges: () => panes.toggle('changes'),
+  cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
+  stop: () => actions.stop(), isRunning: () => activeSession()?.status === 'running',
 });
 els.scroller.addEventListener('scroll', () => els.topbar.classList.toggle('scrolled', els.scroller.scrollTop > 4));

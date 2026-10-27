@@ -5,6 +5,7 @@ import { showDropdown } from './popover.js';
 import { recentFolders } from './state.js';
 import { toast } from './ui.js';
 import { pickFolder } from './folder-browser.js';
+import { viewModeEntries } from './transcript/view-mode.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -27,8 +28,8 @@ function greeting() {
  * @param {HTMLElement} bar
  * @param {object|null} session
  * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onToggleDetails,
- *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, onNewSession}} handlers detailsOpen / changesOpen: that pane
- *   is open (its toggle shows pressed)
+ *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, viewMode:()=>string, onViewMode, onNewSession}}
+ *   handlers detailsOpen / changesOpen: that pane is open (its toggle shows pressed); viewMode: the transcript's current mode
  */
 export function renderTopbar(bar, session, handlers) {
   const toggle = h('button', { type: 'button', class: 'icon-button', title: 'סרגל צד (Ctrl+B)', onClick: handlers.onToggleSidebar }, icon('sidebar'));
@@ -50,6 +51,8 @@ export function renderTopbar(bar, session, handlers) {
     onClick: () => handlers.onOpenPanel('tasks') }, icon('loader', 'spinning'), `${runningTasks} ברקע`) : null;
   const more = h('button', { type: 'button', class: 'icon-button', title: 'עוד' }, icon('more'));
   more.addEventListener('click', () => showDropdown(more, [
+    ...viewModeEntries(session, handlers.viewMode(), handlers.onViewMode),
+    { section: 'סשן' },
     { icon: 'pencil', title: 'שינוי שם', hint: '/rename', onSelect: () => handlers.onRename() },
     { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', onSelect: handlers.onPin },
     { icon: 'panel-right', title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onSelect: handlers.onToggleDetails },

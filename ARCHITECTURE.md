@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-27 (D3: transcript view layer between thread.js and the DOM, `shortcuts.js` for page-wide keys; earlier D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -80,7 +80,16 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 - The pane redraws only when the diff text changed; an edit to one file (box, comment, collapse) redraws only that file, so the diff stays fast at the cap and a half-typed comment survives a turn end
 - Comments (`diff-comments.js`) live in a module-level Map per session id, in memory only. A comment is anchored by path + side + line + the line's text; `diff-view.js` places it under the line only while all four still match, otherwise it is listed as changed since (or, when its file left the diff, at the top). `composeMessage` builds ONE message; the pane sends it with the
   `send` it is given (`actions.send`, the normal path: queued while Claude works) and clears the comments only when that returns true. One send at a time per session; Ctrl+Enter is bound on the pane element, not on the page
-- Entry points all go through `panes.open('changes')` or `panes.toggle('changes')`: the rail card, the topbar diff icon, Ctrl+Shift+D (`app.js`, `event.code`), the per-turn card's button (`onOpenGit`) and the split pane's card button (`openChanges`: swap, then open). The settings-modal git panel (`/api/git`, staged and unstaged apart, no untracked files) is unchanged
+- Entry points all go through `panes.open('changes')` or `panes.toggle('changes')`: the rail card, the topbar diff icon, Ctrl+Shift+D (`shortcuts.js`, `event.code`), the per-turn card's button (`onOpenGit`) and the split pane's card button (`openChanges`: swap, then open). The settings-modal git panel (`/api/git`, staged and unstaged apart, no untracked files) is unchanged
+
+## Transcript view modes
+- A layer between `thread.js` and the DOM (`public/js/transcript/`). `thread.js` renders every item as before and only calls `createTranscriptView(messages)`: `show(session)` after a full redraw, `appended(item, node)` after each live item (once the live elements
+  and the working line are back at the end), `settled()` when a turn ends. The view applies the session's mode (`view-mode.js`: Normal, Thinking, Verbose; saved per session in localStorage `claude-gui.transcript-view`) by setting `messages.dataset.view`
+  (`transcript.css` hides thinking in Normal) and by grouping in the DOM (`tool-groups.js`)
+- Grouping WRAPS the existing top-level `details.tool` rows of a run of two or more in a `details.tool-group`; it never re-renders them, so the lookups by `data-tool-id` (tool results, subagent children), `data-item-index` (search) and the delegated listeners keep
+  working. Verbose has no groups and opens every top-level row. Mode changes regroup the whole thread (`groupAll`); live items extend or create a group (`groupAppended`). Nothing is stored beyond the chosen mode, and no server change
+- One view per `createThread`, so the main thread and the split pane each apply their OWN session's mode; the controls (Ctrl+O, the "עוד" menu section) act on the main thread only. `/focus` stays a separate filter (a body class), which also hides the groups.
+  `search-hits.js` calls `reveal.js` to open a hit's closed group or row before scrolling to it
 
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
@@ -125,6 +134,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 | Pane area for the main session only, hidden by a room rule | Desktop panes belong to the focused session; `/btw` and the search bar are already main-only; a width rule is simpler and safer than a special case for the split view. See DECISIONS.md |
 | Rail totals from a small `git-summary` route | `/api/git` returns up to 300000 characters of diff; the rail needs only counts and must not fetch that on every turn. See DECISIONS.md |
 | Changes pane has its own route against HEAD, untracked files synthesized in node | `/api/git` has no untracked files and shows staged and unstaged apart; Claude mostly creates new files, so the pane must show them. See DECISIONS.md |
+| Transcript view groups by wrapping the existing rows in the DOM | Rows keep their nodes, ids and listeners, so live tool results, subagent rows, search hits and the file-viewer buttons need no change; re-rendering from items per mode would duplicate that logic. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -206,7 +216,9 @@ the right to run commands as that user.
 - Split view: `split-view.js` (`createSplitView`) owns a second pane (`#split-pane`) with its own `createThread` instance, prompt cards and a mini composer
   (send / stop only); its session id and open state are per browser in localStorage (`claude-gui.split-session`, `claude-gui.split-open`). `events.js` builds the list of
   threads showing an event's session (main thread if active + `view.paneThread(id)`); `notify.js` gets `onScreen` (main or pane) for the "away" rule and unread
-  marks are set only when the session is on screen nowhere. The same session is never in both panes (swap). `/btw`, the search bar and the workspace panes stay main-only. Frontend only
+  marks are set only when the session is on screen nowhere. The same session is never in both panes (swap). `/btw`, the search bar, the workspace panes and the view-mode controls stay main-only (each pane thread applies its own session's transcript view mode). Frontend only
+- Shortcuts: `shortcuts.js` (`bindShortcuts(run)`) is the one page-wide `keydown` listener (Ctrl+K, Ctrl+Shift+O, Ctrl+O, Ctrl+B, Ctrl+, Ctrl+\, Ctrl+Shift+D, Esc to stop); `app.js` passes what each key does. The composer, the panes and the dialogs
+  bind their own keys. New page-wide keys go there, and letter keys use `event.code` (the same physical key on a Hebrew layout); the older ones still test `event.key` (a D4 item)
 - Warm-up: `warm-up.js` (moved from `app.js`) starts Claude Code while a message is typed and prefetches the catalog before a menu opens
 - Session search: `session-search.js` (pure: sessions + query -> hits with snippets) feeds `sidebar.js`; `search-hits.js` shows the bar and
   outlines in the open thread. Every rendered item node in `thread.js` carries `data-item-index` (its index in `session.items`; `events.js`

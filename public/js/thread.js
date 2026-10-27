@@ -1,15 +1,16 @@
 /**
- * The conversation view of the active session: items, live streaming text, the "working" line (working-line.js)
- * and each turn's "files changed" card (turn-changes.js).
+ * The conversation view of the active session: items, live streaming text, the "working" line (working-line.js),
+ * each turn's "files changed" card (turn-changes.js) and the view mode (transcript/).
  */
 import { copyText } from './dom.js';
-import { icon } from './icons.js';
 import { renderMarkdown, enableCodeCopy } from './markdown.js';
-import { appendItem, renderAssistantText, renderThinking, copySourceOf } from './render-items.js';
+import { appendItem, renderAssistantText, renderThinking } from './render-items.js';
 import { settleTools } from './render-tools.js';
 import { createWorkingLine } from './working-line.js';
 import { turnChanges, renderTurnChanges } from './turn-changes.js';
 import { countToolCalls } from './turn-stats.js';
+import { enableMessageCopy } from './message-copy.js';
+import { createTranscriptView } from './transcript/transcript-view.js';
 
 const NEAR_BOTTOM_PX = 140;
 
@@ -26,7 +27,8 @@ function openTool(items) {
 
 /**
  * @param {{scroller:HTMLElement, messages:HTMLElement, onOpenGit:()=>void}} elements onOpenGit: the Changes pane (a turn card's "all changes" button)
- * @returns {{show:Function, append:Function, delta:Function, setRunning:Function, scrollToEnd:Function}}
+ * @returns {{show:Function, append:Function, delta:Function, setRunning:Function, scrollToEnd:Function,
+ *   view:ReturnType<typeof createTranscriptView>}} view: the view mode (Ctrl+O, the "עוד" menu)
  */
 export function createThread({ scroller, messages, onOpenGit }) {
   let live = { text: null, thinking: null, textValue: '', thinkingValue: '' };
@@ -35,16 +37,9 @@ export function createThread({ scroller, messages, onOpenGit }) {
   let activeTool = null;
   let outcome = 'done';
   const working = createWorkingLine(() => ({ writing: Boolean(live.text), thinking: Boolean(live.thinking), tool: activeTool, heard }));
+  const view = createTranscriptView(messages);
   enableCodeCopy(messages, copyText);
-  messages.addEventListener('click', async event => {
-    const button = event.target.closest('[data-copy-message]');
-    const text = button && copySourceOf(button);
-    if (text === null || text === undefined) return;
-    await copyText(text);
-    button.replaceChildren(icon('check')); // icon-only button: a check mark says it was copied
-    button.title = 'הועתק';
-    setTimeout(() => { button.replaceChildren(icon('copy')); button.title = 'העתקה'; }, 1400);
-  });
+  enableMessageCopy(messages);
 
   const isNearBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < NEAR_BOTTOM_PX;
   const scrollToEnd = () => { scroller.scrollTop = scroller.scrollHeight; };
@@ -68,6 +63,7 @@ export function createThread({ scroller, messages, onOpenGit }) {
       dropLive('text');
       dropLive('thinking');
       settleTools(messages);
+      view.settled();
       return;
     }
     if (!working.node()) {
@@ -104,11 +100,13 @@ export function createThread({ scroller, messages, onOpenGit }) {
       if (!item.parent && (item.kind === 'text' || item.kind === 'thinking')) dropLive(item.kind);
       // Thinking that streamed but arrives empty (redacted/summarized) never gets its own item; the next step ends it.
       if (!item.parent && (item.kind === 'text' || item.kind === 'tool')) dropLive('thinking');
-      tag(appendItem(messages, item, resultContext(item, items, index)), index)?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
+      const node = tag(appendItem(messages, item, resultContext(item, items, index)), index);
+      node?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
       const changes = item.kind === 'result' && items ? changesCard(items, index) : null;
       if (changes) messages.append(changes);
       // Live elements and the working line always stay after the newest item.
-      [live.thinking, live.text, working.node()].filter(Boolean).forEach(node => messages.append(node));
+      [live.thinking, live.text, working.node()].filter(Boolean).forEach(element => messages.append(element));
+      view.appended(item, node); // after the live elements moved: the node's neighbours are items again
     });
     working.render();
   }
@@ -146,8 +144,9 @@ export function createThread({ scroller, messages, onOpenGit }) {
       activity(); // a turn already under way is past its start (the init event is not kept)
     }
     else settleTools(messages);
+    view.show(session);
     requestAnimationFrame(scrollToEnd);
   }
 
-  return { show, append, delta, setRunning, activity, scrollToEnd, element: messages };
+  return { show, append, delta, setRunning, activity, scrollToEnd, element: messages, view };
 }

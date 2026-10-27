@@ -1,6 +1,7 @@
 /** Search matches inside the open conversation: highlights the matching messages and steps through them (▲ ▼, Esc). */
 import { h } from './dom.js';
 import { icon } from './icons.js';
+import { revealNode, canReveal } from './transcript/reveal.js';
 
 const HIT_CLASS = 'search-hit';
 const CURRENT_CLASS = 'search-current';
@@ -28,14 +29,15 @@ export function createSearchHits({ scroller, messages }) {
     nodes[current]?.classList.remove(CURRENT_CLASS);
     current = (current + step + nodes.length) % nodes.length;
     nodes[current].classList.add(CURRENT_CLASS);
+    revealNode(nodes[current]); // a hit inside a collapsed tool group or row
     nodes[current].scrollIntoView({ block: 'center', behavior: 'smooth' });
     bar.querySelector('.search-count').textContent = `${current + 1} מתוך ${nodes.length}`;
   }
 
-  /** Highlights the given items and scrolls to the first; items without a node of their own are skipped. */
+  /** Highlights the given items and scrolls to the first; items without a node of their own, or hidden by the view mode, are skipped. */
   function show(indexes, query) {
     clear();
-    nodes = indexes.map(index => messages.querySelector(`[data-item-index="${index}"]`)).filter(Boolean);
+    nodes = indexes.map(index => messages.querySelector(`[data-item-index="${index}"]`)).filter(node => node && canReveal(node));
     if (!nodes.length) return;
     nodes.forEach(node => node.classList.add(HIT_CLASS));
     bar = h('div', { class: 'search-bar', role: 'search' },
