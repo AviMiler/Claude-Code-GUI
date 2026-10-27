@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-27 (/btw side questions)
+- Added: `/btw <question>` asks Claude about the current conversation without interrupting the running turn and without adding to the thread; a "שאלת צד" card above the composer shows the Markdown answer, takes follow-ups (history kept only while the card is open) and closes with Esc (lib/side-questions.js, POST /api/sessions/:id/side-question, public/js/side-question.js, actions.js, command-runner.js, app.js, css/composer.css). Why: user request (feature 2 of 12); it costs tokens, so it is a separate route, not in the no-token /control whitelist
+- Changed: `btw` was terminal-only in the command list; it now runs in the GUI (commands-data.js)
+- Changed: the fake CLI answers `side_question`, handles control requests asynchronously, and replies "Unsupported control request subtype: X" to unknown ones like the real CLI (dev/fake-claude.js)
+- Not tested: the real CLI (response shape read from the 2.1.311 binary; 2.1.246 support unknown)
+
 ## 2026-10-27 (notifications)
 - Added: user-chosen notifications — desktop, sound (WebAudio) and tab-title count; events turn finished / waiting for approval / error; "only when away" or always; settings panel "התראות" with test button (public/js/notify.js, panels/panel-notifications.js, events.js triggers)
 - Changed: the tab title "(N)" now counts sessions waiting for approval plus finished-unread (was waiting only) and can be turned off; page status moved out of app.js to public/js/page-status.js

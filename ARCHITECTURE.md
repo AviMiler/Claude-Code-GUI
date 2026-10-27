@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27_
+_Last updated: 2026-10-27 (side questions)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -29,6 +29,13 @@ sessions are kept in memory and saved to `data/sessions.json`.
 - Any other file: stored as `data/uploads/<uuid>/<name>`; the message ends with "[Attached files – read them with the
   Read tool]" and the full paths. Every session process gets `--add-dir <data/uploads>`, so Read needs no prompt
 - Items and queue entries hold references only; `sessions.json` never holds file bytes
+
+## Side questions (/btw)
+- `/btw <question>` runs in the browser (`command-runner.js` -> `side-question.js`), even while a turn runs, and calls
+  `POST /api/sessions/:id/side-question` `{ question, history }` -> `lib/side-questions.js` -> control request `side_question`
+  on the session's process (started if needed; 10 min timeout). The answer is `{ response, notice }`
+- It never becomes a thread item or a queue entry and is never saved; follow-up history lives only in the open card.
+  A CLI without `side_question` -> HTTP 501 -> neutral "not available" note. It calls the model, so it costs tokens
 
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
@@ -65,6 +72,7 @@ sessions are kept in memory and saved to `data/sessions.json`.
 | Queue on the server, not in the browser | Survives tab switches and reloads; every tab sees the same queue |
 | Files by path, images as content blocks | Read handles text, code, PDF and notebooks with any model; images are the one kind the model must receive itself |
 | Model list from the model server | The CLI's aliases all point to one local model behind a custom base URL; only real models are worth a menu |
+| `/btw` on its own route, not in the `/control` whitelist | `side_question` calls the model (tokens) and needs a long timeout; the generic control routes are documented as no-token with short timeouts. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -105,6 +113,8 @@ the right to run commands as that user.
 - Tools Claude runs (Bash/PowerShell) can reach any host the user can, including the model server's own HTTP API
   (Ollama's API has no authentication: pull/delete/create models). This needs the user's approval in the ask modes,
   and happens freely in bypass mode. Protect the model server itself if that matters.
+- `/btw` side questions send the question and the card's earlier Q&A to the model through Claude Code (token cost, same
+  model server as normal turns); the route is POST, so the Origin check applies.
 - Account/cloud slash commands (design-*, schedule, ultrareview, usage-credits) and network plugin marketplaces
   are confirmed first; on the closed network they fail.
 

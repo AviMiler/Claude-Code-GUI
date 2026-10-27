@@ -53,6 +53,7 @@ const CONTROL = {
   get_hooks_listing: () => ({ hooks: [], eventCatalog: [{ name: 'PreToolUse', summary: 'Before tool execution' }] }),
   get_memory_dialog: () => ({ files: [], folders: [], memories: [] }),
   get_settings: () => ({ effective: {}, sources: [] }),
+  side_question: async request => { await sleep(600); return { response: `**תשובת צד מזויפת** ל: ${request.question} (היסטוריה: ${(request.history || []).length})`, synthetic: false }; },
   set_model: () => ({}), interrupt: () => { interrupted = true; return {}; },
   set_permission_mode: request => { mode = request.mode; return { mode }; },
 };
@@ -113,9 +114,9 @@ function handle(line) {
   if (message.type === 'control_response') return waiting.get(message.response.request_id)?.(message.response.response);
   if (message.type === 'control_request') {
     const handler = CONTROL[message.request.subtype];
-    return out({ type: 'control_response', response: handler
-      ? { subtype: 'success', request_id: message.request_id, response: handler(message.request) }
-      : { subtype: 'error', request_id: message.request_id, error: `unsupported: ${message.request.subtype}` } });
+    if (!handler) return out({ type: 'control_response', response: { subtype: 'error', request_id: message.request_id, error: `Unsupported control request subtype: ${message.request.subtype}` } });
+    // Answered in the background, so a slow request (side_question) never holds up the turn.
+    return Promise.resolve(handler(message.request)).then(response => out({ type: 'control_response', response: { subtype: 'success', request_id: message.request_id, response } }));
   }
   if (message.type === 'user') {
     const content = message.message.content;

@@ -54,7 +54,7 @@ export const BUILTIN_COMMANDS = [
   c('import', 'ייבוא הגדרות מסוכן AI אחר (codex, gemini, cursor)', 'send', { args: '[codex|gemini|cursor] [--dry-run]', icon: 'download' }),
   c('auto-mode-setup', 'לימוד מצב אוטומטי על הסביבה שלך', 'send', { icon: 'zap' }),
 
-  c('btw', 'שאלת צד מהירה בלי להפריע לשיחה', 'terminal', { icon: 'message' }),
+  c('btw', 'שאלת צד מהירה בלי להפריע לשיחה (לא נכנסת לשיחה)', 'action:btw', { args: '<שאלה>', icon: 'message' }),
   c('tasks', 'צפייה וניהול של כל מה שרץ ברקע', 'terminal', { aliases: ['bashes'], icon: 'list' }),
   c('background', 'שליחת הסשן לרקע', 'terminal', { aliases: ['bg'], icon: 'list' }),
   c('subtask', 'שליחת סוכן משנה עם כל ההקשר', 'terminal', { icon: 'bot' }),

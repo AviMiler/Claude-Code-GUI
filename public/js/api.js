@@ -31,6 +31,7 @@ export const api = {
   resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
   clear: id => request('POST', `/api/sessions/${id}/clear`),
   fork: id => request('POST', `/api/sessions/${id}/fork`),
+  sideQuestion: (id, question, history) => request('POST', `/api/sessions/${id}/side-question`, { question, history }),
   answerPermission: (id, requestId, answer) => request('POST', `/api/sessions/${id}/permissions/${requestId}`, answer),
 
   /** Catalog of commands/skills/agents/models: from the session's process, or a folder probe without a session. */

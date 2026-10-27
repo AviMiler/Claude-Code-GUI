@@ -1,5 +1,5 @@
 # Project Map
-_Last updated: 2026-10-27_
+_Last updated: 2026-10-27 (added lib/side-questions.js, public/js/side-question.js)_
 
 ## File Tree
 ```
@@ -10,14 +10,14 @@ _Last updated: 2026-10-27_
 ./lib/api-routes.js  ./lib/api-routes-tools.js  ./lib/catalog-service.js  ./lib/claude-files.js
 ./lib/cli-args.js  ./lib/cli-capabilities.js  ./lib/cli-commands.js  ./lib/cli-process.js  ./lib/config.js
 ./lib/event-hub.js  ./lib/event-translator.js  ./lib/failure-messages.js  ./lib/http-utils.js  ./lib/model-list.js  ./lib/images.js  ./lib/uploads.js
-./lib/session-runtime.js  ./lib/session-service.js  ./lib/session-store.js  ./lib/spawn-utils.js
+./lib/session-runtime.js  ./lib/session-service.js  ./lib/session-store.js  ./lib/side-questions.js  ./lib/spawn-utils.js
 ./lib/static-files.js  ./lib/transcripts.js  ./lib/workspace-info.js
 ./public/index.html  ./public/icon.svg
 ./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css  ./public/css/animations.css
 ./public/js/app.js  ./public/js/events.js  ./public/js/notify.js  ./public/js/page-status.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
 ./public/js/thread.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
-./public/js/sidebar.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
+./public/js/sidebar.js  ./public/js/side-question.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
 ./public/js/commands-data.js  ./public/js/command-catalog.js  ./public/js/command-runner.js
 ./public/js/panels/registry.js  ./public/js/panels/panel-host.js  ./public/js/panels/kit.js  ./public/js/panels/file-editor.js
 ./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
@@ -32,7 +32,7 @@ Also at the root: `./spec.md` (permanent requirements).
 |---|---|
 | `server.js` | Entry point. HTTP server, request guard, routing to API or static files. |
 | `config.json` | Port, `claudePath`, `model`, default folder, `idleMinutes`, extra environment variables. |
-| `dev/fake-claude.js` | Fake CLI speaking stream-json + control protocol, for developing without an API key. `FAKE_CLAUDE_STARTUP_MS` simulates the real CLI's startup time; replies list the images it received. |
+| `dev/fake-claude.js` | Fake CLI speaking stream-json + control protocol, for developing without an API key. `FAKE_CLAUDE_STARTUP_MS` simulates the real CLI's startup time; replies list the images it received; answers `side_question` (600 ms) and unknown control subtypes with "Unsupported control request subtype: X". |
 | `dev/fake-claude.cmd`, `dev/config.fake.json` | Shim and config to run the GUI against the fake CLI (port 3738). The shim is Windows-only. |
 | `lib/config.js` | Loads `config.json` (or `CLAUDE_GUI_CONFIG`) with defaults. |
 | `lib/http-utils.js` | JSON helpers, `httpError`, Host/Origin guard. |
@@ -47,6 +47,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/event-translator.js` | CLI `stream-json` events -> UI items and streaming deltas. |
 | `lib/failure-messages.js` | Hebrew explanation of a failed CLI process. |
 | `lib/session-service.js` | Glue: sessions, messages and their queue, stop, clear, fork, permissions, settings, warm-up. |
+| `lib/side-questions.js` | `/btw`: validates and sends the CLI's `side_question` control request (10 min timeout, starts the CLI if needed); returns `{ response, notice }`; unsupported CLI -> 501. Costs tokens. |
 | `lib/catalog-service.js` | Commands/skills/agents/models catalog and whitelisted control requests (session, warm spare, or probe); `ifRunning` reads never start a process. |
 | `lib/images.js` | Images attached to messages: validation (type, magic bytes, 5 MB), storage in `data/images/`, image blocks for the CLI, serving, cleanup. |
 | `lib/uploads.js` | Other attached files: storage in `data/uploads/<id>/<name>`, the "[Attached files]" paths in the message, download serving, cleanup; the folder every session gets with `--add-dir`. |
@@ -55,23 +56,23 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/claude-files.js` | Read/write settings, CLAUDE.md, agents, skills, commands, output styles by kind. |
 | `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import (images marked as "[תמונה]"). |
 | `lib/workspace-info.js` | Folder browser listing/creation, file search for @-mentions, git status/diff. |
-| `lib/api-routes.js` | Route table and session routes (messages with attachments, queue, stop, warm, permissions...); serves `/api/images` and `/api/uploads` as raw bytes. |
+| `lib/api-routes.js` | Route table and session routes (messages with attachments, queue, stop, warm, side-question, permissions...); serves `/api/images` and `/api/uploads` as raw bytes. |
 | `lib/api-routes-tools.js` | Routes behind the panels (catalog, control, models, cli, files, transcripts, git, folders). |
 | `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area. The brand spark is inline SVG (same rays as `icons.js`). |
 | `public/css/tokens.css` | Colors (light/dark), fonts, base elements. |
 | `public/css/layout.css` | Sidebar, top bar, welcome page, buttons. |
 | `public/css/messages.css` | Messages and their copy buttons, thinking, tool rows, diffs, todos, results, working line. |
-| `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards. |
+| `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards, the `/btw` side card. |
 | `public/css/panels.css` | Settings modal, panel building blocks, dialogs (incl. the folder browser), toasts. |
 | `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
-| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications); new permanent features are added here. |
+| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions); new permanent features are added here. |
 | `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, model menu; page status via `page-status.js`. |
 | `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request). |
 | `public/js/notify.js` | User-chosen notifications (desktop, sound, tab-title count) when a turn ends, waits for approval or fails; preferences in localStorage `claude-gui.notifications`. |
 | `public/js/page-status.js` | Page-wide status: the brand spark (busy / waiting) and the tab title with the count of sessions that need the user (waiting or finished-unread). |
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
-| `public/js/api.js` | Fetch wrappers and SSE subscription. |
-| `public/js/actions.js` | Session actions and the context given to panels. |
+| `public/js/api.js` | Fetch wrappers (incl. `sideQuestion`) and SSE subscription. |
+| `public/js/actions.js` | Session actions (incl. `sideQuestion`) and the context given to panels. |
 | `public/js/thread.js` | Conversation view: items, live streaming, working line with Claude's state (starting, thinking, writing, tool, waiting, done/error/stopped), message copy. |
 | `public/js/render-items.js` | Items -> DOM (user messages with image thumbnails and file chips, copy buttons); Markdown export. |
 | `public/js/render-tools.js` | Tool rows: terminal, diffs, todos, results; `toolMeta` (verb/target of a tool, also used by the working line). |
@@ -80,6 +81,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/composer-menus.js` | `/` command menu (whole message), `/` skills menu mid-sentence, `@` mention menu. |
 | `public/js/popover.js` | Dropdowns and keyboard-driven list menus. |
 | `public/js/prompt-cards.js` | Permission, AskUserQuestion and plan-approval cards. |
+| `public/js/side-question.js` | `/btw` card above the composer: question, loader, Markdown answer, follow-ups with history, close/Esc; closes on session change. Nothing persisted. |
 | `public/js/sidebar.js` | Session list grouped by date, with search. |
 | `public/js/chrome.js` | Top bar and welcome page. |
 | `public/js/attachments.js` | Composer attachments: read files, shrink images, limits, conversion to what the server stores and back (queue restore). |
@@ -91,7 +93,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/modes.js` | Permission modes and effort levels. |
 | `public/js/commands-data.js` | Built-in slash commands of 2.1.308, Hebrew text, where each runs. |
 | `public/js/command-catalog.js` | Merge with the live CLI catalog, grouping, filtering, parsing. |
-| `public/js/command-runner.js` | Executes a slash command (panel, action, CLI, terminal-only). |
+| `public/js/command-runner.js` | Executes a slash command (panel, action incl. `btw`, CLI, terminal-only). |
 | `public/js/panels/registry.js` | List of panels in navigation order. |
 | `public/js/panels/panel-host.js` | Settings-style modal with side navigation. |
 | `public/js/panels/kit.js` | Panel building blocks (sections, rows, badges, fields, loading). |

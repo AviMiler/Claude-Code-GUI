@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding notifications (on top of images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding /btw side questions (on top of notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -17,7 +17,7 @@ Built for a corporate Windows machine without another terminal.
   live model/mode switch, Shift+Tab mode cycling, `/` menu with the live CLI catalog, `@` files + agents,
   16 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
   settings files, status/doctor, appearance, help, notifications), light/dark theme, persistence to `data/sessions.json`,
-  user-chosen notifications (desktop, sound, tab title)
+  user-chosen notifications (desktop, sound, tab title), `/btw` side questions (not in thread, not persisted)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -32,7 +32,9 @@ Built for a corporate Windows machine without another terminal.
 - 🚧 Not tested: the `claude plugin` JSON shapes with installed plugins, the corporate Ollama setup (`config.json`);
   everything from 2026-10-27 with the real CLI: spare adoption on 2.1.246, whether the proxy at the configured
   ANTHROPIC_BASE_URL answers `/v1/models`, whether qwen invokes a skill named mid-sentence, whether the local model
-  accepts image blocks (vision) — without vision the turn fails with the model server's error
+  accepts image blocks (vision) — without vision the turn fails with the model server's error;
+  `/btw` with the real CLI: the response shape (`response`, `fallback_notice`) comes from reading the 2.1.311 binary,
+  and whether 2.1.246 supports `side_question` is unknown (the GUI then shows a neutral "not available" note)
 - ❌ Known limits: images of resumed CLI conversations are not shown (only "[תמונה]"); non-image files reach the model
   only as paths it must read; terminal-only commands (login, ide, remote-control, ...) are
   listed but only explained; partial streamed text of a stopped turn is not kept
@@ -48,6 +50,9 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — `/btw` side questions (feature 2 of 12): card above the composer, answered by the CLI's `side_question` control request
+  without touching the running turn or the thread: lib/side-questions.js, POST /api/sessions/:id/side-question, public/js/side-question.js.
+  Fake CLI gained a `side_question` handler. Verified in a browser against the fake CLI only; real CLI untested (see Current State).
 - 2026-10-27 — Notifications (desktop / sound / tab title; done, waiting, error; away or always) chosen in the "התראות" panel:
   public/js/notify.js, page-status.js, panels/panel-notifications.js. Tab-title "(N)" now = waiting + finished-unread, can be turned off.
   First spec.md created; requirements live there from now on. Not re-checked in browser: title preference off.
@@ -97,10 +102,14 @@ Built for a corporate Windows machine without another terminal.
 - [ ] On the corporate machine: check `/api/models` against the real ANTHROPIC_BASE_URL, and the warm-up (first answer
       time, memory of the spare process) with Claude Code 2.1.246
 - [ ] On the corporate machine: send one image to check the local model's vision, and one file to check the Read path
-- [ ] `/btw` side questions via the `side_question` control request
+- [ ] On the corporate machine: try `/btw` (does 2.1.246 support `side_question`? real response shape)
 - [ ] Background tasks panel (`/tasks`) from `task_started` / `task_notification` events
 
 ## Gotchas / Watch Out
+- `/btw`: `side_question` costs tokens, so it has its own route and is NOT in the generic `/control` whitelist (catalog-service
+  `WRITE_SUBTYPES`, documented as no-token with short timeouts). The unsupported-CLI error must keep the text "not supported by this
+  Claude Code version" so `isUnsupported` (panels/kit.js) matches it. The fake CLI now answers unknown control subtypes with
+  "Unsupported control request subtype: X" like the real one
 - Notifications: preferences in localStorage `claude-gui.notifications`; triggers are in `events.js` (`status: idle` -> done/error from the items
   after the last user item, a stopped turn notifies nothing; `permission` with a new requestId -> waiting). Browsers need a click before the
   Notification permission prompt and before WebAudio plays (panel buttons give it; audio unlocks on the first click/key). Corporate browser

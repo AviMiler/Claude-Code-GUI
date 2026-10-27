@@ -11,7 +11,8 @@ import { guardedApi, confirmMode, confirmOutwardCommand, isCancelled, CANCELLED_
 
 /**
  * @param {{refresh:()=>void, selectSession:(id:string|null)=>void, insert:(text:string, options?:object)=>void,
- *   restore:(entries:{text:string, attachments:object[]}[])=>void}} view restore puts messages back into the composer (from the queue).
+ *   restore:(entries:{text:string, attachments:object[]}[])=>void, askSide:(sessionId:string, question:string)=>void}} view
+ *   restore puts messages back into the composer (from the queue); askSide opens the /btw card.
  */
 export function createActions(view) {
   const report = error => {
@@ -63,6 +64,13 @@ export function createActions(view) {
         view.restore(result.queued.map(entry => ({ text: entry.text, attachments: fromStored(entry) })));
         toast('ההודעות שבתור הוחזרו לתיבת הכתיבה');
       }
+    },
+    /** /btw: a quick question about the conversation that neither waits for nor joins the running turn. */
+    sideQuestion(question) {
+      const session = activeSession();
+      if (!session) return toast('שאלת צד שואלת על שיחה קיימת – פתח סשן קודם', 'error');
+      if (!question.trim()) return view.insert('/btw ', { replace: true });
+      return view.askSide(session.id, question.trim());
     },
     removeQueued(entry) {
       const session = activeSession();

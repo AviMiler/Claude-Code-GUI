@@ -15,6 +15,7 @@ import { availableModes, EFFORT_LEVELS } from './modes.js';
 import { applyTheme, ask } from './ui.js';
 import { handleEvent } from './events.js';
 import { renderPageStatus, watchPageVisibility } from './page-status.js';
+import { createSideQuestions } from './side-question.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -23,8 +24,10 @@ const els = {
   messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'), brand: byId('brand'),
 };
 const thread = createThread({ scroller: els.scroller, messages: els.messages });
+const sideQuestions = createSideQuestions(els.composerArea);
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
-  insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries) });
+  insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
+  askSide: (sessionId, question) => sideQuestions.ask(sessionId, question) });
 const runCommand = createCommandRunner(actions);
 
 const composer = createComposer(els.composerArea, {
@@ -143,6 +146,7 @@ function selectSession(id) {
   state.activeId = state.sessions.has(id) ? id : null;
   try { localStorage.setItem(ACTIVE_KEY, state.activeId || ''); } catch { /* storage may be blocked */ }
   state.unread.delete(id);
+  sideQuestions.sessionChanged(state.activeId);
   thread.show(activeSession());
   refresh();
   composer.focus();

@@ -29,6 +29,7 @@ export function createCommandRunner(actions) {
     focus: args => actions.toggleFocus(args === 'on' ? true : args === 'off' ? false : undefined),
     theme: () => actions.openPanel('appearance'),
     stop: () => actions.stop(),
+    btw: args => actions.sideQuestion(args),
   };
 
   return async function run(command, args = '', { fromMenu = false } = {}) {
