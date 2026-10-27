@@ -7,7 +7,7 @@
 import { h, copyText } from './dom.js';
 import { icon } from './icons.js';
 import { renderMarkdown, enableCodeCopy } from './markdown.js';
-import { appendItem, renderAssistantText, renderThinking } from './render-items.js';
+import { appendItem, renderAssistantText, renderThinking, copySourceOf } from './render-items.js';
 import { settleTools, toolMeta } from './render-tools.js';
 
 const NEAR_BOTTOM_PX = 140;
@@ -39,6 +39,15 @@ export function createThread({ scroller, messages }) {
   let activeTool = null;
   let outcome = 'done';
   enableCodeCopy(messages, copyText);
+  messages.addEventListener('click', async event => {
+    const button = event.target.closest('[data-copy-message]');
+    const text = button && copySourceOf(button);
+    if (text === null || text === undefined) return;
+    await copyText(text);
+    const label = button.lastChild;
+    label.textContent = 'הועתק ✓';
+    setTimeout(() => { label.textContent = 'העתקה'; }, 1400);
+  });
 
   const isNearBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < NEAR_BOTTOM_PX;
   const scrollToEnd = () => { scroller.scrollTop = scroller.scrollHeight; };

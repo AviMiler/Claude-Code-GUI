@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-27 (copy messages)
+- Added: a copy button under every message of the user and every answer of Claude (shown on hover); Claude's answers copy as their original Markdown (public/js/render-items.js, thread.js)
+
 ## 2026-10-27 (speed, real model list, Claude's animations)
 - Changed: the CLI starts while the message is typed (POST /api/warm): an existing session warms its own process; on the welcome page a "spare" process is started with the draft settings and handed to the new session (lib/session-runtime.js `prewarmNew`/`adoptSpare`). Measured with a 2.5 s simulated startup: first answer 2.8 s → 0.1 s
 - Changed: the `/` menu and the model menu never wait for the CLI catalog: built-in commands show at once, Skills join when the catalog arrives; the catalog is prefetched after a view settles (public/js/state.js `peekCatalog`, app.js)
