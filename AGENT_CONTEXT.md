@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding the per-turn changed-files summary (on top of prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding the file viewer (on top of the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -21,7 +21,8 @@ Built for a corporate Windows machine without another terminal.
   user-chosen notifications (desktop, sound, tab title), `/btw` side questions (not in thread, not persisted),
   background tasks panel `/tasks` (live status, stop, output; topbar chip; in memory only),
   full-text search across all sessions in the sidebar (snippets, match bar in the thread),
-  per-turn "files changed" card after each result (Edit/MultiEdit/Write/NotebookEdit; that turn's diffs on click)
+  per-turn "files changed" card after each result (Edit/MultiEdit/Write/NotebookEdit; that turn's diffs on click),
+  file viewer: open button on Read/Edit/MultiEdit/Write/NotebookEdit tool rows and card rows (line numbers, relevant lines highlighted; read-only, session folders only)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -57,6 +58,11 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — File viewer (feature 8 of 12): open button on file tool rows (Read, Edit, MultiEdit, Write, NotebookEdit) and changed-files card rows opens the file's current
+  text with line numbers and the tool's lines highlighted. `GET /api/file-view?sessionId=&path=` (lib/file-view.js, new) only inside the session folder, addDirs and uploads
+  (real paths; `cwd` param ignored); 2 MB cap, binary 415. New public/js/file-viewer.js; api.js, render-tools.js, turn-changes.js, app.js, panels.css, messages.css.
+  Deviation: Grep/Glob/Bash not linked (folders). Stage 3 first pass found a stray "null" and an extra empty last line; fixed. Verified in a browser against the fake CLI and with
+  curl security cases; light theme not checked; a 2 MB cut may leave one replacement character.
 - 2026-10-27 — Per-turn changed-files summary (feature 7 of 12): card after each `result` listing files Claude's edit tools wrote that turn (+/− counts, "נכתב" for Write,
   failed calls skipped, edits merged), click = that turn's diffs only. Recomputed from session items, nothing stored. New public/js/turn-changes.js; thread.js, events.js,
   app.js, messages.css. Deviations from the plan: "נכתב" instead of "חדש" (new file vs overwrite is unknowable); card stays in focus view. Refactor: working line moved
@@ -133,6 +139,10 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Split `lib/session-service.js` (283 lines) and `lib/session-runtime.js` (243) — over the ~150-line budget
 
 ## Gotchas / Watch Out
+- File viewer: `lib/file-view.js` is the only GET that returns file contents, so keep its checks: roots come from the session on the server (never from the request),
+  real paths compared with a separator boundary (case-insensitive on win32/darwin), read from the resolved path, `cwd` ignored. Render content with textContent only.
+  Edit marks are found by searching the CURRENT file for `new_string`, so a later change leaves no marks (not an error). One delegated listener (`enableFileLinks`, app.js)
+  handles every button and stops the tool row's `<summary>` toggle
 - Background tasks: idle shutdown (`scheduleIdle` in session-runtime) is skipped while `runtime.runningTasks > 0` and re-armed when the last task
   ends, so such a process outlives `idleMinutes` (100–300 MB) on purpose. Tasks are never persisted; when the CLI exits (crash, kill, idle,
   between turns) running tasks become `killed`. A `task_started` always creates a fresh record because a restarted CLI may reuse ids.

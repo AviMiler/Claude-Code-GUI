@@ -15,6 +15,7 @@ import { handleEvent } from './events.js';
 import { renderPageStatus, watchPageVisibility } from './page-status.js';
 import { createSideQuestions } from './side-question.js';
 import { createSearchHits } from './search-hits.js';
+import { enableFileLinks } from './file-viewer.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -25,6 +26,7 @@ const els = {
 const thread = createThread({ scroller: els.scroller, messages: els.messages, onOpenGit: () => actions.openPanel('diff') });
 const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
+enableFileLinks(els.messages, () => state.activeId);
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });

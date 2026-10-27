@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (per-turn changed-files card, working-line.js; earlier: prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-27 (file viewer; earlier: per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -53,6 +53,13 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 - The browser (`public/js/templates.js`) parses `{{name}}` variables, shows the fill form and inserts the result into the composer (never sends); the
   "+" menu (`chip-menus.js`) and the panel (`panel-templates.js`) both use it
 
+## File viewer
+- A click on the open button of a file tool row (Read, Edit, MultiEdit, Write, NotebookEdit) or a changed-files card row calls `GET /api/file-view?sessionId=&path=`
+  (`lib/file-view.js`, route in `api-routes-tools.js`). The server returns the file's current text `{ path, content, totalLines, truncated, size }`; the browser
+  (`file-viewer.js`) shows it with line numbers and marks the lines the tool read or wrote (Edit: found by searching `new_string` in the current text)
+- Read-only and session-scoped: allowed roots = session cwd + `addDirs` + uploads folder, taken from the session on the server; real paths, separator boundary,
+  read from the resolved path; `cwd` param ignored. 2 MB cap (`truncated`), binary (NUL in first 8 KB) 415. Content is rendered with textContent only. No model call
+
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
   `GET /v1/models` (Ollama: `/api/tags` as fallback) plus the names in `config.json` (`model`, `ANTHROPIC_*_MODEL`);
@@ -92,6 +99,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 | Background tasks in memory, idle shutdown blocked while they run | Tasks live inside the CLI process, so persisting them would show ghosts; retiring the process would kill a long job after `idleMinutes` |
 | Session search in the browser, no server index | The browser already holds every item (`/api/state` + SSE); no route or index to keep in sync. See DECISIONS.md |
 | Prompt templates on the server (`data/templates.json`), not localStorage | User content must survive a browser reset and be shared by every tab; preferences stay per browser. See DECISIONS.md |
+| File viewer reads the current file through a session-scoped route | Tool items hold only partial content; roots come from the session on the server so the route is not an arbitrary-file reader. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -110,6 +118,9 @@ the right to run commands as that user.
   so an uploaded HTML file never runs in the GUI's origin; images are served with their own type and nosniff
 - Request bodies up to 90 MB (attachments as base64); 10 images (5 MB each) and 10 files (25 MB each) per message
 - Static files cannot escape `public/`; Claude's files are reachable only by kind with validated names; writes need an explicit folder
+- `GET /api/file-view` (the only GET returning file contents): needs a known sessionId; reads only inside that session's folder, `addDirs` and the uploads folder
+  (roots from the server, real paths, separator boundary, case-insensitive on win32/darwin, read from the resolved path, so `..`, symlinks and sibling prefix folders
+  cannot escape; `data/sessions.json` -> 403); `cwd` ignored; read-only, 2 MB cap, binary refused; no CORS headers, so other sites cannot read the response; shown as text, never HTML
 - `claude` subcommands: whitelist of commands *and* options (`lib/cli-commands.js`); `mcp add` passes through only after `--`
 - git runs with repository-configured programs disabled (fsmonitor, external diff, textconv)
 - `.cmd` claudePath: arguments with `%` are refused (cmd.exe expansion)
@@ -123,7 +134,7 @@ the right to run commands as that user.
 | Issue | Impact | Fix when needed |
 |---|---|---|
 | Cross-site GET allowed (simple GETs carry no Origin) | A web page in the same browser can start `claude` probes in any folder (`/api/catalog?cwd=`), run git there, list files and folders (`/api/files`, `/api/folders`), load attachments whose uuid it knows (`/api/images`, `/api/uploads` — uuids are not guessable), make the server ask the model server for its models (`/api/models`), exhaust memory. It cannot read responses. | Startup token required on every /api call; reject `Sec-Fetch-Site: cross-site`; process-starting endpoints as POST |
-| No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders and edit ~/.claude settings | Same startup token |
+| No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders, edit ~/.claude settings and read text files inside any session's folders (`/api/file-view`; a local program could read them directly anyway) | Same startup token |
 
 **Outside this computer**
 - The GUI server makes one network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured token) to

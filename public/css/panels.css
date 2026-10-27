@@ -142,3 +142,20 @@ dialog.template-fill { width: min(520px, 92vw); }
 dialog.template-fill .field { margin-bottom: 8px; }
 dialog.template-fill textarea { min-height: 36px; height: 36px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; resize: vertical; }
 .popover .menu-search { width: calc(100% - 12px); margin: 2px 6px 6px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13.5px; }
+
+/* File viewer (file-viewer.js) */
+dialog.file-viewer { display: flex; flex-direction: column; width: min(1100px, 94vw); height: min(820px, 90vh); padding: 0; overflow: hidden;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--bg); color: var(--text); box-shadow: var(--shadow-lg); }
+dialog.file-viewer:not([open]) { display: none; }
+dialog.file-viewer::backdrop { background: rgba(20, 20, 19, .42); }
+.file-viewer-head { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.file-viewer-head > .icon { width: 17px; height: 17px; color: var(--muted); }
+.file-viewer-head .file-path { flex: 1; min-width: 0; overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: left; }
+.file-viewer-head .file-meta { color: var(--faint); font-size: 12px; white-space: nowrap; }
+.file-note { padding: 6px 14px; background: var(--warning-soft); color: var(--warning); font-size: 12.5px; }
+.file-lines { flex: 1; overflow: auto; padding: 6px 0; background: var(--code-block); font: 12.5px/1.55 var(--font-mono); text-align: left; }
+.file-line { display: grid; grid-template-columns: 56px minmax(0, 1fr); white-space: pre; }
+.file-line .line-no { padding-right: 12px; color: var(--faint); text-align: right; user-select: none; }
+.file-line .line-text { padding-left: 4px; }
+.file-line.marked { background: var(--accent-soft); }
+.file-line.marked .line-no { color: var(--accent-strong); }

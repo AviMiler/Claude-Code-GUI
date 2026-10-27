@@ -5,6 +5,7 @@
 import { h, folderName } from './dom.js';
 import { icon } from './icons.js';
 import { diffLines, renderDiff } from './render-tools.js';
+import { fileLinkButton } from './file-viewer.js';
 
 /** Diff lines of one tool call, or null for tools that do not write files. */
 function diffsOf(item) {
@@ -62,7 +63,9 @@ export function renderTurnChanges(changes, { onOpenGit }) {
     } }, icon('file'), h('span', { class: 'name', dir: 'ltr' }, folderName(file.path)),
     file.written ? h('span', { class: 'badge' }, 'נכתב') : null,
     h('span', { class: 'added' }, `+${file.added}`), h('span', { class: 'removed' }, `−${file.removed}`));
-    return h('div', null, toggle, diffBox);
+    // Each diff's added block, as it should now read in the file (the viewer marks where it is found).
+    const blocks = file.diffs.map(lines => lines.filter(line => line.type === 'add').map(line => line.text).join('\n')).filter(Boolean);
+    return h('div', null, h('div', { class: 'turn-change-row' }, toggle, fileLinkButton(file.path, blocks.length ? { needles: blocks } : null)), diffBox);
   });
   const all = h('button', { type: 'button', class: 'link-button', onClick: () => {
     const open = rows.some(row => row.querySelector('.turn-change-diff').hidden);

@@ -31,6 +31,8 @@ export const api = {
   resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
   clear: id => request('POST', `/api/sessions/${id}/clear`),
   fork: id => request('POST', `/api/sessions/${id}/fork`),
+  /** Text of a file in the session's folders: { path, content, totalLines, truncated, size }. */
+  viewFile: (sessionId, path) => request('GET', `/api/file-view?${query({ sessionId, path })}`),
   /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */
   templates: () => request('GET', '/api/templates'),
   saveTemplate: (id, template) => request('PUT', `/api/templates/${id}`, template),

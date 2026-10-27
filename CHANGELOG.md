@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-27 (file viewer)
+- Added: an open button on the tool rows of Read, Edit, MultiEdit, Write and NotebookEdit, and on each row of the per-turn changed-files card, opens a read-only viewer with the file's current text, line numbers and the lines the tool read or wrote highlighted and scrolled into view; copy path, copy content; plain text, no highlighting library. Why: user request (feature 8 of 12). Files: lib/file-view.js (new), lib/api-routes-tools.js (`GET /api/file-view?sessionId=&path=`), public/js/file-viewer.js (new), api.js (`viewFile`), render-tools.js, turn-changes.js, app.js, css/panels.css, css/messages.css
+- Security: allowed only inside the session's folder, `addDirs` and the uploads folder, resolved real paths (`..`, symlinks, sibling prefix folders and data/sessions.json -> 403); a `cwd` parameter is ignored; 2 MB cap with `truncated`; binary -> 415; content shown with textContent only
+- Changed from the plan: Grep, Glob and Bash are not linked (their path is a folder or a command); the changed-files card rows did get the button (it was optional)
+- Known nit: the 2 MB cut can split a multibyte character (one replacement character at the end of a truncated file)
+- Not tested: light theme visually; a file changed by the user after the tool ran simply shows no marks
+
 ## 2026-10-27 (per-turn changed-files summary)
 - Added: a card after each turn's result, "שונה קובץ אחד" / "שונו N קבצים", listing the files Claude's edit tools (Edit, MultiEdit, Write, NotebookEdit; top level and subagents; failed or denied calls skipped; edits to one file merged) wrote in that turn, with +added/−removed counts. Click a file for that turn's diffs only, "הכול" for all, "git diff" opens the git panel. Recomputed from the session's items, nothing stored. Why: user request (feature 7 of 12). Files: public/js/turn-changes.js (new), thread.js, events.js, app.js, css/messages.css
 - Changed from the plan: Write shows the badge "נכתב", not "חדש", because the GUI cannot tell a new file from an overwrite. The card stays visible in focus view. A tooltip says Bash-made changes show only in the git panel

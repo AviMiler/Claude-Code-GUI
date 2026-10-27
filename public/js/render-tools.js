@@ -1,6 +1,7 @@
 /** Tool calls as compact, expandable rows: terminal for Bash, diffs for edits, a checklist for todos. */
 import { h } from './dom.js';
 import { icon } from './icons.js';
+import { fileOpenButton } from './file-viewer.js';
 
 const shortPath = path => String(path || '').split(/[\\/]/).slice(-3).join('/');
 const TOOLS = {
@@ -101,7 +102,7 @@ export function renderTool(item) {
     summary.append(h('span', { class: 'tool-stats' }, h('span', { class: 'add' }, `+${lines.filter(l => l.type === 'add').length}`),
       h('span', { class: 'del' }, `−${lines.filter(l => l.type === 'del').length}`)));
   }
-  summary.append(icon('loader', 'tool-state'));
+  summary.append(...[fileOpenButton(item.name, input), icon('loader', 'tool-state')].filter(Boolean));
   const detail = h('div', { class: 'tool-detail' }, inputView(item.name, input));
   return h('details', { class: 'tool', dataset: { toolId: item.id, status: 'running', name: item.name } },
     summary, detail, h('div', { class: 'tool-children' }));

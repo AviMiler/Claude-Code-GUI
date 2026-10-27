@@ -130,3 +130,10 @@
 .turn-change .added { color: var(--success); font: 12px var(--font-mono); } .turn-change .removed { color: var(--danger); font: 12px var(--font-mono); }
 .turn-change-diff { margin: 4px 0 8px; max-height: 340px; overflow: auto; }
 body.focus-view .turn-changes { margin-top: 0; }
+.tool summary .open-file { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--faint); }
+.tool summary .open-file:hover { background: var(--surface-2); color: var(--accent-strong); }
+.tool summary .open-file .icon { width: 14px; height: 14px; }
+.turn-change-row { display: flex; gap: 4px; align-items: center; }
+.turn-change-row .open-file { display: inline-grid; flex: none; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--faint); }
+.turn-change-row .open-file:hover { background: var(--surface-2); color: var(--accent-strong); }
+.turn-change-row .open-file .icon { width: 14px; height: 14px; }

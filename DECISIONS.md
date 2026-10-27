@@ -1,5 +1,10 @@
 # Decisions
 
+## [2026-10-27] The file viewer reads the file's current text through a session-scoped route
+**Decision:** `GET /api/file-view?sessionId=&path=` (lib/file-view.js) returns the file as it is now. The allowed roots (session folder, `addDirs`, uploads) are taken from the session on the server, compared as real paths, and any `cwd` parameter is ignored.
+**Alternatives considered:** (1) Show the content recorded in the tool item (Read result, Edit strings) with no new route. (2) A route taking `cwd=` or any absolute path. (3) A general "read any file" route.
+**Why:** The recorded tool content is partial (Edit holds only the changed strings, Read results may be cut) and cannot show surrounding lines or highlight a line range. A request-supplied `cwd` or free path would make the folder check meaningless and turn the route into an arbitrary-file reader, which the no-auth, cross-site-GET issues make worse. Session-scoped roots limit it to the places Claude already works in without asking. The cost is that the view can differ from what the tool saw if the file changed since; marks are then simply omitted.
+
 ## [2026-10-27] Prompt templates are stored on the server, not in localStorage
 **Decision:** Templates live in `data/templates.json` (lib/templates.js) behind `GET /api/templates`, `PUT/DELETE /api/templates/:id`; the browser generates the id and PUT upserts.
 **Alternatives considered:** Per-browser localStorage (like the notification and sidebar-grouping preferences).
