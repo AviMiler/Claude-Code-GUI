@@ -54,7 +54,7 @@ export function createPaneHost({ workspace, area, onChange }) {
     const body = h('div', { class: 'pane-body' });
     const section = h('section', { class: 'pane', dataset: { pane: id }, 'aria-label': definition.title },
       h('header', { class: 'pane-head' }, icon(definition.icon), h('span', { class: 'pane-title' }, definition.title),
-        h('button', { type: 'button', class: 'icon-button', title: 'סגירה', onClick: () => toggle(id) }, icon('x'))),
+        h('button', { type: 'button', class: 'icon-button', title: 'סגירה (Ctrl+\\ כשהחלונית ממוקדת)', onClick: () => toggle(id) }, icon('x'))),
       body);
     section.addEventListener('pointerdown', () => { focusedId = id; });
     section.addEventListener('focusin', () => { focusedId = id; });

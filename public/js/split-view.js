@@ -37,7 +37,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
   const send = h('button', { type: 'button', class: 'send-button', title: 'שליחה (Enter)' }, icon('arrow-up'));
   const stop = h('button', { type: 'button', class: 'stop-button', title: 'עצירה', hidden: true }, icon('stop'));
   const swap = h('button', { type: 'button', class: 'icon-button', title: 'פתיחה בחלון הראשי (החלפה)' }, icon('sidebar'));
-  const close = h('button', { type: 'button', class: 'icon-button', title: 'סגירת הפיצול (Ctrl+\\)' }, icon('x'));
+  const close = h('button', { type: 'button', class: 'icon-button', title: 'סגירת הפיצול (Ctrl+Shift+\\)' }, icon('x'));
   const empty = h('div', { class: 'split-empty' }, 'בחר סשן להצגה לצד הסשן הראשי.');
   // The thread's git button means "this session's changes": show the session in the main pane, then its git panel.
   const thread = createThread({ scroller, messages, onOpenGit: () => { swapPanes(); openChanges(); } });

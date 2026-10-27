@@ -19,7 +19,7 @@ import { createModelHealth } from './model-health.js';
 import { createSplitView } from './split-view.js';
 import { prefetchCatalog } from './warm-up.js';
 import { createPanes } from './panes/panes.js';
-import { bindShortcuts } from './shortcuts.js';
+import { bindShortcuts } from './shortcuts/bind-shortcuts.js';
 import { viewModeLabel } from './transcript/view-mode.js';
 
 applyTheme();
@@ -142,7 +142,8 @@ els.search.addEventListener('keydown', event => {
 document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => actions.openPanel(button.dataset.panel)));
 bindShortcuts({
   slashMenu: () => composer.insert('/', { replace: !composer.textarea.value }), newSession: () => selectSession(null),
-  toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(), toggleChanges: () => panes.toggle('changes'),
+  toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(),
+  toggleChanges: () => panes.toggle('changes'), closePane: () => panes.closeFocused(),
   cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
   stop: () => actions.stop(), isRunning: () => activeSession()?.status === 'running',
 });

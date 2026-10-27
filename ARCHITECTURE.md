@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (D3: transcript view layer between thread.js and the DOM, `shortcuts.js` for page-wide keys; earlier D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-27 (D4: one shortcut table in `public/js/shortcuts/` feeds the handler, the Ctrl+/ dialog and the help panel; dropdown placement in `popover.js`; earlier D3: transcript view layer between thread.js and the DOM, a page-wide key listener; earlier D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -64,7 +64,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 
 ## Workspace panes and session details rail
 - Layout: `.main` = topbar + `.workspace` (`#workspace`), a row of `.chat` (thread + composer, ids unchanged) and `#pane-area`. `.app` still has the sidebar column and the optional split column, so the order in RTL is
-  sidebar, chat, pane area, then the split pane. `public/js/panes/panes.js` is the only module `app.js` talks to; `pane-host.js` owns the area (registry, open set, width, room rule, `closeFocused()` unbound);
+  sidebar, chat, pane area, then the split pane. `public/js/panes/panes.js` is the only module `app.js` talks to; `pane-host.js` owns the area (registry, open set, width, room rule, `closeFocused()`, which Ctrl+\ calls);
   each pane is `{ id, title, icon, render(body, session) }` registered in `panes.js` (the details rail and Changes now; later Terminal, Files, Plan, Background tasks). The host has `open(id)` (never closes) and `toggle(id)`, and calls `onChange` after any open or close so the topbar toggles stay in step. The area belongs to the main session only
 - Room rule: shown only when `#workspace` is at least 560 px of chat plus the column wide (a `ResizeObserver` re-checks); otherwise hidden with the saved choice kept (`claude-gui.panes-open`, `claude-gui.panes-width`).
   The split view needs no special case: it narrows the main region, so the rule hides the area
@@ -80,7 +80,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 - The pane redraws only when the diff text changed; an edit to one file (box, comment, collapse) redraws only that file, so the diff stays fast at the cap and a half-typed comment survives a turn end
 - Comments (`diff-comments.js`) live in a module-level Map per session id, in memory only. A comment is anchored by path + side + line + the line's text; `diff-view.js` places it under the line only while all four still match, otherwise it is listed as changed since (or, when its file left the diff, at the top). `composeMessage` builds ONE message; the pane sends it with the
   `send` it is given (`actions.send`, the normal path: queued while Claude works) and clears the comments only when that returns true. One send at a time per session; Ctrl+Enter is bound on the pane element, not on the page
-- Entry points all go through `panes.open('changes')` or `panes.toggle('changes')`: the rail card, the topbar diff icon, Ctrl+Shift+D (`shortcuts.js`, `event.code`), the per-turn card's button (`onOpenGit`) and the split pane's card button (`openChanges`: swap, then open). The settings-modal git panel (`/api/git`, staged and unstaged apart, no untracked files) is unchanged
+- Entry points all go through `panes.open('changes')` or `panes.toggle('changes')`: the rail card, the topbar diff icon, Ctrl+Shift+D (`shortcuts/bind-shortcuts.js`, `event.code`), the per-turn card's button (`onOpenGit`) and the split pane's card button (`openChanges`: swap, then open). The settings-modal git panel (`/api/git`, staged and unstaged apart, no untracked files) is unchanged
 
 ## Transcript view modes
 - A layer between `thread.js` and the DOM (`public/js/transcript/`). `thread.js` renders every item as before and only calls `createTranscriptView(messages)`: `show(session)` after a full redraw, `appended(item, node)` after each live item (once the live elements
@@ -217,8 +217,10 @@ the right to run commands as that user.
   (send / stop only); its session id and open state are per browser in localStorage (`claude-gui.split-session`, `claude-gui.split-open`). `events.js` builds the list of
   threads showing an event's session (main thread if active + `view.paneThread(id)`); `notify.js` gets `onScreen` (main or pane) for the "away" rule and unread
   marks are set only when the session is on screen nowhere. The same session is never in both panes (swap). `/btw`, the search bar, the workspace panes and the view-mode controls stay main-only (each pane thread applies its own session's transcript view mode). Frontend only
-- Shortcuts: `shortcuts.js` (`bindShortcuts(run)`) is the one page-wide `keydown` listener (Ctrl+K, Ctrl+Shift+O, Ctrl+O, Ctrl+B, Ctrl+, Ctrl+\, Ctrl+Shift+D, Esc to stop); `app.js` passes what each key does. The composer, the panes and the dialogs
-  bind their own keys. New page-wide keys go there, and letter keys use `event.code` (the same physical key on a Hebrew layout); the older ones still test `event.key` (a D4 item)
+- Shortcuts: `public/js/shortcuts/` holds one table and the code that reads it. `shortcut-list.js` is the ONE table of shortcuts (keys, Hebrew label, group; a row with `action` + `code` (+ `shift`) is page-wide, a row without is documentation for a key handled where it lives) and `shortcutFor(event)`, which matches Ctrl or Cmd, no Alt, an exact Shift and the physical key (`event.code`, so a Hebrew layout works).
+  `bind-shortcuts.js` (`bindShortcuts(run)`) is the one page-wide `keydown` listener: it looks the event up in the table and calls the action (`app.js` passes what each action does; the Ctrl+/ action is the folder's own); `shortcuts-dialog.js` is the Ctrl+/ dialog; `panels/panel-help.js` draws its "קיצורי מקלדת" section from the same table, so the three lists cannot drift apart. The composer, the panes and the dialogs
+  bind their own keys. A new page-wide key is a new row plus an action in `app.js`; never test `event.key` for a letter or punctuation shortcut. Ctrl+\ is `panes.closeFocused()` and the split view is Ctrl+Shift+\ (see DECISIONS.md)
+- Dropdown placement: `popover.js` `position()` measures a menu's natural width, then opens it from the anchor's start edge when it fits, else from the other edge, kept 8 px inside the window (the topbar's "עוד" button sits at the far end of the RTL bar, which used to push its menu off screen). Every dropdown goes through it
 - Warm-up: `warm-up.js` (moved from `app.js`) starts Claude Code while a message is typed and prefetches the catalog before a menu opens
 - Session search: `session-search.js` (pure: sessions + query -> hits with snippets) feeds `sidebar.js`; `search-hits.js` shows the bar and
   outlines in the open thread. Every rendered item node in `thread.js` carries `data-item-index` (its index in `session.items`; `events.js`

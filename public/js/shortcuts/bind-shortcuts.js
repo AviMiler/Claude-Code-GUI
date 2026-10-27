@@ -1,24 +1,23 @@
-/** Page-wide keyboard shortcuts; the composer, the panes and the dialogs handle their own keys. */
+/** Page-wide keyboard shortcuts (shortcut-list.js names them); the composer, the panes and the dialogs handle their own keys. */
+import { shortcutFor } from './shortcut-list.js';
+import { toggleShortcutsDialog } from './shortcuts-dialog.js';
 
 /**
- * @param {{slashMenu, newSession, toggleSidebar, settings, toggleSplit, toggleChanges, cycleView, stop, isRunning:()=>boolean}} run
- *   what each shortcut does (isRunning: Esc stops only a running turn)
+ * @param {{slashMenu, newSession, toggleSidebar, settings, cycleView, toggleChanges, closePane, toggleSplit, stop,
+ *   isRunning:()=>boolean}} run what each action of the table does (isRunning: Esc stops only a running turn);
+ *   the Ctrl+/ dialog is this folder's own
  * @example bindShortcuts({ slashMenu: () => composer.insert('/'), ... })
  */
 export function bindShortcuts(run) {
+  const actions = { ...run, shortcuts: toggleShortcutsDialog };
   document.addEventListener('keydown', event => {
-    const mod = event.ctrlKey || event.metaKey;
-    const key = (event.key || '').toLowerCase(); // synthetic keydowns (autofill) have no key
-    const act = action => { event.preventDefault(); action(); };
-    if (mod && key === 'k') act(run.slashMenu);
-    else if (mod && event.shiftKey && key === 'o') act(run.newSession);
-    // event.code: the same physical key on any keyboard layout (O is ם on a Hebrew one); a held key cycles once.
-    else if (mod && !event.shiftKey && !event.altKey && event.code === 'KeyO') { event.preventDefault(); if (!event.repeat) run.cycleView(); }
-    else if (mod && key === 'b') act(run.toggleSidebar);
-    else if (mod && event.key === ',') act(run.settings);
-    else if (mod && event.key === '\\') act(run.toggleSplit);
-    else if (mod && event.shiftKey && event.code === 'KeyD') act(run.toggleChanges);
-    else if (event.key === 'Escape' && !event.defaultPrevented && run.isRunning()
+    const shortcut = shortcutFor(event);
+    if (shortcut) {
+      event.preventDefault(); // also for a held key: the browser's own Ctrl+O / Ctrl+K never opens
+      if (!event.repeat) actions[shortcut.action](); // a held key acts once
+      return;
+    }
+    if (event.key === 'Escape' && !event.defaultPrevented && run.isRunning()
       && !document.querySelector('.modal-backdrop, .popover, dialog[open]')) run.stop();
   });
 }

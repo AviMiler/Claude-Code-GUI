@@ -2,17 +2,15 @@
 import { h } from '../dom.js';
 import { GROUPS } from '../command-catalog.js';
 import { section, kv, loading } from './kit.js';
-
-const SHORTCUTS = [
-  ['Enter', 'שליחה'], ['Shift+Enter', 'שורה חדשה'], ['/', 'תפריט פקודות'], ['@', 'קבצים, תיקיות וסוכנים'],
-  ['Shift+Tab', 'החלפת מצב הרשאות (שאל → עריכות → תכנון)'], ['Esc', 'עצירת Claude / סגירת תפריט'],
-  ['↑ בתיבה ריקה', 'הודעה קודמת'], ['Ctrl+K', 'תפריט פקודות'], ['Ctrl+Shift+O', 'סשן חדש'], ['Ctrl+B', 'הצגת/הסתרת הסרגל'], ['Ctrl+,', 'הגדרות'],
-];
+import { SHORTCUTS } from '../shortcuts/shortcut-list.js';
 
 export async function renderHelpPanel(body, context) {
   body.append(loading());
   const commands = await context.getCommands();
-  body.replaceChildren(section('קיצורי מקלדת', null, kv(SHORTCUTS)));
+  // The keys are Latin: left to right inside the RTL panel, or "Ctrl+\\" reads "\\+Ctrl".
+  const rows = SHORTCUTS.map(item => [h('span', { dir: 'ltr' }, item.keys), item.label]);
+  const lead = [h('span', { dir: 'ltr' }, 'Ctrl+/'), ' פותח אותם בחלון מכל מקום'];
+  body.replaceChildren(section('קיצורי מקלדת', lead, kv(rows)));
   for (const group of GROUPS) {
     const inGroup = commands.filter(command => command.group === group.id);
     if (!inGroup.length) continue;

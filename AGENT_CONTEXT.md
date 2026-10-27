@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after D3 (transcript view modes), the third of 16 features that copy the latest Claude Code Desktop Code tab; before it D2 (the Changes pane with line comments), D1 (workspace panes + session details rail) and the split view, the last of the earlier 12 user-approved features (on top of images in resumed conversations, per-turn stats, the model server health dot, the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after D4 (keyboard shortcuts and the Ctrl+/ dialog), the fourth of 16 features that copy the latest Claude Code Desktop Code tab; before it D3 (transcript view modes), D2 (the Changes pane with line comments), D1 (workspace panes + session details rail) and the split view, the last of the earlier 12 user-approved features (on top of images in resumed conversations, per-turn stats, the model server health dot, the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -27,7 +27,7 @@ Built for a corporate Windows machine without another terminal.
   per-turn stats on the result line (time, output tokens/s, tokens in/out, rounds, tool calls, cost; tooltip breakdown),
   images the user sent are shown (thumbnails) when a past CLI conversation is imported ("שיחות קודמות"),
   split view: a second pane beside the main thread with another session (own live thread, approval cards, mini composer text/send/stop;
-  topbar button or Ctrl+\; picker, swap, per browser; refuses below 1000 px; a pane session counts as on screen for notifications),
+  topbar button or Ctrl+Shift+\ (was Ctrl+\ until D4); picker, swap, per browser; refuses below 1000 px; a pane session counts as on screen for notifications),
   workspace panes + session details rail (D1 of the Desktop-parity batch): a resizable pane area beside the chat of the main session
   (topbar button / "עוד" menu; per browser; hidden without room or on the welcome page) with the cards Environment, Changes (+N −M from git),
   Tasks and Context (percentage; categories on click, never starts the CLI),
@@ -36,7 +36,9 @@ Built for a corporate Windows machine without another terminal.
   and the changed-files cards' "כל השינויים" button; comments in memory only,
   transcript view modes (D3): "רגילה" (default: runs of 2+ tool rows collapse into one group row, thinking hidden), "חשיבה" (adds thinking; offered only once the session
   has produced top-level thinking), "מפורטת" (no groups, rows open, thinking shown); per session in this browser (localStorage `claude-gui.transcript-view`),
-  Ctrl+O cycles (toast), "עוד" menu section "תצוגת תמליל"; the split pane shows its own session's mode; `/focus` unchanged
+  Ctrl+O cycles (toast), "עוד" menu section "תצוגת תמליל"; the split pane shows its own session's mode; `/focus` unchanged,
+  keyboard shortcuts (D4): ONE table (`public/js/shortcuts/shortcut-list.js`) feeds the page-wide handler, the Ctrl+/ dialog "קיצורי מקלדת" and the `/help` section; every shortcut is matched by the physical key
+  (`event.code`, so it works on a Hebrew layout) with exact Shift and no Alt; Ctrl+\ closes the focused pane (`panes.closeFocused()`), the split view is Ctrl+Shift+\; the dialog opens with Ctrl+/ or the "עוד" menu item
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -63,7 +65,9 @@ Built for a corporate Windows machine without another terminal.
   Changes pane: checked in a browser against the fake CLI (3 verify rounds), but not in the light theme, not with the real CLI or a real model answering a comment message,
   not with a real Windows repository (Hebrew file names, CRLF files), and the last fix (the in-flight send flag is per session) was not re-run in a browser;
   Transcript view modes: checked in a browser against the fake CLI (2 verify rounds), but not with the real CLI, not in the light theme, and not on a real session with very many tool rows
-  (the thread is regrouped as a whole when a mode is applied; its cost on long sessions is unmeasured)
+  (the thread is regrouped as a whole when a mode is applied; its cost on long sessions is unmeasured);
+  Keyboard shortcuts (D4): checked in a browser against the fake CLI (2 verify rounds; 21 matcher cases on events that carry `event.code`; light and dark; 1600, 700 and 420 px), but not with the real CLI, not on a Mac (Cmd),
+  not on a Latin layout where `/` needs Shift (German: Ctrl+/ is the key that types `/` on a US keyboard), and a physical Hebrew keyboard was not reported as tried; the new popover placement was checked at 11 widths from 420 to 1600 px
 - ❌ Known limits: images inside tool results of resumed CLI conversations still show "[תמונה]" (images the user sent are shown); non-image files reach the model
   only as paths it must read; terminal-only commands (login, ide, remote-control, ...) are
   listed but only explained; partial streamed text of a stopped turn is not kept
@@ -82,19 +86,32 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — D4 of 16 (Desktop-parity batch): keyboard shortcuts + the Ctrl+/ dialog. New folder `public/js/shortcuts/`: `shortcut-list.js` (the ONE table: `SHORTCUT_GROUPS` כללי / שיחה / חלוניות / תיבת הכתיבה, `SHORTCUTS` 17 rows = 9 page-wide with `action` + `code` (+ `shift`)
+  and 8 documentation-only rows (Esc, Ctrl+Enter in the Changes pane, the composer's Enter, Shift+Enter, /, @, Shift+Tab, ↑), `shortcutFor(event)`: Ctrl/Cmd, never Alt, exact Shift, `event.code`), `bind-shortcuts.js` (the old `public/js/shortcuts.js`, git-mv'd and rewritten around the table;
+  a held key is `preventDefault`ed and acts once for ALL shortcuts, before only Ctrl+O ignored repeats; Esc stops a running turn unless a modal, popover or open dialog is present; owns the Ctrl+/ action), `shortcuts-dialog.js` (`toggleShortcutsDialog()`: native `<dialog class="confirm shortcuts-dialog">`
+  with `showModal`, groups in a 2-column grid (1 when narrow), `<kbd>` key caps LTR; closes with Esc, a second Ctrl+/, the X, or `mousedown` on the backdrop; focus returns). New `public/css/shortcuts.css` (linked in index.html).
+  User decision (AskUserQuestion, "כמו בדסקטופ"): Ctrl+\ closes the focused pane via `panes.closeFocused()` (wired in app.js as `closePane`, semantics unchanged: the pane last clicked or focused, nothing before one was, the no-room toast when the area is hidden); the split view moved to Ctrl+Shift+\.
+  Tooltips: topbar split button and split close button "(Ctrl+Shift+\)", pane X "סגירה (Ctrl+\ כשהחלונית ממוקדת)". Entry points: Ctrl+/ anywhere, a new "עוד" menu item "קיצורי מקלדת" (icon `help`, hint Ctrl+/, after "שיחות קודמות"), `/help` (its "קיצורי מקלדת" section maps the table,
+  keys as `dir="ltr"` spans, lead line "Ctrl+/ פותח אותם בחלון מכל מקום"). Ctrl+K, Ctrl+B, Ctrl+, Ctrl+/, Ctrl+Shift+O, Ctrl+O, Ctrl+Shift+D, Ctrl+\ and Ctrl+Shift+\ all work on a Hebrew layout now; intended small change: Ctrl+Shift+K and Ctrl+Shift+B no longer fire. app.js is 150 lines (import path + `closePane`).
+  spec.md: lines for Split view (Toggle, Code), Workspace panes (Keyboard) replaced, the `shortcuts.js` paths in the Changes pane and Transcript view modes sections updated, new section "Keyboard shortcuts and the Ctrl+/ dialog". DECISIONS.md: three entries.
+  Deviations from the Invocation-1 plan: (1) the draft table found on disk was the coordinator's own and was reused as is; (2) `public/js/popover.js` `position()` was rewritten: a pre-existing bug found by the verifier (the "עוד" menu opened at x=-234, off screen at 1600 px, so the D3/D4 items were unreadable;
+  the model menu was off screen at 760 px or less): it now measures the natural width, opens from the anchor's start edge when that fits (RTL: right edge on the anchor's right edge), otherwise from the other edge, clamped 8 px inside the screen; `matchWidth` list menus unchanged; it affects EVERY dropdown;
+  (3) the pane X got a shortcut tooltip (not in the plan); (4) `bind-shortcuts.js` and `shortcuts-dialog.js` are new files in the folder (the plan only named the table and the handler).
+  Stage 3: pass 1 No-Go (`/help` showed "\+Ctrl": RTL scrambling of the Latin key cells), pass 2 No-Go (the key cells fixed, but the lead line still scrambled, and the new popover code put the mode menu off screen at 535 px or less), both fixed and the verifier's scripts re-run: all menus (more, mode, model, plus, /, @, split picker)
+  on screen at 11 widths 420-1600 px, the lead reads LTR, no console errors. Not checked: the real CLI, a Mac, a Latin layout where `/` needs Shift (German), a physical Hebrew keyboard.
 - 2026-10-27 — D3 of 16 (Desktop-parity batch): transcript view modes (Normal / Thinking / Verbose, Hebrew "רגילה / חשיבה / מפורטת"). New folder `public/js/transcript/`: `view-mode.js` (modes, labels, saved mode, menu entries, next mode),
   `tool-groups.js` (wraps runs of 2+ top-level `details.tool` rows in `details.tool-group` with a summary "N כלים" + verbs ×N + state icon; the rows keep their nodes, ids and listeners), `transcript-view.js`
   (`createTranscriptView(messages)` per thread: `show`, `appended`, `settled`, `setMode`, `cycle`, `mode`; sets `messages.dataset.view`), `reveal.js` (`revealNode` / `canReveal` for search hits); `public/css/transcript.css`.
   thread.js creates the view and calls into it (returns `view`); chrome.js has the "עוד" menu section (+ a "סשן" header); search-hits.js opens a hit's closed group/row first; index.html links the css. Frontend only.
   Saved per session in localStorage `claude-gui.transcript-view` (300 entries max). Ctrl+O (`event.code === 'KeyO'`; ignored with Shift/Alt; held key cycles once; always `preventDefault`; no session = nothing; toast).
   Each thread (main and split pane) applies its own session's mode; Ctrl+O and the menu act on the main thread only. `/focus` is kept as it was (CSS also hides the groups) — see DECISIONS.md.
-  Refactors required by the size rule (files touched while over ~150 lines): page-wide keydown moved verbatim from app.js to new `public/js/shortcuts.js` (`bindShortcuts(run)`; plus Ctrl+O; `(event.key || '')` null-safe),
+  Refactors required by the size rule (files touched while over ~150 lines): page-wide keydown moved verbatim from app.js to new `public/js/shortcuts.js` (`bindShortcuts(run)`; plus Ctrl+O; `(event.key || '')` null-safe; since D4 this file is `public/js/shortcuts/bind-shortcuts.js`),
   the main composer's handler block to new `public/js/main-composer.js` (`createMainComposer`), the message copy-button handler from thread.js to new `public/js/message-copy.js`. app.js 170 -> 149 lines, thread.js 152.
   Deviations from the Invocation-1 plan: (1) a lone tool row is NOT grouped (runs of 2+ only); (2) the Thinking menu entry is disabled (not hidden) until the session has thinking, and Ctrl+O skips it; (3) a subagent's
   own thinking does not make Thinking available, and all thinking is hidden in Normal including inside an open subagent row; (4) the three extra moved files above; (5) the "עוד" menu got section headers.
   Stage 3: round 1 No-Go (the moved keydown threw on a key-less synthetic keydown; Ctrl+O stuck on Thinking when `localStorage.setItem` throws because the next mode was read from storage) + minor notes (subagent thinking counted;
   nested thinking visible in Normal; unused exports; group verbs rendered LTR) — all fixed, narrow re-check and the full scenario green, no console errors. Not checked: real CLI, light theme, very long sessions.
-  `panel-help.js` (the "קיצורי מקלדת" list) does not list Ctrl+O (nor Ctrl+\ or Ctrl+Shift+D): left for D4.
+  `panel-help.js` (the "קיצורי מקלדת" list) did not list Ctrl+O (nor Ctrl+\ or Ctrl+Shift+D): done in D4 (it now reads the shared table).
 - 2026-10-27 — D2 of 16 (Desktop-parity batch): Changes pane with line comments. New `public/js/panes/` files: `pane-changes.js` (the pane), `diff-parse.js` (pure parser), `diff-view.js` (one file's table, "+" button, comment box and bubbles),
   `diff-comments.js` (per-session comments in memory + `composeMessage`), `changes-chrome.js` (toolbar, notes, footer), `session-fetch.js` (fetch cache shared with the rail); `public/css/changes-pane.css`;
   server `lib/git/session-diff.js` + `GET /api/sessions/:id/diff` (api-routes-tools.js, `sessionDiff` in api.js) and `core.quotepath=false` in `lib/git/run.js`. The pane shows the WHOLE repository against HEAD (staged + unstaged in
@@ -106,7 +123,7 @@ Built for a corporate Windows machine without another terminal.
   Known: the rail's counts and the pane's toolbar counts can differ (untracked files); `app.js` is 170 lines (over budget); comments are lost on reload; the synthesized new-file diffs have mode 100644 and no "No newline" line.
 - 2026-10-27 — D1 of 16 (Desktop-parity batch: copy the latest Claude Code Desktop Code tab, Hebrew labels, one folder per feature): workspace panes + session details rail.
   Layout: `.main` = topbar + `.workspace` (`.chat` = thread + composer, ids unchanged; `#pane-area` on the chat's inline-end, physical left in RTL). New `public/js/panes/` (`panes.js` is the only module
-  app.js talks to; `pane-host.js` registry, stacked panes, resize, room rule, `closeFocused()` not bound; `pane-details.js` the rail), `public/css/panes.css`. Rail: Environment (no process state —
+  app.js talks to; `pane-host.js` registry, stacked panes, resize, room rule, `closeFocused()` not bound (bound to Ctrl+\ in D4); `pane-details.js` the rail), `public/css/panes.css`. Rail: Environment (no process state —
   dropped on purpose, no client signal and not in the reference), Changes (+N −M, files, new files; click opens the git diff panel until D2), Tasks, Context (percentage; categories on expand via
   `get_context_usage` + `ifRunning`). Server: git runner extracted to new `lib/git/run.js` (`git`, SAFE_GIT/SAFE_DIFF moved verbatim), `gitChanges` moved to new `lib/git/changes.js` plus new `gitSummary`;
   `lib/workspace-info.js` is now folders + @-file search only; new `GET /api/sessions/:id/git-summary` (session's own folder, `cwd` ignored). Also chrome.js (toggle + menu item), api.js (`gitSummary`),
@@ -117,9 +134,8 @@ Built for a corporate Windows machine without another terminal.
   empty repo, binary, rename; counts = numstat staged + unstaged; route ignores `cwd`; request counts: select 1, turn 2, idle 0, refresh +1, switch +1; tasks; context with and without a CLI, no process started;
   persistence; resize; narrow and split hide + toast; /diff panel, folder browser and @-search after the git move). Not checked: light theme of the rail, the real CLI.
   Known minor: keyboard focus is lost after Enter on a card header (cards are rebuilt each refresh); a missing session folder shows "not a git repository".
-  PENDING (c) FOR D4: Desktop uses Ctrl+\ to close the focused pane, spec "Split view" says Ctrl+\ toggles the split. Left unchanged in D1; ask the user once in D4 with the whole shortcut table
-  (options: Ctrl+\ = close focused pane and split gets another key, or Ctrl+\ stays split and closing a pane gets another key). Do not change spec.md line "Toggle: ... Ctrl+\" before the user answers.
-- 2026-10-27 — Split view (feature 12 of 12, the last of the batch): a second pane beside the main thread with another session, opened by a topbar button or Ctrl+\.
+  RESOLVED IN D4 (was PENDING (c)): Desktop uses Ctrl+\ to close the focused pane while the spec had it toggle the split. The user chose "כמו בדסקטופ": Ctrl+\ closes the focused pane (`closeFocused()`), the split view is Ctrl+Shift+\. spec.md was updated in D4.
+- 2026-10-27 — Split view (feature 12 of 12, the last of the batch): a second pane beside the main thread with another session, opened by a topbar button or Ctrl+\ (Ctrl+Shift+\ since D4).
   New public/js/split-view.js (header with picker / swap / close, own `createThread`, approval cards, mini composer: Enter sends, queue while busy, stop returns the texts;
   outward slash commands confirmed; no attachments / slash menus / `@` / `/btw`), public/css/split.css; events.js routes the pane session's events to the pane too;
   notify.js `onScreen` (pane = on screen, no unread); app.js, chrome.js, icons.js (`columns`), index.html. Frontend only. Refactor: warm-up and catalog prefetch moved verbatim
@@ -219,19 +235,22 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Look at the new screens in the light theme and at a narrow window (split pane, changed-files card, stats line, file viewer, health dot); only the dark theme was inspected
 - [ ] Check the search-hits bar with the split view open (main pane only is intended)
 - [ ] Fix the credentials-in-ANTHROPIC_BASE_URL problem of `/api/models` (see Known security issues, item 3)
-- [ ] D4 (keyboard shortcuts): ask the user the Ctrl+\ question (see D1's entry in Last Changes, PENDING (c)); wire `panes.closeFocused()` to whatever key they choose. Put Ctrl+O (transcript view, from D3) in the shortcut table you show them; it does not clash with Ctrl+Shift+O (new session)
+- [ ] D4 follow-up, on the corporate machine: press the shortcuts on a physical Hebrew keyboard (Ctrl+K, Ctrl+B, Ctrl+, Ctrl+/, Ctrl+Shift+O, Ctrl+O, Ctrl+Shift+D, Ctrl+\, Ctrl+Shift+\) and open the Ctrl+/ dialog; check that the "עוד" and model menus sit on screen at the machine's window size and Windows scaling (the popover placement was rewritten in D4 and affects every dropdown)
 - [ ] Look at the rail and pane area in the light theme and at the room limits (window just above and below 560 px chat + pane); only the dark theme was inspected. Also try the rail with a real CLI session (Context card, model label)
-- [ ] D4 (keyboard shortcuts): the shortcut module now exists (`public/js/shortcuts.js`, created in D3; it holds every page-wide key including Ctrl+Shift+D and Ctrl+O, both by `event.code`). Still to do there: the letter bindings Ctrl+K, Ctrl+Shift+O and Ctrl+B test `event.key`, which reports a Hebrew letter while the Hebrew layout is active, so they likely do not fire (not tested); use `event.code`. Also the Ctrl+/ shortcuts dialog, and the "קיצורי מקלדת" list in `panels/panel-help.js` (`SHORTCUTS`) lacks Ctrl+O, Ctrl+\ and Ctrl+Shift+D
 - [ ] Look at the transcript view modes in the light theme; try them with the real CLI (real thinking blocks, a long tool run) and on a session with hundreds of tool rows (`groupAll` regroups the whole thread on every mode change and session show; unmeasured)
 - [ ] Look at the Changes pane in the light theme and at the room limits; try it on the corporate machine with a real Windows repository (Hebrew file names, CRLF files, a session in a subfolder) and send one comment message to the real model
-- [ ] File-size debt (~150-line budget): `lib/session-service.js` (283 lines), `lib/session-runtime.js` (243). `public/js/app.js` is back to 149 lines (was 170 before D3 moved the keydown listener to shortcuts.js and the composer block to main-composer.js); keep new wiring out of it
+- [ ] File-size debt (~150-line budget): `lib/session-service.js` (283 lines), `lib/session-runtime.js` (243). `public/js/app.js` is at 150 lines (was 170 before D3 moved the keydown listener and the composer block out; D4 added the import path and `closePane`); it has no room left, so keep new wiring out of it. `public/js/popover.js` is 130 lines
 
 ## Gotchas / Watch Out
+- Shortcuts (`public/js/shortcuts/`): a new page-wide key is a row in `shortcut-list.js` (`keys`, Hebrew `label`, `group`, `action`, `code` = the physical `event.code`, `shift` when Shift is part of it) plus an action passed to `bindShortcuts(run)` in `app.js` (the Ctrl+/ action is the folder's own). The dialog and the `/help` section read the same table, so they update by themselves;
+  a row WITHOUT `action` is documentation for a key handled elsewhere (composer, Changes pane) and does nothing page-wide. Matching is Ctrl/Cmd + exact Shift + no Alt + `event.code`: never test `event.key` for a letter or punctuation shortcut (a Hebrew layout reports a Hebrew letter), and a pair on one key (Ctrl+\ / Ctrl+Shift+\, Ctrl+O / Ctrl+Shift+O)
+  needs the `shift` field. Every table shortcut gets `preventDefault` (also a held key, which acts once). The Latin key cells in any RTL list must sit in `dir="ltr"` spans, or "Ctrl+\" renders as "\+Ctrl". Ctrl+\ is `closeFocused()`: the pane last clicked or focused, so it does nothing until a pane was touched
+- Dropdown placement (`public/js/popover.js` `position`): it measures the menu's natural width (left set to 0 first), then picks the anchor's start edge or the other edge and clamps 8 px inside the window (the width used for that is capped at the window minus 16 px; the menu itself is not resized). Check any new dropdown at narrow widths (420 px) and from the topbar's far-end "עוד" button
 - Transcript view (`public/js/transcript/`): a group WRAPS the existing tool rows (`details.tool-group` > `.tool-group-rows`); rows are never re-rendered, so `data-tool-id` lookups (`appendItem`, `attachToolResult`),
   `data-item-index` (search), `settleTools` and the delegated copy / file-viewer listeners keep working. Keep it so, and find tool rows with `querySelector` (descendants), not `:scope >` or `.children`, except inside `tool-groups.js`.
   Anything drawn live goes through `thread.append`, which calls `view.appended(item, node)` AFTER the live elements and the working line were moved back to the end (the neighbours must be items). The mode is on each thread's
   `messages.dataset.view` (the body class `focus-view` is the separate `/focus` filter and also hides `.tool-group`). Rows arriving in Verbose are opened by `appended`; leaving Verbose closes top-level rows. A saved `thinking`
-  shows as Normal while the session has no top-level thinking (`viewModeOf`). Ctrl+O cycles from the in-memory mode, never from storage (storage may throw). The Ctrl+O branch in `shortcuts.js` excludes Shift and Alt on purpose (Ctrl+Shift+O is "new session")
+  shows as Normal while the session has no top-level thinking (`viewModeOf`). Ctrl+O cycles from the in-memory mode, never from storage (storage may throw). Ctrl+O and Ctrl+Shift+O are two rows of the shortcut table (same `code`, different `shift`; `shortcutFor` compares Shift exactly and refuses Alt)
 - Split view: `events.js` updates every thread showing the event's session, so any new live view update must go through that list (main thread if active + `view.paneThread(id)`),
   not only `view.thread`. The same session must never be in both panes (`split-view.js` swaps). Unread marks are set only when the session is on screen nowhere; after
   changing the pane's session call `onChange` (page refresh) or the sidebar keeps a stale unread dot. `/btw` and the search bar are main-pane only on purpose. The pane has its own

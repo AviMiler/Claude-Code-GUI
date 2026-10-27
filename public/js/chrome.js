@@ -6,6 +6,7 @@ import { recentFolders } from './state.js';
 import { toast } from './ui.js';
 import { pickFolder } from './folder-browser.js';
 import { viewModeEntries } from './transcript/view-mode.js';
+import { toggleShortcutsDialog } from './shortcuts/shortcuts-dialog.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -61,10 +62,11 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'download', title: 'ייצוא ל-Markdown', hint: '/export', onSelect: handlers.onExport },
     { icon: 'focus', title: 'תצוגה ממוקדת', hint: '/focus', onSelect: handlers.onFocus },
     { icon: 'history', title: 'שיחות קודמות', hint: '/resume', onSelect: () => handlers.onOpenPanel('resume') },
+    { icon: 'help', title: 'קיצורי מקלדת', hint: 'Ctrl+/', onSelect: toggleShortcutsDialog },
     { icon: 'trash', title: 'מחיקת הסשן', onSelect: handlers.onDelete },
   ], { placement: 'bottom' }));
   bar.replaceChildren(...[toggle, title, folder, extra, agent, tasks, h('span', { class: 'spacer' }),
-    h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+\\)', onClick: handlers.onSplit }, icon('columns')),
+    h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
     h('button', { type: 'button', class: `icon-button${handlers.changesOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.changesOpen),
       title: 'שינויים (Ctrl+Shift+D)', onClick: handlers.onToggleChanges }, icon('diff')),
     h('button', { type: 'button', class: 'icon-button', title: 'הקשר ושימוש (/context)', onClick: () => handlers.onOpenPanel('usage') }, icon('gauge')),

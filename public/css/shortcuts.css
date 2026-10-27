@@ -1,0 +1,9 @@
+/* The Ctrl+/ dialog (js/shortcuts/shortcuts-dialog.js); its frame is dialog.confirm (panels.css). */
+dialog.shortcuts-dialog { width: min(720px, 94vw); max-height: 86vh; overflow: auto; }
+.shortcuts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.shortcuts-head h2 { margin: 0; }
+.shortcut-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 6px 28px; }
+.shortcut-group h3 { margin: 10px 0 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.shortcut-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.shortcut-row:last-child { border-bottom: 0; }
+.shortcut-keys { display: inline-flex; gap: 3px; flex-shrink: 0; }
