@@ -26,7 +26,8 @@ function greeting() {
 /**
  * @param {HTMLElement} bar
  * @param {object|null} session
- * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onNewSession}} handlers
+ * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onToggleDetails,
+ *   detailsOpen:boolean, onNewSession}} handlers detailsOpen: the session details rail is open (its toggle shows pressed)
  */
 export function renderTopbar(bar, session, handlers) {
   const toggle = h('button', { type: 'button', class: 'icon-button', title: 'סרגל צד (Ctrl+B)', onClick: handlers.onToggleSidebar }, icon('sidebar'));
@@ -50,6 +51,7 @@ export function renderTopbar(bar, session, handlers) {
   more.addEventListener('click', () => showDropdown(more, [
     { icon: 'pencil', title: 'שינוי שם', hint: '/rename', onSelect: () => handlers.onRename() },
     { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', onSelect: handlers.onPin },
+    { icon: 'panel-right', title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onSelect: handlers.onToggleDetails },
     { icon: 'branch', title: 'ענף חדש מהשיחה', hint: '/fork', onSelect: handlers.onFork },
     { icon: 'refresh', title: 'שיחה חדשה (ניקוי הקשר)', hint: '/clear', onSelect: handlers.onClear },
     { icon: 'download', title: 'ייצוא ל-Markdown', hint: '/export', onSelect: handlers.onExport },
@@ -62,6 +64,8 @@ export function renderTopbar(bar, session, handlers) {
     h('button', { type: 'button', class: 'icon-button', title: 'שינויים ב-git (/diff)', onClick: () => handlers.onOpenPanel('diff') }, icon('diff')),
     h('button', { type: 'button', class: 'icon-button', title: 'הקשר ושימוש (/context)', onClick: () => handlers.onOpenPanel('usage') }, icon('gauge')),
     h('button', { type: 'button', class: 'icon-button', title: 'הגדרות (Ctrl+,)', onClick: () => handlers.onOpenPanel('model') }, icon('settings')),
+    h('button', { type: 'button', class: `icon-button${handlers.detailsOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.detailsOpen),
+      title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onClick: handlers.onToggleDetails }, icon('panel-right', 'mirror')),
     more].filter(Boolean));
 }
 

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/panels.css">
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/split.css">
+  <link rel="stylesheet" href="css/panes.css">
 </head>
 <body>
   <div class="app" id="app">
@@ -52,12 +53,17 @@
 
     <main class="main">
       <header class="topbar" id="topbar"></header>
-      <section class="thread" id="thread">
-        <div class="welcome" id="welcome"></div>
-        <div class="thread-column messages" id="messages" aria-live="polite" hidden></div>
-      </section>
-      <div class="composer-area" id="composer-area">
-        <div class="prompt-cards" id="prompt-cards" aria-live="assertive"></div>
+      <div class="workspace" id="workspace">
+        <div class="chat">
+          <section class="thread" id="thread">
+            <div class="welcome" id="welcome"></div>
+            <div class="thread-column messages" id="messages" aria-live="polite" hidden></div>
+          </section>
+          <div class="composer-area" id="composer-area">
+            <div class="prompt-cards" id="prompt-cards" aria-live="assertive"></div>
+          </div>
+        </div>
+        <aside class="pane-area" id="pane-area" aria-label="חלוניות" hidden></aside>
       </div>
     </main>
     <aside class="split-pane" id="split-pane" aria-label="חלון מפוצל" hidden></aside>

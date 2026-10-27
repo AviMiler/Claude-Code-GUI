@@ -4,7 +4,8 @@ import { section, load, kv, button, empty } from './kit.js';
 
 const PALETTE = ['#D97757', '#6A9BCC', '#788C5D', '#C2A05A', '#9B7EBD', '#5FA8A0', '#CC6F8E', '#8A8577'];
 
-function contextView(usage) {
+/** Context window by category: total, a stacked bar and a legend (also used by the session details rail). */
+export function renderContextUsage(usage) {
   const used = (usage.categories || []).filter(category => category.kind === 'used' || (!category.kind && !/free/i.test(category.name)));
   const buffer = (usage.categories || []).filter(category => category.kind === 'buffer');
   const deferred = (usage.categories || []).filter(category => category.kind === 'deferred' || category.isDeferred);
@@ -39,7 +40,7 @@ export function renderUsagePanel(body, context) {
         button('דחיסת השיחה (/compact)', () => { context.close(); context.send('/compact'); }, { iconName: 'compress' }),
         button('ניקוי ההקשר (/clear)', () => { context.close(); context.runCommand('clear'); }, { iconName: 'refresh' }))),
     section('עלות ושימוש (/usage)', null, costBox));
-  load(contextBox, () => context.api.control(context.scope, 'get_context_usage'), contextView);
+  load(contextBox, () => context.api.control(context.scope, 'get_context_usage'), renderContextUsage);
   load(costBox, () => context.api.control(context.scope, 'get_session_cost').catch(() => null), result => [
     kv([['עלות מצטברת בממשק', `$${(session.costUsd || 0).toFixed(4)}`], ['הודעות בשיחה', String(session.items.filter(item => item.kind === 'user').length)],
       ['מזהה שיחה ב-CLI', session.claudeSessionId || '—']]),

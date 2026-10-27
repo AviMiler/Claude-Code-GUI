@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (split view; earlier: file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-27 (D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -62,6 +62,16 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 - Read-only and session-scoped: allowed roots = session cwd + `addDirs` + uploads folder, taken from the session on the server; real paths, separator boundary,
   read from the resolved path; `cwd` param ignored. 2 MB cap (`truncated`), binary (NUL in first 8 KB) 415. Content is rendered with textContent only. No model call
 
+## Workspace panes and session details rail
+- Layout: `.main` = topbar + `.workspace` (`#workspace`), a row of `.chat` (thread + composer, ids unchanged) and `#pane-area`. `.app` still has the sidebar column and the optional split column, so the order in RTL is
+  sidebar, chat, pane area, then the split pane. `public/js/panes/panes.js` is the only module `app.js` talks to; `pane-host.js` owns the area (registry, open set, width, room rule, `closeFocused()` unbound);
+  each pane is `{ id, title, icon, render(body, session) }` registered in `panes.js` (later Changes, Terminal, Files, Plan, Background tasks). The area belongs to the main session only
+- Room rule: shown only when `#workspace` is at least 560 px of chat plus the column wide (a `ResizeObserver` re-checks); otherwise hidden with the saved choice kept (`claude-gui.panes-open`, `claude-gui.panes-width`).
+  The split view needs no special case: it narrows the main region, so the rule hides the area
+- The rail (`pane-details.js`) reads only what the browser has (`session`, `state.context`, `session.tasks`) plus the git summary: `GET /api/sessions/:id/git-summary` (`lib/git/changes.js` `gitSummary`: `git status --branch`
+  and `git diff --numstat` staged + unstaged through `lib/git/run.js`; the session's own folder, no `cwd` parameter). The summary is fetched on select/switch, on status change and by hand, never on a timer.
+  The Context card reads categories with `get_context_usage` and `ifRunning` (no CLI is started, no model call). Cards open the existing settings-modal panels (diff, tasks) until their panes exist
+
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
   `GET /v1/models` (Ollama: `/api/tags` as fallback) plus the names in `config.json` (`model`, `ANTHROPIC_*_MODEL`);
@@ -102,6 +112,8 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 | Session search in the browser, no server index | The browser already holds every item (`/api/state` + SSE); no route or index to keep in sync. See DECISIONS.md |
 | Prompt templates on the server (`data/templates.json`), not localStorage | User content must survive a browser reset and be shared by every tab; preferences stay per browser. See DECISIONS.md |
 | File viewer reads the current file through a session-scoped route | Tool items hold only partial content; roots come from the session on the server so the route is not an arbitrary-file reader. See DECISIONS.md |
+| Pane area for the main session only, hidden by a room rule | Desktop panes belong to the focused session; `/btw` and the search bar are already main-only; a width rule is simpler and safer than a special case for the split view. See DECISIONS.md |
+| Rail totals from a small `git-summary` route | `/api/git` returns up to 300000 characters of diff; the rail needs only counts and must not fetch that on every turn. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -124,7 +136,8 @@ the right to run commands as that user.
   (roots from the server, real paths, separator boundary, case-insensitive on win32/darwin, read from the resolved path, so `..`, symlinks and sibling prefix folders
   cannot escape; `data/sessions.json` -> 403); `cwd` ignored; read-only, 2 MB cap, binary refused; no CORS headers, so other sites cannot read the response; shown as text, never HTML
 - `claude` subcommands: whitelist of commands *and* options (`lib/cli-commands.js`); `mcp add` passes through only after `--`
-- git runs with repository-configured programs disabled (fsmonitor, external diff, textconv)
+- git runs with repository-configured programs disabled (fsmonitor, external diff, textconv); every git command goes through `lib/git/run.js`
+- `GET /api/sessions/:id/git-summary` (the session details rail): read-only, the folder is the session's own (taken from the server; there is no `cwd` parameter, so it does not widen the accepted cross-site-GET issue that `/api/git?cwd=` already has), unknown session 404, same git flags
 - `.cmd` claudePath: arguments with `%` are refused (cmd.exe expansion)
 - Markdown from the model or files is escaped before rendering (checked against XSS payloads)
 - Risk confirmations in the browser (`public/js/risk.js`) before: settings changes touching hooks, env, auth helpers,
@@ -174,11 +187,13 @@ the right to run commands as that user.
   done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)
 - Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the
   per-browser preferences (localStorage) and fires desktop / sound; `page-status.js` owns the tab title count and brand state. Frontend only
-- Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`
+- Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`. Not to be confused with panes (`public/js/panes/`): panels are the settings modal's pages, panes are the side area beside the chat
+- Panes: `panes.js` creates the host (`pane-host.js`) and registers each pane; `render(body, session)` runs on every refresh (`app.js` `refresh()` calls `panes.refresh()`), so a pane keeps its own state; the host re-attaches section nodes only when the open set changes.
+  A fetching pane re-renders through the `rerender` callback it is given. Frontend plus the `git-summary` route for the details rail
 - Split view: `split-view.js` (`createSplitView`) owns a second pane (`#split-pane`) with its own `createThread` instance, prompt cards and a mini composer
   (send / stop only); its session id and open state are per browser in localStorage (`claude-gui.split-session`, `claude-gui.split-open`). `events.js` builds the list of
   threads showing an event's session (main thread if active + `view.paneThread(id)`); `notify.js` gets `onScreen` (main or pane) for the "away" rule and unread
-  marks are set only when the session is on screen nowhere. The same session is never in both panes (swap). `/btw` and the search bar stay main-only. Frontend only
+  marks are set only when the session is on screen nowhere. The same session is never in both panes (swap). `/btw`, the search bar and the workspace panes stay main-only. Frontend only
 - Warm-up: `warm-up.js` (moved from `app.js`) starts Claude Code while a message is typed and prefetches the catalog before a menu opens
 - Session search: `session-search.js` (pure: sessions + query -> hits with snippets) feeds `sidebar.js`; `search-hits.js` shows the bar and
   outlines in the open thread. Every rendered item node in `thread.js` carries `data-item-index` (its index in `session.items`; `events.js`

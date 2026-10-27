@@ -19,6 +19,7 @@ import { enableFileLinks } from './file-viewer.js';
 import { createModelHealth } from './model-health.js';
 import { createSplitView } from './split-view.js';
 import { warmUp, prefetchCatalog } from './warm-up.js';
+import { createPanes } from './panes/panes.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -32,6 +33,7 @@ const searchHits = createSearchHits({ scroller: els.scroller, messages: els.mess
 enableFileLinks(els.messages, () => state.activeId);
 const modelHealth = createModelHealth(byId('model-health'));
 const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openPanel: id => actions.openPanel(id), onChange: () => refresh() });
+const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), openPanel: id => actions.openPanel(id), modelLabel, getSession: activeSession });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });
@@ -66,12 +68,14 @@ function modelLabel(settings) {
 function refresh() {
   const session = activeSession();
   renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar, onPin: (id, pinned) => actions.setPinned(id, pinned), onRegroup: refresh });
-  // Never rebuild a bar or page the user is typing in (title, folder); it would lose the edit.
-  const editing = node => node.contains(document.activeElement) && node.dataset.sessionId === String(session?.id ?? '');
+  // Never rebuild a bar or page the user is typing in (title, folder); it would lose the edit. A focused button is no edit.
+  const typing = document.activeElement?.matches('input, textarea, select, [contenteditable="true"]');
+  const editing = node => typing && node.contains(document.activeElement) && node.dataset.sessionId === String(session?.id ?? '');
   if (!editing(els.topbar)) renderTopbar(els.topbar, session, {
     onToggleSidebar: toggleSidebar, onRename: name => actions.rename(name), onOpenPanel: id => actions.openPanel(id),
     onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
     onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onSplit: () => split.toggle(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
+    onToggleDetails: () => { panes.toggle('details'); refresh(); }, detailsOpen: panes.isOpen('details'),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');
   els.welcome.hidden = Boolean(session);
@@ -91,6 +95,7 @@ function refresh() {
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
   renderPageStatus(els.brand);
   split.refresh();
+  panes.refresh();
 }
 watchPageVisibility(refresh);
 

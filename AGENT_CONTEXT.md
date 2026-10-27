@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding the split view, the last of the 12 user-approved features of this batch (on top of images in resumed conversations, per-turn stats, the model server health dot, the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after D1 (workspace panes + session details rail), the first of 16 features that copy the latest Claude Code Desktop Code tab; before it the split view, the last of the earlier 12 user-approved features (on top of images in resumed conversations, per-turn stats, the model server health dot, the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -27,7 +27,10 @@ Built for a corporate Windows machine without another terminal.
   per-turn stats on the result line (time, output tokens/s, tokens in/out, rounds, tool calls, cost; tooltip breakdown),
   images the user sent are shown (thumbnails) when a past CLI conversation is imported ("שיחות קודמות"),
   split view: a second pane beside the main thread with another session (own live thread, approval cards, mini composer text/send/stop;
-  topbar button or Ctrl+\; picker, swap, per browser; refuses below 1000 px; a pane session counts as on screen for notifications)
+  topbar button or Ctrl+\; picker, swap, per browser; refuses below 1000 px; a pane session counts as on screen for notifications),
+  workspace panes + session details rail (D1 of the Desktop-parity batch): a resizable pane area beside the chat of the main session
+  (topbar button / "עוד" menu; per browser; hidden without room or on the welcome page) with the cards Environment, Changes (+N −M from git),
+  Tasks and Context (percentage; categories on click, never starts the CLI)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -69,6 +72,21 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — D1 of 16 (Desktop-parity batch: copy the latest Claude Code Desktop Code tab, Hebrew labels, one folder per feature): workspace panes + session details rail.
+  Layout: `.main` = topbar + `.workspace` (`.chat` = thread + composer, ids unchanged; `#pane-area` on the chat's inline-end, physical left in RTL). New `public/js/panes/` (`panes.js` is the only module
+  app.js talks to; `pane-host.js` registry, stacked panes, resize, room rule, `closeFocused()` not bound; `pane-details.js` the rail), `public/css/panes.css`. Rail: Environment (no process state —
+  dropped on purpose, no client signal and not in the reference), Changes (+N −M, files, new files; click opens the git diff panel until D2), Tasks, Context (percentage; categories on expand via
+  `get_context_usage` + `ifRunning`). Server: git runner extracted to new `lib/git/run.js` (`git`, SAFE_GIT/SAFE_DIFF moved verbatim), `gitChanges` moved to new `lib/git/changes.js` plus new `gitSummary`;
+  `lib/workspace-info.js` is now folders + @-file search only; new `GET /api/sessions/:id/git-summary` (session's own folder, `cwd` ignored). Also chrome.js (toggle + menu item), api.js (`gitSummary`),
+  icons.js (`panel-right`), panel-usage.js (`renderContextUsage` exported and shared), index.html. spec.md got the two cross-cutting rules (Platform constraints), a Split view bullet and a new section.
+  Behavior fix in app.js: the "don't rebuild the topbar while editing" guard now protects only focused text fields (a focused button used to freeze the topbar and left the toggle stale).
+  Deviations from the Invocation-1 plan: process state dropped; the "hides while split is open" is only the room rule (no explicit split check; very wide windows keep the area). Stage 3: first pass No-Go
+  (stale toggle state because of the editing guard; first click without room silently cleared the saved state; no refetch on session switch), all fixed, then Go. Verified in a browser (repo, non-repo,
+  empty repo, binary, rename; counts = numstat staged + unstaged; route ignores `cwd`; request counts: select 1, turn 2, idle 0, refresh +1, switch +1; tasks; context with and without a CLI, no process started;
+  persistence; resize; narrow and split hide + toast; /diff panel, folder browser and @-search after the git move). Not checked: light theme of the rail, the real CLI.
+  Known minor: keyboard focus is lost after Enter on a card header (cards are rebuilt each refresh); a missing session folder shows "not a git repository".
+  PENDING (c) FOR D4: Desktop uses Ctrl+\ to close the focused pane, spec "Split view" says Ctrl+\ toggles the split. Left unchanged in D1; ask the user once in D4 with the whole shortcut table
+  (options: Ctrl+\ = close focused pane and split gets another key, or Ctrl+\ stays split and closing a pane gets another key). Do not change spec.md line "Toggle: ... Ctrl+\" before the user answers.
 - 2026-10-27 — Split view (feature 12 of 12, the last of the batch): a second pane beside the main thread with another session, opened by a topbar button or Ctrl+\.
   New public/js/split-view.js (header with picker / swap / close, own `createThread`, approval cards, mini composer: Enter sends, queue while busy, stop returns the texts;
   outward slash commands confirmed; no attachments / slash menus / `@` / `/btw`), public/css/split.css; events.js routes the pane session's events to the pane too;
@@ -169,7 +187,10 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Look at the new screens in the light theme and at a narrow window (split pane, changed-files card, stats line, file viewer, health dot); only the dark theme was inspected
 - [ ] Check the search-hits bar with the split view open (main pane only is intended)
 - [ ] Fix the credentials-in-ANTHROPIC_BASE_URL problem of `/api/models` (see Known security issues, item 3)
-- [ ] File-size debt (~150-line budget): `lib/session-service.js` (283 lines), `lib/session-runtime.js` (243), `public/js/app.js` (162, was 183 before warm-up.js)
+- [ ] D4 (keyboard shortcuts): ask the user the Ctrl+\ question (see Last Changes, PENDING (c)); wire `panes.closeFocused()` to whatever key they choose
+- [ ] Look at the rail and pane area in the light theme and at the room limits (window just above and below 560 px chat + pane); only the dark theme was inspected. Also try the rail with a real CLI session (Context card, model label)
+- [ ] D2 (Changes pane): retarget the rail's Changes card click and the changed-files card's "git diff" button from the git panel to the new pane (spec sections "Workspace panes..." and "Per-turn changed-files summary" then change)
+- [ ] File-size debt (~150-line budget): `lib/session-service.js` (283 lines), `lib/session-runtime.js` (243), `public/js/app.js` (167, was 162 before D1, 183 before warm-up.js)
 
 ## Gotchas / Watch Out
 - Split view: `events.js` updates every thread showing the event's session, so any new live view update must go through that list (main thread if active + `view.paneThread(id)`),
@@ -224,7 +245,12 @@ Built for a corporate Windows machine without another terminal.
 - On the user's machine `claude` on PATH is an interactive wrapper that asks for a model; `claudePath` must point to the real CLI
 - `.cmd` shims on Windows run through cmd.exe; arguments are quoted by `lib/spawn-utils.js`, JSON goes through files, never arguments;
   arguments containing `%` are refused there (cmd.exe expands %VAR% even in quotes)
-- The git panel disables repository-configured programs (fsmonitor, external diff, textconv) — keep those flags in `lib/workspace-info.js`
+- Git views disable repository-configured programs (fsmonitor, external diff, textconv) — keep those flags in `lib/git/run.js` (`SAFE_GIT`, `SAFE_DIFF`), and run every git command through its `git()`; never call `execFile('git')` elsewhere
+- Panes: the pane area belongs to the main session only (`getSession` = the active session); a new pane registers in `public/js/panes/panes.js` with `{ id, title, icon, render(body, session) }`, and `render` runs on every refresh, so
+  keep its own state (open sections, cached fetches, in-flight requests) outside the DOM it rebuilds. The host re-attaches section nodes only when the open set changes (moving a node drops focus). The saved open set
+  (`claude-gui.panes-open`) is kept when there is no room, and a toggle without room must not change it. `panes/` (side panes of the chat) is not `panels/` (the settings modal's pages). The rail's git summary is cached per
+  session and refetched only when `session.status` changes, on switch or by hand: do not add a timer. The `refresh()` guard in app.js protects only focused text fields; do not widen it to any focused element
+- The Changes card counts the folder's uncommitted changes (git), not only what this session wrote: that is stated in its tooltip and the spec on purpose; untracked files are counted as files, not lines
 - The GUI server's only network call is GET {ANTHROPIC_BASE_URL}/v1/models, used by the model list (lib/model-list.js, 4 s timeout, cached 5 min)
   and the health dot (lib/model-health.js, cached 15 s, polled every 60 s per visible tab), only for a custom base URL; never ping the cloud.
   Health = 2xx only (any other answer is red, no `/api/tags` fallback). Everything else outside the machine happens through Claude Code
