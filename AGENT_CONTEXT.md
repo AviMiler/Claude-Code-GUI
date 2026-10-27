@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding the background tasks panel (on top of /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding full-text session search (on top of the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -18,7 +18,8 @@ Built for a corporate Windows machine without another terminal.
   17 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
   settings files, status/doctor, appearance, help, notifications, background tasks), light/dark theme, persistence to `data/sessions.json`,
   user-chosen notifications (desktop, sound, tab title), `/btw` side questions (not in thread, not persisted),
-  background tasks panel `/tasks` (live status, stop, output; topbar chip; in memory only)
+  background tasks panel `/tasks` (live status, stop, output; topbar chip; in memory only),
+  full-text search across all sessions in the sidebar (snippets, match bar in the thread)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -54,6 +55,9 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Full-text session search (feature 4 of 12): the sidebar search matches message text (user, Claude, shell commands; niqqud and case ignored),
+  shows snippet + count, opens the session with a "k מתוך N" bar (▲ ▼, Esc). Frontend only: public/js/session-search.js, search-hits.js, `data-item-index`
+  on thread items. Also moved the chip dropdowns from app.js to chip-menus.js (app.js still 175 lines, over budget). Verified in Chromium against the fake CLI.
 - 2026-10-27 — Background tasks panel `/tasks` (feature 3 of 12): live list of the session's shell/subagent/Monitor tasks with stop and output,
   topbar chip "N ברקע". lib/task-tracker.js (memory only), `readTaskEvent` in event-translator, hooks in session-runtime / session-service,
   public/js/panels/panel-tasks.js. Idle shutdown now waits for running tasks; a closed CLI turns running tasks into "killed".

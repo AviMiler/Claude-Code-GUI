@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-27 (full-text session search)
+- Added: the sidebar search also matches message text (user messages, Claude's answers, shell commands), case-insensitive and ignoring niqqud; content matches show a snippet and "· N התאמות"; opening one shows a bar in the thread ("k מתוך N", ▲ ▼, Esc) and outlines the matching messages (public/js/session-search.js, search-hits.js, sidebar.js, thread.js `data-item-index`, events.js, app.js, css/layout.css). Why: user request (feature 4 of 12). Frontend only; newest 3000 items per session scanned, count capped at 99
+- Changed: Enter in the sidebar search box opens the first result; search is debounced 150 ms
+- Refactor: the composer chips' dropdowns (permission mode, model + effort, "+" menu) moved verbatim from app.js to the new public/js/chip-menus.js (app.js 209 -> 175 lines)
+- Debt: public/js/app.js (175 lines) is still over the ~150-line budget, next to lib/session-service.js and lib/session-runtime.js
+- Known nits: the hit outline wraps the whole item; the search re-runs on every refresh while a query is active
+
 ## 2026-10-27 (background tasks)
 - Added: "משימות רקע" panel (`/tasks`, `/bashes`) with live status, progress, output tail and stop for the session's background tasks, plus a topbar chip "N ברקע" (lib/task-tracker.js, readTaskEvent in event-translator.js, session-runtime.js, session-service.js, catalog-service.js, public/js/panels/panel-tasks.js, chrome.js, events.js, actions.js, commands-data.js). Why: user request (feature 3 of 12)
 - Changed: idle shutdown no longer retires a CLI process while it has running background tasks (a long job would otherwise be killed after `idleMinutes`); when a CLI process ends, its running tasks are shown as "killed"

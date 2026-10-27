@@ -126,7 +126,11 @@ export function createThread({ scroller, messages }) {
     renderWorking();
   }
 
-  function append(item) {
+  /** Rendered items carry their index in session.items, so a search can find and highlight them (search-hits.js). */
+  const tag = (node, index) => { if (node && index !== undefined) node.dataset.itemIndex = String(index); return node; };
+
+  /** @param {object} item @param {number} [index] position in session.items */
+  function append(item, index) {
     if (working && item.kind !== 'user') heard = true;
     if (!item.parent && item.kind === 'tool') activeTool = item;
     else if (!item.parent && (item.kind === 'tool-result' || item.kind === 'text')) activeTool = null;
@@ -136,7 +140,7 @@ export function createThread({ scroller, messages }) {
       if (!item.parent && (item.kind === 'text' || item.kind === 'thinking')) dropLive(item.kind);
       // Thinking that streamed but arrives empty (redacted/summarized) never gets its own item; the next step ends it.
       if (!item.parent && (item.kind === 'text' || item.kind === 'tool')) dropLive('thinking');
-      appendItem(messages, item)?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
+      tag(appendItem(messages, item), index)?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
       // Live elements and the working line always stay after the newest item.
       [live.thinking, live.text, working].filter(Boolean).forEach(node => messages.append(node));
     });
@@ -166,7 +170,7 @@ export function createThread({ scroller, messages }) {
   function show(session) {
     setRunning(false);
     messages.replaceChildren();
-    for (const item of session?.items || []) appendItem(messages, item);
+    (session?.items || []).forEach((item, index) => tag(appendItem(messages, item), index));
     if (session?.status === 'running') {
       activeTool = openTool(session.items);
       setRunning(true, { startedAt: session.turnStartedAt || Date.now(), waiting: Boolean(session.pendingPermissions?.length) });

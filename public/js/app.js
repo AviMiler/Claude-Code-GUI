@@ -1,6 +1,5 @@
 /** Frontend entry point: receives live events, keeps the views in sync, and wires the composer and menus. */
 import { api, subscribe } from './api.js';
-import { h } from './dom.js';
 import { state, activeSession, currentScope, getCatalog, getCommands, getModels, peekModels } from './state.js';
 import { createThread } from './thread.js';
 import { createComposer } from './composer.js';
@@ -10,12 +9,12 @@ import { renderPromptCards } from './prompt-cards.js';
 import { createActions } from './actions.js';
 import { createCommandRunner } from './command-runner.js';
 import { findCommand, parseSlash } from './command-catalog.js';
-import { showDropdown } from './popover.js';
-import { availableModes, EFFORT_LEVELS } from './modes.js';
-import { applyTheme, ask } from './ui.js';
+import { applyTheme } from './ui.js';
+import { createChipMenus } from './chip-menus.js';
 import { handleEvent } from './events.js';
 import { renderPageStatus, watchPageVisibility } from './page-status.js';
 import { createSideQuestions } from './side-question.js';
+import { createSearchHits } from './search-hits.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -25,6 +24,7 @@ const els = {
 };
 const thread = createThread({ scroller: els.scroller, messages: els.messages });
 const sideQuestions = createSideQuestions(els.composerArea);
+const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => sideQuestions.ask(sessionId, question) });
@@ -46,40 +46,8 @@ const composer = createComposer(els.composerArea, {
   onCycleMode: () => actions.cycleMode(),
   onContext: () => actions.openPanel('usage'),
   getHistory: () => (activeSession()?.items || []).filter(item => item.kind === 'user').map(item => item.text),
-  onModeMenu: anchor => {
-    const current = activeSession()?.mode || state.draft.mode;
-    showDropdown(anchor, [{ section: 'מצב הרשאות · Shift+Tab' }, ...availableModes(state.capabilities.permissionModes).map(mode => ({
-      icon: mode.icon, title: mode.label, desc: mode.description, checked: mode.value === current, onSelect: () => actions.setMode(mode.value),
-    })), { icon: 'shield', title: 'כללי הרשאה…', hint: '/permissions', onSelect: () => actions.openPanel('permissions') }]);
-  },
   onTyping: () => warmUp(),
-  onModelMenu: async anchor => {
-    const settings = activeSession() || state.draft;
-    const { models, current: systemCurrent } = peekModels() || await getModels();
-    const current = settings.model || state.config.model || systemCurrent || 'default';
-    const effort = h('div', { class: 'segmented' }, EFFORT_LEVELS.slice(0, 5).map(level => h('button', {
-      type: 'button', class: (settings.effort || '') === level.value ? 'on' : '',
-      onClick: () => { actions.updateSettings({ effort: level.value }); document.querySelector('.popover')?.remove(); },
-    }, level.label)));
-    showDropdown(anchor, [{ section: 'מודל' }, ...models.map(model => ({
-      icon: 'cpu', title: model.displayName || model.value, desc: model.description, checked: model.value === current,
-      onSelect: () => actions.updateSettings({ model: model.value === 'default' ? '' : model.value }),
-    })), { icon: 'pencil', title: 'מודל מותאם…', onSelect: async () => {
-      const value = await ask({ title: 'שם מודל', value: settings.model || '', placeholder: 'qwen3.8:27b / claude-sonnet-5-5', confirmLabel: 'שימוש' });
-      if (value !== null) actions.updateSettings({ model: value });
-    } }, { section: 'מאמץ (effort)' }, { node: effort },
-    { icon: 'sliders', title: 'סגנון, סוכן ותיקיות…', hint: '/model', onSelect: () => actions.openPanel('model') }]);
-  },
-  onPlusMenu: anchor => showDropdown(anchor, [
-    { icon: 'paperclip', title: 'העלאת קבצים ותמונות', desc: 'כל סוג קובץ. אפשר גם לגרור לתיבה או להדביק (Ctrl+V)', onSelect: () => composer.pickFiles() },
-    { icon: 'at', title: 'הפניה לקובץ או תיקייה מהפרויקט', hint: '@', onSelect: () => composer.insert('@') },
-    { icon: 'bot', title: 'הזמנת סוכן', hint: '@agent-', onSelect: () => composer.insert('@agent-') },
-    { icon: 'slash', title: 'פקודות', hint: '/', onSelect: () => composer.insert('/', { replace: !composer.textarea.value }) },
-    { icon: 'sparkles', title: 'Skills', hint: '/skills', onSelect: () => actions.openPanel('skills') },
-    { icon: 'plug', title: 'שרתי MCP', hint: '/mcp', onSelect: () => actions.openPanel('mcp') },
-    { icon: 'folder', title: 'תיקיית עבודה נוספת', hint: '/add-dir', onSelect: () => actions.openPanel('model') },
-    { icon: 'history', title: 'שיחות קודמות', hint: '/resume', onSelect: () => actions.openPanel('resume') },
-  ]),
+  ...createChipMenus({ actions, getComposer: () => composer }),
 });
 
 function modelLabel(settings) {
@@ -112,7 +80,7 @@ function prefetchCatalog() {
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {
   const session = activeSession();
-  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: selectSession });
+  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar });
   // Never rebuild a bar or page the user is typing in (title, folder); it would lose the edit.
   const editing = node => node.contains(document.activeElement) && node.dataset.sessionId === String(session?.id ?? '');
   if (!editing(els.topbar)) renderTopbar(els.topbar, session, {
@@ -142,11 +110,18 @@ watchPageVisibility(refresh);
 
 const ACTIVE_KEY = 'claude-gui.active-session';
 
+/** A sidebar click; a search result also jumps to the matching messages. */
+function openFromSidebar(id, hit) {
+  selectSession(id);
+  if (hit) searchHits.show(hit.indexes, hit.query);
+}
+
 function selectSession(id) {
   state.activeId = state.sessions.has(id) ? id : null;
   try { localStorage.setItem(ACTIVE_KEY, state.activeId || ''); } catch { /* storage may be blocked */ }
   state.unread.delete(id);
   sideQuestions.sessionChanged(state.activeId);
+  searchHits.clear();
   thread.show(activeSession());
   refresh();
   composer.focus();
@@ -181,7 +156,12 @@ byId('new-session').addEventListener('click', () => selectSession(null));
 byId('open-settings').addEventListener('click', () => actions.openPanel('model'));
 byId('theme-toggle').addEventListener('click', () => actions.openPanel('appearance'));
 byId('collapse-sidebar').addEventListener('click', toggleSidebar);
-els.search.addEventListener('input', refresh);
+// Searching reads every conversation; wait for a pause in typing. Enter opens the first result.
+let searchTimer = null;
+els.search.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 150); });
+els.search.addEventListener('keydown', event => {
+  if (event.key === 'Enter') { event.preventDefault(); clearTimeout(searchTimer); refresh(); els.list.querySelector('.session-row')?.click(); }
+});
 document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => actions.openPanel(button.dataset.panel)));
 document.addEventListener('keydown', event => {
   const mod = event.ctrlKey || event.metaKey;

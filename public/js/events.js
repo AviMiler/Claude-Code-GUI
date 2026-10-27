@@ -48,7 +48,7 @@ export function handleEvent(event, view) {
       if (!session) return undefined;
       session.items.push(event.item);
       session.updatedAt = Date.now();
-      if (isActive) view.thread.append(event.item);
+      if (isActive) view.thread.append(event.item, session.items.length - 1);
       if (event.item.kind === 'divider' || event.item.kind === 'command-output') view.fetchContext(event.sessionId);
       break;
     case 'delta':

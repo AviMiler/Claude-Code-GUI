@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (background tasks)_
+_Last updated: 2026-10-27 (session search)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -83,6 +83,7 @@ sessions are kept in memory and saved to `data/sessions.json`.
 | Model list from the model server | The CLI's aliases all point to one local model behind a custom base URL; only real models are worth a menu |
 | `/btw` on its own route, not in the `/control` whitelist | `side_question` calls the model (tokens) and needs a long timeout; the generic control routes are documented as no-token with short timeouts. See DECISIONS.md |
 | Background tasks in memory, idle shutdown blocked while they run | Tasks live inside the CLI process, so persisting them would show ghosts; retiring the process would kill a long job after `idleMinutes` |
+| Session search in the browser, no server index | The browser already holds every item (`/api/state` + SSE); no route or index to keep in sync. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -143,3 +144,6 @@ the right to run commands as that user.
 - Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the
   per-browser preferences (localStorage) and fires desktop / sound; `page-status.js` owns the tab title count and brand state. Frontend only
 - Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`
+- Session search: `session-search.js` (pure: sessions + query -> hits with snippets) feeds `sidebar.js`; `search-hits.js` shows the bar and
+  outlines in the open thread. Every rendered item node in `thread.js` carries `data-item-index` (its index in `session.items`; `events.js`
+  passes it for live items), which is how a hit finds its message. Frontend only

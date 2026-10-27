@@ -36,3 +36,11 @@ The user sees and controls what Claude runs in the background (shell commands, s
 - Stop and output use the CLI's `stop_task` / `get_task_output` control requests (no model turn, no tokens), in the generic `/control` whitelist (stop as a write, output as a read).
 - A Claude Code version without these events or requests (2.1.246 is untested) shows a neutral "not available in this version" note, not an error.
 - Server: SSE `{type:'tasks', sessionId, tasks}`; tasks are also in the session meta. Code: `lib/task-tracker.js`, `readTaskEvent` in `lib/event-translator.js`, hooks in `lib/session-runtime.js` and `lib/session-service.js`, `public/js/panels/panel-tasks.js`, chip in `public/js/chrome.js`, `events.js`.
+
+## Full-text session search (confirmed permanent, 2026-10-27)
+The sidebar search ("חיפוש סשנים") finds sessions by the text of their conversations, not only by name and folder. Frontend only, no server changes: the browser already holds every session's items.
+- Matches the session name and folder (as before) and the text of messages: user messages, Claude's answers (including nested subagent text) and shell commands (`input.command` of tool items). Not searched: thinking, tool results, notices, command output. `/btw` answers are never in the items, so they are not searchable.
+- Case-insensitive and ignores Hebrew points (niqqud). Runs on input with a 150 ms debounce. Only the newest 3000 items of each session are scanned; the match count per session is capped at 99 (shown "99+").
+- A session that matches by content shows under its row a 2-line snippet around the first match with the match marked, and "· N התאמות". Nothing found: "אין סשנים או הודעות תואמים". Enter in the search box opens the first result.
+- Opening a result opens the session with a sticky bar at the top of the thread: "k מתוך N", previous/next (▲ ▼), close. The matching messages are outlined and the current one is scrolled to. Enter / Shift+Enter / Esc work while the focus is in the bar. Selecting another session clears the bar.
+- Code: `public/js/session-search.js` (pure search), `public/js/search-hits.js` (bar and highlights), `sidebar.js` (results), `thread.js` (`data-item-index` on every item node), `events.js`, `app.js`, `css/layout.css`.
