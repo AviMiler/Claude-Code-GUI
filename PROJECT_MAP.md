@@ -158,6 +158,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/risk.js` | Confirmations before significant actions (`guardedApi`, risky modes, account/cloud commands). |
 | `public/js/dom.js` | `h()` element helper and small utilities. |
 | `public/js/icons.js` | Inline SVG icons (incl. `bell`, `pin`, `columns`, `panel-right`, `archive`); `spark` is Claude's mark with one path per ray (`--i`) for animations.css. |
+| `public/js/crab.js` | The animated crab mascot: `crab()` builds it, `setCrabState()` sets its state and rolls a random behavior (`data-b`); used by the sidebar brand, the welcome page and the working line. |
 | `public/js/modes.js` | Permission modes and effort levels. |
 | `public/js/commands-data.js` | Built-in slash commands of 2.1.308, Hebrew text, where each runs. |
 | `public/js/command-catalog.js` | Merge with the live CLI catalog, grouping, filtering, parsing. |

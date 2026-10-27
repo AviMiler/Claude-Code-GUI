@@ -1,16 +1,19 @@
-/** Page-wide status: the brand spark (busy / waiting) and the tab title with the count of sessions that need the user. */
+/** Page-wide status: the brand crab (busy / waiting) and the tab title with the count of sessions that need the user. */
 import { state, activeSession } from './state.js';
 import { notifyPreferences } from './notify.js';
+import { setCrabState } from './crab.js';
 
 /**
- * Updates the brand mark and the tab title from all sessions.
- * @param {HTMLElement} brand the sidebar's brand element (classes `waiting`, `busy` drive animations.css)
+ * Updates the brand crab and the tab title from all sessions.
+ * @param {HTMLElement} brand the sidebar's brand element (classes `waiting`, `busy` drive animations.css; its `.crab` follows)
  */
 export function renderPageStatus(brand) {
   const sessions = [...state.sessions.values()].filter(item => !item.archived); // archived ones never need the user
   const waiting = sessions.filter(item => item.pendingPermissions?.length).length;
+  const busy = !waiting && sessions.some(item => item.status === 'running');
   brand.classList.toggle('waiting', waiting > 0);
-  brand.classList.toggle('busy', !waiting && sessions.some(item => item.status === 'running'));
+  brand.classList.toggle('busy', busy);
+  setCrabState(brand.querySelector('.crab'), waiting ? 'waiting' : busy ? 'writing' : 'idle');
   // Sessions that need the user: waiting for an answer, or finished with an answer not seen yet.
   const attention = sessions.filter(item => item.pendingPermissions?.length || state.unread.has(item.id)).length;
   const count = notifyPreferences().title ? attention : 0;

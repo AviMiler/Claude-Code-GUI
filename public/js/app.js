@@ -12,6 +12,7 @@ import { findCommand } from './command-catalog.js';
 import { applyTheme, toast } from './ui.js';
 import { handleEvent } from './events.js';
 import { renderPageStatus, watchPageVisibility } from './page-status.js';
+import { crab } from './crab.js';
 import { createSideQuestions } from './side-question.js';
 import { createSearchHits } from './search-hits.js';
 import { enableFileLinks } from './file-viewer.js';
@@ -29,6 +30,7 @@ const els = {
   app: byId('app'), list: byId('session-list'), search: byId('session-search'), topbar: byId('topbar'), scroller: byId('thread'),
   messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'), brand: byId('brand'),
 };
+els.brand.prepend(crab());
 const thread = createThread({ scroller: els.scroller, messages: els.messages, onOpenGit: () => panes.open('changes') });
 const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });

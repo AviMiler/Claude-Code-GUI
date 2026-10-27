@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-27 (livelier crab)
+- Changed: bigger, smoother crab motion: hops with squash and stretch and a ground shadow, sideways walks and dashes, claws that rotate, wave and pinch, rising thought bubbles, twinkling sparks, a dripping sweat drop (css/animations.css, js/crab.js)
+- Added: every state or behavior change plays a short squash-and-pop, the working line's crab slides in, and its text slides in on every state change (css/animations.css, js/crab.js, js/thread.js)
+- Fixed: every new item moved the working line to the end of the thread, which restarted the crab's animation; new items now go above it (js/thread.js)
+- Changed: the end-of-turn moment lasts 2.2 s so the longer done/error moves finish
+- Fixed: the staggered thought dots, sparks and sweat drop no longer show as still pixels before their delay or after a finite run (animation-fill-mode both)
+
+## 2026-10-27 (the crab)
+- Changed: Claude's mark is now an animated pixel crab instead of the sun-shaped spark: sidebar, welcome page (a click or hover plays a move), the working line and the browser-tab icon (public/js/crab.js, css/animations.css, icon.svg)
+- Added: every state has 3 behaviors shown at random (re-rolled on each state change and every 5 s): idle, starting, thinking, writing, tool, waiting, done, error, stopped = 27 in all, with small marks (thought dots, "!", "?", sparks, sweat drop)
+- Changed: the end-of-turn moment lasts 1.8 s instead of 0.9 s so the done/error/stopped behavior can be seen (public/js/thread.js)
+- Removed: the `spark` icon and the ray-based sun animations (public/js/icons.js, css/animations.css, inline SVG in index.html)
+- Housekeeping: `לשליחה.zip` added to .gitignore
+
 ## 2026-10-27 (mid-turn correction)
 - Added: D9 of 16 of the Desktop-parity batch (user decision by AskUserQuestion: "Enter = תיקון מיידי"). While Claude works, Enter (main and split composers) sends a correction straight to the running CLI (`{type:'user', message, uuid}`, no `priority`), which takes it in at its next step; the thread shows it as "תיקון באמצע התור" (pencil, dashed bubble). Alt+Enter keeps the old GUI queue (sent at the turn's end). `POST /messages` takes `delivery: 'correct' | 'queue'`; an absent value means queue, so the Changes pane's comment send and the command runner still queue
 - Added: the turn is held open when a correction still waits at a successful `result` (the CLI runs another turn for it): no notification, no `dispatchNext`, session stays running; a 20 s fallback ends it, a later turn sets the session running again (`onTurnResume`). Stop cancels waiting corrections with `cancel_async_message` and says in a notice which one Claude never saw. `--replay-user-messages` is added when the CLI lists it; without it Enter queues

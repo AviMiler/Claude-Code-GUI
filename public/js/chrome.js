@@ -1,6 +1,7 @@
 /** Top bar of the thread and the welcome page shown before a session exists. */
 import { h, folderName, copyText } from './dom.js';
 import { icon } from './icons.js';
+import { crab } from './crab.js';
 import { showDropdown } from './popover.js';
 import { recentFolders } from './state.js';
 import { toast } from './ui.js';
@@ -105,7 +106,7 @@ export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggesti
   });
   const recents = recentFolders().filter(folder => folder !== input.value);
   container.replaceChildren(...[
-    icon('spark', 'big spark claude-mark'),
+    crab(),
     h('h1', null, `${greeting()}, במה נעבוד היום?`),
     h('p', null, 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
     h('div', { class: 'folder-picker' }, icon('folder'), input, browse),

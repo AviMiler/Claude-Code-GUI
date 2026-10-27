@@ -69,8 +69,6 @@ const PATHS = {
   pin: '<path d="M12 17v5M9 3h6l-1 7 4 3v2H6v-2l4-3z"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   power: '<path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>',
-  // Claude's mark: one path per ray, clockwise from the top (--i), so css/animations.css can move each ray.
-  spark: '<g stroke-width="2.4"><path class="ray" style="--i:0" d="M12 2.6v5.6"/><path class="ray" style="--i:1" d="M18.6 5.4l-4 4"/><path class="ray" style="--i:2" d="M15.8 12h5.6"/><path class="ray" style="--i:3" d="M14.6 14.6l4 4"/><path class="ray" style="--i:4" d="M12 15.8v5.6"/><path class="ray" style="--i:5" d="M9.4 14.6l-4 4"/><path class="ray" style="--i:6" d="M2.6 12h5.6"/><path class="ray" style="--i:7" d="M5.4 5.4l4 4"/></g>',
 };
 
 /**

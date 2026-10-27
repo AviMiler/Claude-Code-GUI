@@ -75,7 +75,6 @@ button.chip:hover { background: var(--surface-2); color: var(--text); }
 .thread { position: relative; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: auto; }
 .thread-column { width: min(var(--column), 100%); margin: 0 auto; padding: 18px 24px 24px; }
 .welcome { display: grid; gap: 18px; justify-items: center; width: min(var(--column), 100%); margin: 0 auto; padding: 14vh 24px 20px; text-align: center; }
-.welcome .spark .icon, .welcome .icon.big { width: 44px; height: 44px; }
 .welcome h1 { margin: 0; font: 400 34px/1.25 var(--font-serif); letter-spacing: -.01em; }
 .welcome p { margin: 0; color: var(--muted); }
 .folder-picker { display: flex; gap: 8px; align-items: center; width: min(560px, 100%); padding: 6px 6px 6px 12px; padding-inline: 12px 6px;
