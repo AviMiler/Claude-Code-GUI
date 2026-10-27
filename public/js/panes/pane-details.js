@@ -10,6 +10,7 @@ import { MODES } from '../modes.js';
 import { toast } from '../ui.js';
 import { renderContextUsage } from '../panels/panel-usage.js';
 import { createSessionFetch } from './session-fetch.js';
+import { projectFolder } from '../worktree/project-folder.js';
 
 // The git summary of the shown session, fetched again when a turn starts or ends, or another session is shown.
 const summaries = createSessionFetch(id => api.gitSummary(id), error => ({ isRepo: false, error: error.message }));
@@ -27,10 +28,11 @@ const branchName = branch => String(branch || '').split('...')[0].replace(/^No c
 function environmentCard(session, summary, modelLabel) {
   const mode = MODES.find(item => item.value === session.mode);
   const row = (label, value, title) => h('div', { class: 'detail-row' }, h('span', null, label), h('span', { dir: 'auto', title: title || null }, value));
-  const folder = h('button', { type: 'button', class: 'link-value', title: `${session.cwd}\n(לחיצה מעתיקה)`,
-    onClick: async () => { await copyText(session.cwd); toast('הנתיב הועתק'); } }, folderName(session.cwd));
+  const copyLink = path => h('button', { type: 'button', class: 'link-value', title: `${path}\n(לחיצה מעתיקה)`,
+    onClick: async () => { await copyText(path); toast('הנתיב הועתק'); } }, folderName(path));
   return card({ title: 'סביבה', iconName: 'monitor', value: 'מקומי' },
-    row('תיקייה', folder),
+    row('תיקייה', copyLink(projectFolder(session))),
+    session.worktree ? row('worktree', copyLink(session.worktree.path)) : null, // the session runs there (worktree/)
     summary?.isRepo ? row('ענף', branchName(summary.branch), summary.branch) : null,
     (session.addDirs || []).length ? row('תיקיות נוספות', String(session.addDirs.length), session.addDirs.join('\n')) : null,
     row('מודל', modelLabel(session)),

@@ -22,7 +22,10 @@ export const api = {
   modelHealth: refresh => request('GET', `/api/model-health${refresh ? '?refresh=1' : ''}`),
   createSession: body => request('POST', '/api/sessions', body),
   updateSession: (id, body) => request('PATCH', `/api/sessions/${id}`, body),
-  deleteSession: id => request('DELETE', `/api/sessions/${id}`),
+  /** removeWorktree: also remove the session's worktree folder (its branch stays). @returns {Promise<{worktreeRemoved:boolean, worktreeError?:string}>} */
+  deleteSession: (id, { removeWorktree = false } = {}) => request('DELETE', `/api/sessions/${id}${removeWorktree ? '?worktree=remove' : ''}`),
+  /** @returns {Promise<{isRepo:boolean, hasCommits?:boolean, branch?:string}>} can this folder get a worktree */
+  probeWorktree: cwd => request('POST', '/api/worktree/probe', { cwd }),
   /** @returns {Promise<{ok:boolean, queued:boolean}>} queued: the session was busy, the message waits in its queue. */
   /** images / files: [{ data, mediaType?, name }] or [{ ref, name }] (see attachments.js forServer). */
   sendMessage: (id, text, images, files) => request('POST', `/api/sessions/${id}/messages`,

@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (D4: one shortcut table in `public/js/shortcuts/` feeds the handler, the Ctrl+/ dialog and the help panel; dropdown placement in `popover.js`; earlier D3: transcript view layer between thread.js and the DOM, a page-wide key listener; earlier D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-27 (D5: a git worktree per session, the first git writes, `lib/session-service.js` split into four modules; earlier D4: one shortcut table in `public/js/shortcuts/` feeds the handler, the Ctrl+/ dialog and the help panel; dropdown placement in `popover.js`; earlier D3: transcript view layer between thread.js and the DOM, a page-wide key listener; earlier D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -10,8 +10,9 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 ## Data Flow
 0. While the user types, `POST /api/warm` starts the CLI ahead of time: the session's own process, or (on the welcome
    page) a spare process with the draft settings that `createSession` adopts when cwd, mode, model and effort match
+   (never for a new session in its own worktree: its folder does not exist yet, so warm-up skips such a folder)
 1. User sends text and attachments -> `POST /api/sessions/:id/messages` `{ text, images?, files? }` (base64 or `{ ref }`)
-2. `session-service` stores the attachments (`lib/images.js` -> `data/images/`, `lib/uploads.js` -> `data/uploads/`),
+2. `session-messages` (behind `session-service`) stores the attachments (`lib/images.js` -> `data/images/`, `lib/uploads.js` -> `data/uploads/`),
    stores a user item with references, marks the session running, calls `session-runtime.sendMessage` with the CLI
    content: image blocks + the text, followed by the paths of attached files
 3. `session-runtime` starts the process if needed (`cli-args` builds the flags from the detected capabilities,
@@ -43,7 +44,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 ## Background tasks
 - `task_started` / `task_progress` / `task_notification` system events are normalized by `readTaskEvent` (event-translator);
   `session-runtime` passes them to the `onTask` hook and keeps `runtime.runningTasks`; `lib/task-tracker.js` holds the tasks
-  per session in memory (never persisted, 50 per session); `session-service` broadcasts SSE `tasks` and puts them in the session meta
+  per session in memory (never persisted, 50 per session); `session-events` broadcasts SSE `tasks` and `session-common` puts them in the session meta
 - When the CLI process ends for any reason, its running tasks become `killed`. Idle shutdown is skipped while a task runs
 - The panel (`panel-tasks.js`) stops a task and reads its output with the no-token control requests `stop_task` / `get_task_output`
   (`/control` whitelist); a CLI without them gives a neutral "not available" note
@@ -91,6 +92,15 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 - One view per `createThread`, so the main thread and the split pane each apply their OWN session's mode; the controls (Ctrl+O, the "עוד" menu section) act on the main thread only. `/focus` stays a separate filter (a body class), which also hides the groups.
   `search-hits.js` calls `reveal.js` to open a hit's closed group or row before scrolling to it
 
+## Worktree per session
+- A session can run in its own git worktree (Claude Code Desktop). `lib/git/worktree.js` `createWorktree` makes `<main checkout>/.claude/worktrees/<YYMMDD-xxxx>` on the new branch `worktree-<YYMMDD-xxxx>` with `git worktree add -b <branch> <path> HEAD`
+  (HEAD of the chosen folder; no fetch, no network). `lib/git/worktree-paths.js` finds the main checkout (first entry of `worktree list --porcelain`, so never a linked worktree, never bare) and holds the shared helpers; `lib/git/worktree-remove.js` removes one. `probeWorktree` answers the welcome page's switch
+- Flow: the switch (`public/js/worktree/worktree-toggle.js`, per browser) -> `POST /api/worktree/probe` -> on the first message `createFromDraft` (`session-actions.js`) sends `POST /api/sessions` with `worktree: true` -> `session-service` `startSession` creates the worktree, then the session with `cwd` = the worktree (or the same subfolder in it) and
+  `session.worktree = { path, branch, root, source }`. Any failure throws before a session exists. `createSession` (import, fork) is synchronous and takes `worktree` only from the server itself (a fork copies the source's)
+- Delete: `confirmWorktreeRemoval` (`worktree/worktree-delete.js`) asks the second question, `DELETE /api/sessions/:id?worktree=remove` -> `deleteSession(id, { removeWorktree })` deletes the session first, then removes the stored path (checks below). D6 (archive) reuses `removeWorktree`
+- Where the session's project shows: `public/js/worktree/project-folder.js` (`source`, else `cwd`) is what grouping, search, the folder line, the topbar chip and the rail use, so a worktree session stays in its project's group. The worktree's own path and branch are shown in the branch chip and the rail's "worktree" row
+- Session modules (split in D5 to stay under the size budget): `session-service.js` (create/start/update/delete/fork/warm), `session-common.js` (`toMeta`, `pushItem`, `setStatus`, `requireSession/Mode/Folder`), `session-messages.js` (send, queue, stop; keeps `lastConfig`), `session-events.js` (the `runtime.init` callbacks: items, status, tasks, exits)
+
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
   `GET /v1/models` (Ollama: `/api/tags` as fallback) plus the names in `config.json` (`model`, `ANTHROPIC_*_MODEL`);
@@ -135,6 +145,8 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 | Rail totals from a small `git-summary` route | `/api/git` returns up to 300000 characters of diff; the rail needs only counts and must not fetch that on every turn. See DECISIONS.md |
 | Changes pane has its own route against HEAD, untracked files synthesized in node | `/api/git` has no untracked files and shows staged and unstaged apart; Claude mostly creates new files, so the pane must show them. See DECISIONS.md |
 | Transcript view groups by wrapping the existing rows in the DOM | Rows keep their nodes, ids and listeners, so live tool results, subagent rows, search hits and the file-viewer buttons need no change; re-rendering from items per mode would duplicate that logic. See DECISIONS.md |
+| A worktree per session, made by the GUI with git (not `claude --worktree`), from the local HEAD | `--worktree` needs workspace trust accepted in an interactive terminal; the machine is offline, so no fetch; the GUI knows the path. Hooks run, the branch is never reset or deleted, removal never forces. See DECISIONS.md |
+| A worktree session belongs to the folder it was opened from (`worktree.source`) | Grouping by project, search and the folder line would otherwise split one project into a group per worktree. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -157,10 +169,16 @@ the right to run commands as that user.
   (roots from the server, real paths, separator boundary, case-insensitive on win32/darwin, read from the resolved path, so `..`, symlinks and sibling prefix folders
   cannot escape; `data/sessions.json` -> 403); `cwd` ignored; read-only, 2 MB cap, binary refused; no CORS headers, so other sites cannot read the response; shown as text, never HTML
 - `claude` subcommands: whitelist of commands *and* options (`lib/cli-commands.js`); `mcp add` passes through only after `--`
-- git runs with repository-configured programs disabled (fsmonitor, external diff, textconv); every git command goes through `lib/git/run.js`
+- git runs with repository-configured programs disabled (fsmonitor, external diff, textconv); every git command goes through `lib/git/run.js`. The views are read-only; the one exception is the worktree write (next bullets), where the repository's own hooks and filters DO run
 - `GET /api/sessions/:id/git-summary` (the session details rail): read-only, the folder is the session's own (taken from the server; there is no `cwd` parameter, so it does not widen the accepted cross-site-GET issue that `/api/git?cwd=` already has), unknown session 404, same git flags
 - `GET /api/sessions/:id/diff` (the Changes pane): read-only, the folder is the session's own (from the server; no `cwd` parameter), unknown session 404, same git flags. It returns TEXT OF FILES like `/api/file-view`, but with a wider reach: the whole repository from its top level (a session in a subfolder sees the files outside that folder),
   and the content of untracked files (`.gitignore` honored; paths come from `git ls-files`, so they cannot leave the repository; `lstat` skips symlinks; max 100 files, 512 KB each, 2 MB per request; binary not returned). It does not apply `/api/file-view`'s session-folder and `addDirs` roots, on purpose: the pane shows the repository's changes
+- Worktrees (D5) are the GUI's first git WRITES: `git worktree add -b` (new directory, new branch, a checkout), an append to `<git-common-dir>/info/exclude`, and `git worktree remove` (deletes a directory tree). Rules that keep them contained:
+  - Creating and removing are POST / DELETE routes, so the Origin check applies (`POST /api/sessions`, `DELETE /api/sessions/:id?worktree=remove`, and `POST /api/worktree/probe` for the welcome switch; the probe is a POST on purpose, since it needs a `cwd` and a GET would add to the accepted cross-site-GET issue below). The request carries a folder (checked to exist, then to be in a repository) and booleans only: the worktree name and branch are generated on the server (`YYMMDD-xxxx`, ASCII), never taken from a request, and `execFile` runs git without a shell
+  - The branch is made with `-b`, never `-B`, and only after the name was checked free as a folder and as a branch: an existing branch cannot be reset. The user's actions never delete a branch (only the cleanup of a failed add deletes the branch that add had just created)
+  - Removal takes the path stored on the session (never one from the request) and requires, by real path, that it lies under `<root>/.claude/worktrees` and that `git worktree list` knows it. It never uses `--force`, so uncommitted or untracked changes keep the folder. Files git ignores are deleted with the folder. A symlink at `.claude`, `.claude/worktrees` or the target stops the creation
+  - The repository's own post-checkout hook, `core.hooksPath` hooks and clean/smudge filters (LFS) run during `worktree add`, as with the CLI and a plain `git checkout`; only fsmonitor is off (`SAFE_GIT`). This is a decision, not an oversight: the user asked for the checkout, the config that defines those programs is the user's own, and the project already accepts that a session in a folder loads that folder's Claude hooks without a trust prompt (issue 1 in AGENT_CONTEXT.md). A hook that hangs is cut by the 3-minute limit (`git()` takes `timeoutMs` and closes stdin); a hook that fails makes the add fail and the leftover worktree and branch are removed
+  - Nothing here talks to a remote: no fetch, no push, no pull-request features. The base is the chosen folder's local HEAD
 - `.cmd` claudePath: arguments with `%` are refused (cmd.exe expansion)
 - Markdown from the model or files is escaped before rendering (checked against XSS payloads)
 - Risk confirmations in the browser (`public/js/risk.js`) before: settings changes touching hooks, env, auth helpers,
@@ -172,7 +190,7 @@ the right to run commands as that user.
 | Issue | Impact | Fix when needed |
 |---|---|---|
 | Cross-site GET allowed (simple GETs carry no Origin) | A web page in the same browser can start `claude` probes in any folder (`/api/catalog?cwd=`), run git there, list files and folders (`/api/files`, `/api/folders`), load attachments whose uuid it knows (`/api/images`, `/api/uploads` — uuids are not guessable), make the server ask the model server for its models (`/api/models`, `/api/model-health?refresh=1`), exhaust memory. It cannot read responses. | Startup token required on every /api call; reject `Sec-Fetch-Site: cross-site`; process-starting endpoints as POST |
-| No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders, edit ~/.claude settings, read text files inside any session's folders (`/api/file-view`) and the uncommitted changes and new files of any session's whole repository (`/api/sessions/:id/diff`; a local program could read them directly anyway) | Same startup token |
+| No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders, edit ~/.claude settings, create worktrees and branches in any local repository (`POST /api/sessions` with `worktree: true`) and remove a stored session worktree that has no uncommitted changes (`DELETE /api/sessions/:id?worktree=remove`), read text files inside any session's folders (`/api/file-view`) and the uncommitted changes and new files of any session's whole repository (`/api/sessions/:id/diff`; a local program could read them directly anyway) | Same startup token |
 
 **Outside this computer**
 - The GUI server makes one kind of network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured
@@ -195,7 +213,7 @@ the right to run commands as that user.
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, divider, notice (`stopped: true` when a
   stop ended the turn), error
 - Result item: `{ kind: 'result', isError, subtype, text, durationMs, durationApiMs?, costUsd, turns, usage: { input, output, cacheRead?, cacheWrite? } | null }`; the `?` fields are missing in older saved items
-- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks)
+- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks), `worktree` (`{ path, branch, root, source }` or null, persisted; set only by the server when the session is made, inherited by forks, not settable through PATCH)
 - Sidebar grouping: `session-groups.js` (pure: sessions + mode -> groups: pinned first, then by date or by project folder) feeds `sidebar.js`;
   the mode is per browser in localStorage `claude-gui.sidebar-grouping`. Frontend only
 - User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`

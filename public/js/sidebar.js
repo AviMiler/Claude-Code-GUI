@@ -6,11 +6,18 @@ import { h, folderName } from './dom.js';
 import { icon } from './icons.js';
 import { searchSessions } from './session-search.js';
 import { groupSessions, groupingPreference, saveGrouping } from './session-groups.js';
+import { projectFolder } from './worktree/project-folder.js';
 
 function statusOf(session, unread) {
   if (session.pendingPermissions?.length) return 'waiting';
   if (session.status === 'running') return 'running';
   return unread.has(session.id) ? 'unread' : 'idle';
+}
+
+/** The row's second line: the project folder (not repeated under its own group title) and a worktree session's branch. */
+function placeLine(session, inProjectGroup) {
+  const text = [inProjectGroup ? null : folderName(projectFolder(session)), session.worktree?.branch].filter(Boolean).join(' · ');
+  return text ? h('small', { dir: 'auto' }, text) : null;
 }
 
 const STATUS_TITLES = { waiting: 'ממתין לאישור שלך', running: 'Claude עובד', unread: 'יש תשובה חדשה', idle: '' };
@@ -51,7 +58,7 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
         type: 'button', class: 'session-row', 'aria-current': String(session.id === activeId), title: session.cwd,
         onClick: () => onSelect(session.id, content ? { indexes: content.indexes, query } : undefined),
       }, h('span', { class: `dot ${status}`, title: STATUS_TITLES[status] }),
-      h('span', null, h('strong', { dir: 'auto' }, session.name), grouping === 'project' && !session.pinned ? null : h('small', null, folderName(session.cwd)),
+      h('span', null, h('strong', { dir: 'auto' }, session.name), placeLine(session, grouping === 'project' && !session.pinned),
         content ? snippetOf(content) : null));
       const pin = h('button', { type: 'button', class: `pin-button${session.pinned ? ' pinned' : ''}`,
         title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה', 'aria-pressed': String(Boolean(session.pinned)),

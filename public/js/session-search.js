@@ -1,4 +1,5 @@
 /** Full-text search over every session's messages (user messages, Claude's answers, shell commands) for the sidebar. */
+import { projectFolder } from './worktree/project-folder.js';
 
 const SNIPPET_BEFORE = 28;
 const SNIPPET_AFTER = 70;
@@ -81,7 +82,7 @@ export function searchSessions(sessions, query) {
   const results = new Map();
   if (!needle) return results;
   for (const session of sessions) {
-    const byName = Boolean(findIn(`${session.name} ${session.cwd}`, needle));
+    const byName = Boolean(findIn(`${session.name} ${projectFolder(session)} ${session.worktree?.branch || ''}`, needle));
     const content = searchItems(session.items || [], needle);
     if (byName || content) results.set(session.id, { byName, content });
   }

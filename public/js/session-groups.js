@@ -1,5 +1,6 @@
 /** How the sidebar groups sessions: pinned first, then by date or by project folder (the user's choice, per browser). */
 import { folderName } from './dom.js';
+import { projectFolder } from './worktree/project-folder.js';
 
 const GROUPING_KEY = 'claude-gui.sidebar-grouping';
 const DAY_MS = 86400000;
@@ -45,10 +46,13 @@ function byDate(sessions) {
 }
 
 function byProject(sessions) {
-  const groups = new Map(); // cwd -> group; sessions arrive newest first, so groups are ordered by latest activity
+  // folder -> group; sessions arrive newest first, so groups are ordered by latest activity. A worktree session belongs
+  // to the folder it was opened from (projectFolder), not to its own worktree.
+  const groups = new Map();
   for (const session of sessions) {
-    if (!groups.has(session.cwd)) groups.set(session.cwd, { title: folderName(session.cwd), tooltip: session.cwd, sessions: [] });
-    groups.get(session.cwd).sessions.push(session);
+    const folder = projectFolder(session);
+    if (!groups.has(folder)) groups.set(folder, { title: folderName(folder), tooltip: folder, sessions: [] });
+    groups.get(folder).sessions.push(session);
   }
   const list = [...groups.values()];
   const names = list.map(group => group.title);

@@ -1,6 +1,7 @@
 /** Work done ahead of the user: start Claude Code while a message is typed, and fetch the catalog before a menu opens. */
 import { api } from './api.js';
 import { state, activeSession, currentScope, getCatalog } from './state.js';
+import { worktreeLikely } from './worktree/worktree-toggle.js';
 
 const WARM_REPEAT_MS = 60000;
 const PREFETCH_DELAY_MS = 800;
@@ -11,6 +12,8 @@ let prefetchTimer = null;
 export function warmUp() {
   const session = activeSession();
   if (session?.status === 'running') return;
+  // A new session in its own worktree runs in a folder that does not exist yet: a process warmed here would go unused.
+  if (!session && worktreeLikely(state.draft.cwd || state.config.defaultCwd)) return;
   const { draft } = state;
   const target = session ? { sessionId: session.id }
     : { cwd: draft.cwd || state.config.defaultCwd, mode: draft.mode, model: draft.model, effort: draft.effort };

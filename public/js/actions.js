@@ -1,12 +1,11 @@
 /** What the user can do to sessions (send, stop, clear, fork, rename, settings...) and the context given to panels. */
 import { api } from './api.js';
-import { copyText, downloadText, folderName } from './dom.js';
-import { state, activeSession, currentScope, scopeFolder, getCatalog, getCommands, forgetCatalog, rememberFolder } from './state.js';
+import { state, activeSession, currentScope, scopeFolder, getCatalog, getCommands, forgetCatalog } from './state.js';
 import { availableModes, MODE_CYCLE } from './modes.js';
-import { exportMarkdown } from './render-items.js';
 import { forServer, fromStored } from './attachments.js';
 import { openPanel } from './panels/panel-host.js';
 import { toast, ask } from './ui.js';
+import { createSessionActions } from './session-actions.js';
 import { guardedApi, confirmMode, confirmOutwardCommand, isCancelled, CANCELLED_MESSAGE } from './risk.js';
 
 /**
@@ -22,20 +21,10 @@ export function createActions(view) {
     return toast(error.message, 'error');
   };
 
-  /** Creates a session from the draft settings (folder, mode, model) for a first message. */
-  async function createFromDraft(firstText, attachments = []) {
-    const draft = state.draft;
-    const cwd = draft.cwd || state.config.defaultCwd;
-    const name = firstText && !firstText.startsWith('/') ? firstText.replace(/\s+/g, ' ').slice(0, 48)
-      : attachments.length ? attachments[0].name : folderName(cwd);
-    const session = await api.createSession({ name, cwd, mode: draft.mode, model: draft.model, effort: draft.effort });
-    rememberFolder(session.cwd);
-    state.sessions.set(session.id, session);
-    view.selectSession(session.id);
-    return session;
-  }
+  const { createFromDraft, actions: sessionActions } = createSessionActions(view, report);
 
   const actions = {
+    ...sessionActions,
     insert: (text, options) => view.insert(text, options),
     openPanel: id => openPanel(id, panelContext),
 
@@ -87,54 +76,6 @@ export function createActions(view) {
     resumeQueue() {
       const session = activeSession();
       if (session) api.resumeQueue(session.id).catch(report);
-    },
-    async clear() {
-      const session = activeSession();
-      if (!session) return;
-      await api.clear(session.id);
-      state.context.delete(session.id);
-      toast('שיחה חדשה התחילה. הקודמת זמינה ב"שיחות קודמות".');
-    },
-    async fork() {
-      const session = activeSession();
-      if (!session) return;
-      const fork = await api.fork(session.id);
-      state.sessions.set(fork.id, fork);
-      view.selectSession(fork.id);
-      toast('נוצר ענף חדש של השיחה');
-    },
-    async rename(name) {
-      const session = activeSession();
-      if (!session) return;
-      const newName = name || await ask({ title: 'שינוי שם', value: session.name, confirmLabel: 'שמירה' });
-      if (newName) await api.updateSession(session.id, { name: newName });
-    },
-    /** Pins a session to the top of the sidebar (or unpins it). */
-    setPinned(id, pinned) {
-      api.updateSession(id, { pinned }).catch(report);
-    },
-    async remove() {
-      const session = activeSession();
-      if (!session || !await ask({ title: `למחוק את "${session.name}"?`, text: 'השיחה תימחק מהממשק. ב-Claude Code היא נשארת וניתן לפתוח אותה שוב מ"שיחות קודמות".', confirmLabel: 'מחיקה', danger: true })) return;
-      await api.deleteSession(session.id).catch(report);
-    },
-    exportChat(name) {
-      const session = activeSession();
-      if (!session) return;
-      downloadText(`${(name || session.name).replace(/[\\/:*?"<>|]+/g, '_')}.md`, exportMarkdown(session));
-    },
-    async copyLast(n) {
-      const texts = (activeSession()?.items || []).filter(item => item.kind === 'text' && !item.parent);
-      const item = texts[texts.length - n];
-      if (!item) return toast('אין תשובה להעתקה');
-      await copyText(item.text);
-      return toast('התשובה הועתקה');
-    },
-    async addDir(dir) {
-      const session = activeSession();
-      if (!session) return toast('פתח סשן קודם', 'error');
-      await api.updateSession(session.id, { addDirs: [...(session.addDirs || []), dir] });
-      return toast(`נוספה התיקייה ${dir}`);
     },
     /** Applies to the active session, or to the draft of the next new session. */
     async updateSettings(patch) {

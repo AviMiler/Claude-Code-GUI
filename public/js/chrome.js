@@ -7,6 +7,8 @@ import { toast } from './ui.js';
 import { pickFolder } from './folder-browser.js';
 import { viewModeEntries } from './transcript/view-mode.js';
 import { toggleShortcutsDialog } from './shortcuts/shortcuts-dialog.js';
+import { createWorktreeToggle } from './worktree/worktree-toggle.js';
+import { projectFolder } from './worktree/project-folder.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -43,8 +45,12 @@ export function renderTopbar(bar, session, handlers) {
   // An emptied title keeps the old name (an empty one would open the rename dialog instead).
   title.addEventListener('change', () => { if (title.value.trim()) handlers.onRename(title.value.trim()); else title.value = session.name; });
   title.addEventListener('keydown', event => { if (event.key === 'Enter') title.blur(); });
-  const folder = h('button', { type: 'button', class: 'chip', title: `${session.cwd}\n(לחיצה מעתיקה את הנתיב)`,
-    onClick: async () => { await copyText(session.cwd); toast('הנתיב הועתק'); } }, icon('folder'), h('span', { class: 'label' }, folderName(session.cwd)));
+  const copyChip = (iconName, label, path, title) => h('button', { type: 'button', class: 'chip', title: `${title}\n(לחיצה מעתיקה את הנתיב)`,
+    onClick: async () => { await copyText(path); toast('הנתיב הועתק'); } }, icon(iconName), h('span', { class: 'label', dir: 'auto' }, label));
+  const folder = copyChip('folder', folderName(projectFolder(session)), projectFolder(session), projectFolder(session));
+  // A session in its own worktree (worktree/): its branch beside the project folder, like Desktop.
+  const tree = session.worktree;
+  const branch = tree ? copyChip('branch', tree.branch, tree.path, `ענף ${tree.branch}\nworktree: ${tree.path}`) : null;
   const extra = (session.addDirs || []).length ? h('span', { class: 'chip', title: session.addDirs.join('\n') }, `+${session.addDirs.length} תיקיות`) : null;
   const agent = session.agent ? h('span', { class: 'chip', title: 'הסוכן הראשי של הסשן' }, icon('bot'), session.agent) : null;
   const runningTasks = (session.tasks || []).filter(task => task.status === 'running').length;
@@ -65,7 +71,7 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'help', title: 'קיצורי מקלדת', hint: 'Ctrl+/', onSelect: toggleShortcutsDialog },
     { icon: 'trash', title: 'מחיקת הסשן', onSelect: handlers.onDelete },
   ], { placement: 'bottom' }));
-  bar.replaceChildren(...[toggle, title, folder, extra, agent, tasks, h('span', { class: 'spacer' }),
+  bar.replaceChildren(...[toggle, title, folder, branch, extra, agent, tasks, h('span', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
     h('button', { type: 'button', class: `icon-button${handlers.changesOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.changesOpen),
       title: 'שינויים (Ctrl+Shift+D)', onClick: handlers.onToggleChanges }, icon('diff')),
@@ -82,13 +88,15 @@ export function renderTopbar(bar, session, handlers) {
  */
 export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggestion }) {
   const input = h('input', { value: cwd || defaultCwd, dir: 'ltr', 'aria-label': 'תיקיית עבודה', placeholder: defaultCwd, spellcheck: false });
-  input.addEventListener('change', () => onFolder(input.value.trim()));
+  const worktree = createWorktreeToggle(() => input.value.trim() || defaultCwd);
+  const chooseFolder = folder => { onFolder(folder); worktree.update(); };
+  input.addEventListener('change', () => chooseFolder(input.value.trim()));
   const browse = h('button', { type: 'button', class: 'btn small', title: 'עיון בתיקיות המחשב' }, icon('folder'), 'עיון…');
   browse.addEventListener('click', async () => {
     const folder = await pickFolder(input.value.trim() || defaultCwd);
     if (!folder) return;
     input.value = folder;
-    onFolder(folder);
+    chooseFolder(folder);
   });
   const recents = recentFolders().filter(folder => folder !== input.value);
   container.replaceChildren(...[
@@ -96,8 +104,9 @@ export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggesti
     h('h1', null, `${greeting()}, במה נעבוד היום?`),
     h('p', null, 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
     h('div', { class: 'folder-picker' }, icon('folder'), input, browse),
+    worktree.node,
     recents.length ? h('div', { class: 'recent-folders' }, recents.map(folder => h('button', {
-      type: 'button', class: 'chip', title: folder, onClick: () => { input.value = folder; onFolder(folder); },
+      type: 'button', class: 'chip', title: folder, onClick: () => { input.value = folder; chooseFolder(folder); },
     }, icon('history'), h('span', { class: 'label' }, folderName(folder))))) : null,
     h('div', { class: 'suggestions' }, SUGGESTIONS.map(item => h('button', {
       type: 'button', class: 'suggestion', onClick: () => onSuggestion(item.command),
