@@ -51,8 +51,8 @@ export function renderUnplacedComments(comments, title, onRemove) {
     h('button', { type: 'button', class: 'icon-button', title: 'מחיקה', onClick: () => onRemove(comment.id) }, icon('x')))));
 }
 
-function fileHead(file, commentCount, collapsed, onToggle) {
-  return h('button', { type: 'button', class: 'diff-file-head', 'aria-expanded': String(!collapsed),
+function fileHead(file, commentCount, collapsed, onToggle, fullPath) {
+  return h('button', { type: 'button', class: 'diff-file-head', 'aria-expanded': String(!collapsed), dataset: { filePath: fullPath },
     title: file.oldPath ? `${file.oldPath} → ${file.path}` : file.path, onClick: onToggle },
   icon('chevron-down', collapsed ? 'collapsed' : ''), h('span', { class: `diff-status ${file.status}` }, STATUS_LABELS[file.status]),
   h('span', { class: 'diff-path', dir: 'ltr' }, file.path),
@@ -67,8 +67,8 @@ function fileHead(file, commentCount, collapsed, onToggle) {
  *   onRemove:(id:number)=>void}} options comments: this file's comments; box: the open comment box, if on this file
  * @returns {HTMLElement}
  */
-export function renderDiffFile(file, { comments, box, collapsed, onToggle, onComment, onInput, onAdd, onCancel, onRemove }) {
-  const head = fileHead(file, comments.length, collapsed, onToggle);
+export function renderDiffFile(file, { comments, box, collapsed, fullPath, onToggle, onComment, onInput, onAdd, onCancel, onRemove }) {
+  const head = fileHead(file, comments.length, collapsed, onToggle, fullPath);
   if (collapsed) return h('section', { class: 'diff-file' }, head);
   const placed = new Set();
   const rows = [];

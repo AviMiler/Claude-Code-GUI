@@ -1,5 +1,30 @@
 # Decisions
 
+## [2026-10-27] The row's "⋯" menu replaces D6's separate archive button
+**Decision:** A sidebar row has the pin and a "⋯" button (right-click opens the same menu); "העברה לארכיון" is an item of that menu and the separate archive button of D6 is gone (`archiveButton` became `restoreButton`, used for archived rows only, beside their "⋯").
+**Alternatives considered:** (1) Keep the archive button and add the menu. (2) Replace the restore button too. (3) Ask the user first.
+**Why:** The Desktop docs page (as the main agent read it) says "hover over it in the sidebar, open its menu, and select Archive", and the standing rule is "as close as possible to the original". Archiving stays one hover away, so no capability changed, only one extra click; I judged it a parity correction of D6's interim button, not a clash, and decided without asking (the user should hear it). The restore button stays because restoring is the one thing an archive row is for. One-place revert if the user prefers the button.
+
+## [2026-10-27] Menu actions on a row act by id and never select the row first
+**Decision:** `rename(name, id)`, `fork(id)` and `remove(id)` in `session-actions.js` take a session id and default to the open session (so `/rename <name>` and the "עוד" menu are unchanged); `archive(id)` and `setPinned(id)` already did. A fork still selects the new fork.
+**Alternatives considered:** Select the row, then act on the open session.
+**Why:** Selecting changes the main pane, clears the unread mark and can disturb the split pane, all for an action on a different row; a delete or rename of another row should leave the open conversation alone. The worktree question of delete already takes a session object, so nothing else needed to change.
+
+## [2026-10-27] `/diff` returns `root`, so a Changes pane file has a correct full path
+**Decision:** `sessionDiff` adds `root` (the repository's top level, which it already computes) to its answer; a file header's `data-file-path` is `joinPath(root, path)`.
+**Alternatives considered:** (1) Resolve repo-relative paths against `session.cwd`. (2) Offer only "copy path" for Changes pane files.
+**Why:** The pane diffs the whole repository from its top level, so for a session started in a subfolder `cwd` + the path is a wrong file (and the viewer, and an `@` reference, would point at it). `root` is additive and read-only. The cost: a small server change in a feature that was frontend-only, noted in the spec.
+
+## [2026-10-27] The context menu is built on `showDropdown`; keyboard opening is the browser's own `contextmenu`
+**Decision:** `context-menu/menu.js` opens `showDropdown` with a 0x0 fixed anchor at the pointer (at the focused element when the event came from the keyboard), clamps the menu vertically itself, adds its own arrow/Enter/Home/End/Esc/Tab handling and returns focus on close. Shift+F10 and the ContextMenu key need no handler of ours; the table gets one documentation-only row. A text selection keeps the browser's menu.
+**Alternatives considered:** (1) Extend `popover.js` with a point anchor. (2) A new menu component. (3) Bind Shift+F10 ourselves.
+**Why:** `popover.js` affects every dropdown (it was rewritten in D4) and is near the size budget, `showDropdown` already gives Esc and outside-click closing, and `showDropdown` has no keyboard navigation of its own, which a keyboard-opened menu needs. The browser fires `contextmenu` for both keys, so a second path would only duplicate it. The cost: the menu's keyboard code lives in the new folder rather than in the shared popover.
+
+## [2026-10-27] Not built in D7: "show in the Changes pane" and menus on the rail's folder rows
+**Decision:** The file menu has no "הצגה בחלונית השינויים", and the details rail's folder and worktree rows get no menu.
+**Alternatives considered:** Build both, as first proposed.
+**Why:** The first needs a pane API to reveal and expand a file and an async check of a possibly stale diff, with no Desktop evidence, while the changed-files card already has "כל השינויים". The rail rows copy their path on a click, and "open in viewer" and the Changes item do not fit a folder, leaving a one-item menu; the session menu has "העתקת נתיב התיקייה" instead.
+
 ## [2026-10-27] Archiving removes the session's clean worktree and restoring checks it out again (user decision, like Desktop)
 **Decision:** `archiveSession` (`lib/session-archive.js`) removes the stored worktree folder with `removeWorktree` (never `--force`, the branch stays) unless another session that is not archived (a fork) works in the same path. Uncommitted or untracked changes keep the folder and the toast gives the reason. `unarchiveSession` first calls `restoreWorktree` (`lib/git/worktree.js`): after a `worktree prune`, `git worktree add <path> <branch>` at the SAME path from the session's own branch; a branch that is gone, or any git failure, answers HTTP 400 and the session stays archived. There is no question on archive.
 **Alternatives considered:** (1) Keep the worktree on archive and remove it only on delete (my Stage 1 proposal, and the user's first design: "restoring needs the folder"). (2) Desktop's "Archive anyway", which discards uncommitted changes. (3) Ask the D5 second question ("להסיר גם את ה-worktree?") on every archive. (4) Delete the branch as well.

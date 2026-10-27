@@ -20,6 +20,7 @@ export const SHORTCUTS = [
   { keys: 'Ctrl+B', label: 'הצגת/הסתרת הסרגל', group: 'general', action: 'toggleSidebar', code: 'KeyB' },
   { keys: 'Ctrl+,', label: 'הגדרות', group: 'general', action: 'settings', code: 'Comma' },
   { keys: 'Ctrl+/', label: 'קיצורי מקלדת', group: 'general', action: 'shortcuts', code: 'Slash' },
+  { keys: 'Shift+F10', label: 'תפריט הקשר של סשן או קובץ (גם קליק ימני)', group: 'general' },
   { keys: 'Ctrl+O', label: 'החלפת תצוגת התמליל (רגילה, חשיבה, מפורטת)', group: 'conversation', action: 'cycleView', code: 'KeyO' },
   { keys: 'Esc', label: 'עצירת Claude (או סגירת תפריט)', group: 'conversation' },
   { keys: 'Ctrl+Shift+D', label: 'חלונית השינויים', group: 'panes', action: 'toggleChanges', code: 'KeyD', shift: true },

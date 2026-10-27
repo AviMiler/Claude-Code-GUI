@@ -1,0 +1,7 @@
+/* Context menus (js/context-menu/): the invisible anchor at the pointer, destructive items, the row's "⋯" button. */
+.context-anchor { position: fixed; width: 0; height: 0; pointer-events: none; }
+.popover .menu-item.danger, .popover .menu-item.danger .icon { color: var(--danger); }
+.popover .menu-item:focus-visible { outline: none; background: var(--surface-2); }
+/* A row: pin at the edge and "⋯" beside it; an archived row (no pin): "⋯" at the edge, restore beside it. */
+.session-item:not(:has(.pin-button)) .row-action.more { inset-inline-end: 6px; }
+.session-item:not(:has(.pin-button)) .row-action.restore { inset-inline-end: 30px; }

@@ -99,6 +99,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     const open = app.classList.contains('split');
     if (!open) return;
     const current = session();
+    if (current) pane.dataset.splitSession = current.id; else delete pane.dataset.splitSession; // context-menu/file-menu.js
     title.replaceChildren(icon('message'), h('span', { dir: 'auto' }, current ? current.name : 'בחירת סשן…'), icon('chevron-down'));
     empty.hidden = Boolean(current);
     scroller.hidden = !current;
@@ -133,6 +134,12 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     toggle() {
       if (!app.classList.contains('split') && NARROW.matches) return toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
       return setOpen(!app.classList.contains('split'));
+    },
+    /** Shows a session in the pane, opening the split first (a sidebar row's menu). */
+    open(id) {
+      if (!app.classList.contains('split') && NARROW.matches) return toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
+      if (!app.classList.contains('split')) setOpen(true);
+      return choose(id);
     },
     refresh,
     /** The pane's thread when it shows this session (events.js sends it the session's live updates). */

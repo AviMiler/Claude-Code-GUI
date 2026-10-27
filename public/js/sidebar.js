@@ -7,7 +7,8 @@ import { icon } from './icons.js';
 import { searchSessions } from './session-search.js';
 import { groupSessions, groupingPreference, saveGrouping } from './session-groups.js';
 import { projectFolder } from './worktree/project-folder.js';
-import { showingArchive, sessionsForList, archiveSwitch, archiveButton } from './archive/archive-list.js';
+import { showingArchive, sessionsForList, archiveSwitch, restoreButton } from './archive/archive-list.js';
+import { sessionMenuButton, enableSessionMenus } from './context-menu/session-menu.js';
 
 function statusOf(session, unread) {
   if (session.pendingPermissions?.length) return 'waiting';
@@ -67,7 +68,7 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
       const pin = archive ? null : h('button', { type: 'button', class: `pin-button${session.pinned ? ' pinned' : ''}`,
         title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה', 'aria-pressed': String(Boolean(session.pinned)),
         onClick: () => actions.setPinned(session.id, !session.pinned) }, icon('pin'));
-      nodes.push(h('div', { class: 'session-item' }, row, archiveButton(session, actions), pin));
+      nodes.push(h('div', { class: 'session-item', dataset: { sessionId: session.id } }, row, sessionMenuButton(session), restoreButton(session, actions), pin));
     }
   }
   if (!visible.length) {
@@ -75,4 +76,5 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
   }
   nodes.push(archiveSwitch([...sessions.values()].filter(session => session.archived).length, onRegroup));
   container.replaceChildren(...nodes.filter(Boolean));
+  enableSessionMenus(container, { sessions, activeId, actions, onSelect }); // right click / Shift+F10 on a row
 }

@@ -9,7 +9,7 @@ import { confirmWorktreeRemoval, reportWorktreeRemoval } from './worktree/worktr
 import { projectFolder } from './worktree/project-folder.js';
 
 /**
- * @param {{selectSession:(id:string|null)=>void}} view
+ * @param {{selectSession:(id:string|null)=>void, openInSplit:(id:string)=>void}} view
  * @param {(error:Error)=>void} report shows an error as a toast
  * @returns {{createFromDraft:(firstText:string, attachments?:object[])=>Promise<object>, actions:object}} actions: spread
  *   into actions.js's object
@@ -39,8 +39,8 @@ export function createSessionActions(view, report) {
       state.context.delete(session.id);
       toast('שיחה חדשה התחילה. הקודמת זמינה ב"שיחות קודמות".');
     },
-    async fork() {
-      const session = activeSession();
+    async fork(id = state.activeId) {
+      const session = state.sessions.get(id);
       if (!session) return;
       const fork = await api.fork(session.id).catch(report);
       if (!fork) return;
@@ -48,8 +48,9 @@ export function createSessionActions(view, report) {
       view.selectSession(fork.id);
       toast('נוצר ענף חדש של השיחה');
     },
-    async rename(name) {
-      const session = activeSession();
+    /** @param {string|null} [name] asked for when missing @param {string} [id] the open session by default (a row menu passes its own) */
+    async rename(name, id = state.activeId) {
+      const session = state.sessions.get(id);
       if (!session) return;
       const newName = name || await ask({ title: 'שינוי שם', value: session.name, confirmLabel: 'שמירה' });
       if (newName) await api.updateSession(session.id, { name: newName });
@@ -58,9 +59,9 @@ export function createSessionActions(view, report) {
     setPinned(id, pinned) {
       api.updateSession(id, { pinned }).catch(report);
     },
-    /** Deletes the active session; one in a worktree is also asked about its worktree folder. */
-    async remove() {
-      const session = activeSession();
+    /** Deletes a session (the open one by default); one in a worktree is also asked about its worktree folder. */
+    async remove(id = state.activeId) {
+      const session = state.sessions.get(id);
       if (!session || !await ask({ title: `למחוק את "${session.name}"?`, text: 'השיחה תימחק מהממשק. ב-Claude Code היא נשארת וניתן לפתוח אותה שוב מ"שיחות קודמות".', confirmLabel: 'מחיקה', danger: true })) return;
       const removeWorktree = await confirmWorktreeRemoval(session);
       const result = await api.deleteSession(session.id, { removeWorktree }).catch(report);
@@ -78,6 +79,8 @@ export function createSessionActions(view, report) {
       state.unread.delete(id);
       toast(result.worktreeError ? `הסשן הועבר לארכיון. ה-worktree נשאר: ${result.worktreeError}` : 'הסשן הועבר לארכיון');
     },
+    /** Shows a session in the split pane (a sidebar row's menu). */
+    openInSplit: id => view.openInSplit(id),
     /** Brings an archived session back to the list (its worktree is checked out again). */
     async unarchive(id = state.activeId) {
       if (id && await api.unarchive(id).catch(report)) toast('הסשן הוחזר מהארכיון');

@@ -10,6 +10,7 @@ import { changesToolbar, changesNotes, changesFooter } from './changes-chrome.js
 import { commentsOf, addComment, removeComment, clearComments, composeMessage } from './diff-comments.js';
 import { createSessionFetch } from './session-fetch.js';
 import { notRepoText } from './pane-details.js';
+import { joinPath } from '../context-menu/paths.js';
 
 /**
  * @param {{send:(text:string)=>Promise<boolean>, rerender:()=>void}} deps send: the normal send path (queues while
@@ -38,6 +39,7 @@ export function createChangesPane({ send, rerender }) {
     const myBox = box && box.sessionId === session.id && box.anchor.path === file.path ? box : null;
     return renderDiffFile(file, {
       comments: commentsHere().filter(comment => comment.path === file.path), box: myBox, collapsed: collapsed.has(key),
+      fullPath: joinPath(data.root, file.path), // the diff's paths are from the repository's top (the file menu needs them whole)
       onToggle: () => { if (!collapsed.delete(key)) collapsed.add(key); redrawFile(file.path); keepFocus(); },
       onComment: anchor => openBox(anchor),
       onInput: text => { if (box) box.draft = text; },

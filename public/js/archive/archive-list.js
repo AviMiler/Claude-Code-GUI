@@ -30,11 +30,11 @@ export function archiveSwitch(count, onChange) {
 }
 
 /**
- * A row's archive button: archive (the session list) or restore (the archive). Shown on hover, like the pin.
- * @param {{archive:(id:string)=>void, unarchive:(id:string)=>void}} actions
+ * An archived row's one-click restore button (archiving itself is in the row's menu, context-menu/session-menu.js).
+ * @param {{unarchive:(id:string)=>void}} actions
  */
-export function archiveButton(session, actions) {
+export function restoreButton(session, actions) {
   return session.archived
     ? h('button', { type: 'button', class: 'row-action restore', title: 'שחזור מהארכיון', onClick: () => actions.unarchive(session.id) }, icon('history'))
-    : h('button', { type: 'button', class: 'row-action', title: 'העברה לארכיון', onClick: () => actions.archive(session.id) }, icon('archive'));
+    : null;
 }

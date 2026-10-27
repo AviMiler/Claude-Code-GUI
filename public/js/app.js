@@ -20,6 +20,7 @@ import { createSplitView } from './split-view.js';
 import { prefetchCatalog } from './warm-up.js';
 import { createPanes } from './panes/panes.js';
 import { bindShortcuts } from './shortcuts/bind-shortcuts.js';
+import { enableFileMenus } from './context-menu/file-menu.js';
 import { viewModeLabel } from './transcript/view-mode.js';
 
 applyTheme();
@@ -38,10 +39,11 @@ const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'
   getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
-  askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });
+  askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value, openInSplit: id => split.open(id) });
 const runCommand = createCommandRunner(actions);
 
 const composer = createMainComposer(els.composerArea, { actions, runCommand });
+enableFileMenus({ insert: text => composer.insert(text) });
 
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {

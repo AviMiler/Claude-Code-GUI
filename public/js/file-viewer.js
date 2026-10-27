@@ -36,7 +36,8 @@ export function fileOpenButton(name, input) {
 
 /** "Open in viewer" button for a path (handled by enableFileLinks). @param {string} path @param {Highlight} highlight */
 export function fileLinkButton(path, highlight = null) {
-  const button = h('button', { type: 'button', class: 'open-file', title: `פתיחה בצופה: ${path}`, dataset: { openFile: '' } }, icon('external'));
+  // data-file-path: right click gives the file menu (context-menu/file-menu.js)
+  const button = h('button', { type: 'button', class: 'open-file', title: `פתיחה בצופה: ${path}`, dataset: { openFile: '', filePath: path } }, icon('external'));
   targets.set(button, { path, highlight });
   return button;
 }
