@@ -47,8 +47,8 @@ function renderBlock(block) {
   if (lines.every(line => /^>\s?/.test(line))) {
     return `<blockquote dir="auto">${lines.map(line => renderInline(line.replace(/^>\s?/, ''))).join('<br>')}</blockquote>`;
   }
-  const heading = block.match(/^(#{1,6})\s+(.*)$/m);
-  if (heading && lines[0].startsWith('#')) {
+  const heading = lines[0].match(/^(#{1,6})\s+(.*)$/);
+  if (heading) {
     const level = Math.min(heading[1].length + 1, 5);
     const rest = lines.slice(1).join('\n');
     return `<h${level} dir="auto">${renderInline(heading[2])}</h${level}>${rest.trim() ? renderBlock(rest) : ''}`;

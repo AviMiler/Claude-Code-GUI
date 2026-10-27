@@ -1,6 +1,8 @@
 /**
  * The "/" command menu and the "@" mention menu (files, folders, agents) of the composer.
- * Typing "/" at the start lists every command; typing "@" anywhere lists files and agents.
+ * Typing "/" at the start lists every command; "/" after a space in the middle of the text lists Skills and
+ * custom commands only (picked ones stay part of the sentence; built-ins run only as the whole message);
+ * typing "@" anywhere lists files and agents.
  */
 import { h } from './dom.js';
 import { api } from './api.js';
@@ -9,6 +11,8 @@ import { GROUPS, filterCommands } from './command-catalog.js';
 import { currentScope, getCatalog, getCommands } from './state.js';
 
 const SLASH_TOKEN = /^\/([^\s]*)$/;
+const INLINE_SLASH_TOKEN = /(^|\s)\/([^\s/]*)$/;
+const INLINE_GROUPS = new Set(['skill', 'plugin', 'mcp']);
 const MENTION_TOKEN = /(^|\s)@([^\s@]*)$/;
 const MAX_PER_GROUP = 40;
 
@@ -61,6 +65,16 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
     menu.update(commandEntries(commands, command => { menu.close(); onCommand(command); }), footer());
   }
 
+  /** Skills in the middle of a sentence: the pick replaces the "/query" token and the text around it stays. */
+  async function showInlineSkills(query) {
+    const id = ++requestId;
+    const commands = filterCommands(await getCommands(), query).filter(command => INLINE_GROUPS.has(command.group));
+    if (id !== requestId) return;
+    // A path such as "/usr/bin" in a sentence is not a request for the menu.
+    if (!commands.length) { menu.close(); return; }
+    menu.update(commandEntries(commands, command => { menu.close(); replaceToken(INLINE_SLASH_TOKEN, `/${command.name} `); }), footer());
+  }
+
   async function showMentions(query) {
     const id = ++requestId;
     const scope = currentScope();
@@ -86,9 +100,11 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
   function refresh() {
     const head = beforeCaret();
     const slash = textarea.value.match(SLASH_TOKEN) && head === textarea.value ? head.match(SLASH_TOKEN) : null;
+    const inline = slash ? null : head.match(INLINE_SLASH_TOKEN);
     const mention = head.match(MENTION_TOKEN);
     clearTimeout(mentionTimer);
     if (slash) return showCommands(slash[1]);
+    if (inline) return showInlineSkills(inline[2]);
     if (mention) { mentionTimer = setTimeout(() => showMentions(mention[2]), 120); return undefined; }
     requestId++;
     menu.close();

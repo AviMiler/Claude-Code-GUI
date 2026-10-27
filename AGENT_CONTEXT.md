@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-26 after the security review (hardening, risk confirmations, known issues documented)_
+_Last updated: 2026-10-27 after adding the message queue, folder browser and inline skills_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -11,7 +11,7 @@ Built for a corporate Windows machine without another terminal.
 ## Current State
 - ✅ Working: sessions (create from the welcome page, rename, delete, fork, clear), token streaming, thinking, tool rows
   (terminal, diffs, todos, nested subagents), interactive permission prompts, AskUserQuestion cards, plan approval,
-  stop/interrupt, live model/mode switch, Shift+Tab mode cycling, `/` menu with the live CLI catalog, `@` files + agents,
+  stop/interrupt, message queue (Enter while running), folder browser on the welcome page, `/` skills mid-sentence, live model/mode switch, Shift+Tab mode cycling, `/` menu with the live CLI catalog, `@` files + agents,
   15 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
   settings files, status/doctor, appearance, help), light/dark theme, persistence to `data/sessions.json`
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
@@ -34,6 +34,8 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Server-side message queue (session.queue), folder browser (/api/folders), inline `/` skills menu,
+  context ring no longer starts a CLI process (`ifRunning`), Markdown heading and title-rename fixes.
 - 2026-10-26 — Initial implementation of server, API, and UI.
 - 2026-10-26 — lib/config.js tolerant parsing + `model`; wrapper-script message; startup diagnostics.
 - 2026-10-26 — Rewrite: persistent CLI process + control protocol (lib/cli-process.js, lib/session-runtime.js),
@@ -65,6 +67,9 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Background tasks panel (`/tasks`) from `task_started` / `task_notification` events
 
 ## Gotchas / Watch Out
+- Queue: `sendMessage` on a running session appends to `session.queue` (persisted); `onTurnEnd` sends the next one.
+  Stop empties the queue *before* interrupting (otherwise the interrupted turn's end would send the next message)
+  and returns the texts to the browser. After a crash or a server restart the queue waits for "שליחת הבאה" (resume)
 - Environment variables (ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN) are inherited from the shell that starts the server, or set under `env` in `config.json`
 - Each open session keeps a CLI process (100–300 MB) until `idleMinutes` (default 20) of inactivity; catalogs of idle sessions use a short-lived probe instead
 - Settings changes without a live control request (effort, agent, output style, add-dir) restart the process with `--resume` on the next message

@@ -4,6 +4,7 @@ import { icon } from './icons.js';
 import { showDropdown } from './popover.js';
 import { recentFolders } from './state.js';
 import { toast } from './ui.js';
+import { pickFolder } from './folder-browser.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -35,7 +36,8 @@ export function renderTopbar(bar, session, handlers) {
     return;
   }
   const title = h('input', { class: 'title-input', value: session.name, dir: 'auto', 'aria-label': 'שם הסשן', size: Math.max(8, Math.min(session.name.length + 2, 48)) });
-  title.addEventListener('change', () => handlers.onRename(title.value));
+  // An emptied title keeps the old name (an empty one would open the rename dialog instead).
+  title.addEventListener('change', () => { if (title.value.trim()) handlers.onRename(title.value.trim()); else title.value = session.name; });
   title.addEventListener('keydown', event => { if (event.key === 'Enter') title.blur(); });
   const folder = h('button', { type: 'button', class: 'chip', title: `${session.cwd}\n(לחיצה מעתיקה את הנתיב)`,
     onClick: async () => { await copyText(session.cwd); toast('הנתיב הועתק'); } }, icon('folder'), h('span', { class: 'label' }, folderName(session.cwd)));
@@ -65,12 +67,19 @@ export function renderTopbar(bar, session, handlers) {
 export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggestion }) {
   const input = h('input', { value: cwd || defaultCwd, dir: 'ltr', 'aria-label': 'תיקיית עבודה', placeholder: defaultCwd, spellcheck: false });
   input.addEventListener('change', () => onFolder(input.value.trim()));
+  const browse = h('button', { type: 'button', class: 'btn small', title: 'עיון בתיקיות המחשב' }, icon('folder'), 'עיון…');
+  browse.addEventListener('click', async () => {
+    const folder = await pickFolder(input.value.trim() || defaultCwd);
+    if (!folder) return;
+    input.value = folder;
+    onFolder(folder);
+  });
   const recents = recentFolders().filter(folder => folder !== input.value);
   container.replaceChildren(...[
     icon('spark', 'big spark'),
     h('h1', null, `${greeting()}, במה נעבוד היום?`),
     h('p', null, 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
-    h('label', { class: 'folder-picker' }, icon('folder'), input),
+    h('div', { class: 'folder-picker' }, icon('folder'), input, browse),
     recents.length ? h('div', { class: 'recent-folders' }, recents.map(folder => h('button', {
       type: 'button', class: 'chip', title: folder, onClick: () => { input.value = folder; onFolder(folder); },
     }, icon('history'), h('span', { class: 'label' }, folderName(folder))))) : null,

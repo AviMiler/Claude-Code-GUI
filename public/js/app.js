@@ -22,7 +22,8 @@ const els = {
   messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'),
 };
 const thread = createThread({ scroller: els.scroller, messages: els.messages });
-const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id), insert: (text, options) => composer.insert(text, options) });
+const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
+  insert: (text, options) => composer.insert(text, options), restore: texts => composer.restore(texts) });
 const runCommand = createCommandRunner(actions);
 
 const composer = createComposer(els.composerArea, {
@@ -33,6 +34,9 @@ const composer = createComposer(els.composerArea, {
     return actions.send(text);
   },
   onStop: () => actions.stop(),
+  onQueueRemove: entry => actions.removeQueued(entry),
+  onQueueEdit: entry => actions.editQueued(entry),
+  onQueueResume: () => actions.resumeQueue(),
   onCommand: command => runCommand(command, '', { fromMenu: true }),
   onCycleMode: () => actions.cycleMode(),
   onContext: () => actions.openPanel('usage'),
@@ -99,7 +103,7 @@ function refresh() {
   }
   const settings = session || state.draft;
   composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), isRunning: session?.status === 'running',
-    contextPercent: session ? state.context.get(session.id) ?? -1 : -1, hasSession: Boolean(session) });
+    contextPercent: session ? state.context.get(session.id) ?? -1 : -1, hasSession: Boolean(session), queue: session?.queue || [] });
   const cardsBefore = els.cards.childElementCount;
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
@@ -135,8 +139,9 @@ async function loadState() {
   selectSession(state.activeId || remembered);
 }
 
-const eventView = { thread, refresh, selectSession, fetchContext: id => api.control({ sessionId: id }, 'get_context_usage')
-  .then(usage => { state.context.set(id, usage.percentage ?? Math.round((usage.totalTokens / usage.maxTokens) * 100)); refresh(); })
+// ifRunning: the context ring must never start a CLI process by itself (e.g. right after one crashed).
+const eventView = { thread, refresh, selectSession, fetchContext: id => api.control({ sessionId: id }, 'get_context_usage', { ifRunning: true })
+  .then(usage => { if (!usage) return; state.context.set(id, usage.percentage ?? Math.round((usage.totalTokens / usage.maxTokens) * 100)); refresh(); })
   .catch(() => {}) };
 subscribe(event => handleEvent(event, eventView), () => loadState().catch(error => console.error('[app] cannot load state:', error)));
 

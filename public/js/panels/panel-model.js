@@ -3,6 +3,7 @@ import { h } from '../dom.js';
 import { icon } from '../icons.js';
 import { EFFORT_LEVELS } from '../modes.js';
 import { section, field, select, button, list, row, empty, loading } from './kit.js';
+import { pickFolder } from '../folder-browser.js';
 
 function modelCards(models, currentModel, onPick) {
   return h('div', { class: 'radio-cards' }, models.map(model => h('button', {
@@ -53,5 +54,6 @@ export async function renderModelPanel(body, context) {
     dirs.length ? list(dirs.map(dir => row({ title: h('code', { dir: 'ltr' }, dir), actions: [
       button('הסרה', () => apply({ addDirs: dirs.filter(item => item !== dir) }), { variant: 'danger' })] }))) : empty('אין תיקיות נוספות'),
     h('div', { class: 'panel-toolbar', style: 'margin-top:10px' }, dirInput,
+      button('עיון…', async () => { const dir = await pickFolder(dirInput.value.trim() || context.folder); if (dir) dirInput.value = dir; }, { iconName: 'folder' }),
       button('הוספה', () => dirInput.value.trim() && apply({ addDirs: [...dirs, dirInput.value.trim()] }).catch(error => context.toast(error.message, 'error')), { variant: 'primary' }))));
 }

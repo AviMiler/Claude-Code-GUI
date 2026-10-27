@@ -98,7 +98,9 @@ export function createThread({ scroller, messages }) {
     setRunning(false);
     messages.replaceChildren();
     for (const item of session?.items || []) appendItem(messages, item);
-    if (session?.status === 'running') setRunning(true, { startedAt: session.turnStartedAt || Date.now() });
+    if (session?.status === 'running') {
+      setRunning(true, { startedAt: session.turnStartedAt || Date.now(), waiting: Boolean(session.pendingPermissions?.length) });
+    }
     else settleTools(messages);
     requestAnimationFrame(scrollToEnd);
   }

@@ -1,5 +1,5 @@
 # Project Map
-_Last updated: 2026-10-26_
+_Last updated: 2026-10-27_
 
 ## File Tree
 ```
@@ -17,7 +17,7 @@ _Last updated: 2026-10-26_
 ./public/js/app.js  ./public/js/events.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
 ./public/js/thread.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
-./public/js/sidebar.js  ./public/js/chrome.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
+./public/js/sidebar.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
 ./public/js/commands-data.js  ./public/js/command-catalog.js  ./public/js/command-runner.js
 ./public/js/panels/registry.js  ./public/js/panels/panel-host.js  ./public/js/panels/kit.js  ./public/js/panels/file-editor.js
 ./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
@@ -45,12 +45,12 @@ _Last updated: 2026-10-26_
 | `lib/session-runtime.js` | Process per session: start, route events, permission prompts, interrupt, idle shutdown. |
 | `lib/event-translator.js` | CLI `stream-json` events -> UI items and streaming deltas. |
 | `lib/failure-messages.js` | Hebrew explanation of a failed CLI process. |
-| `lib/session-service.js` | Glue: sessions, messages, stop, clear, fork, permissions, settings. |
+| `lib/session-service.js` | Glue: sessions, messages and their queue, stop, clear, fork, permissions, settings. |
 | `lib/catalog-service.js` | Commands/skills/agents/models catalog and whitelisted control requests (session or probe). |
 | `lib/cli-commands.js` | Whitelisted `claude mcp|plugin|doctor|auth ...` subcommands. |
 | `lib/claude-files.js` | Read/write settings, CLAUDE.md, agents, skills, commands, output styles by kind. |
 | `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import. |
-| `lib/workspace-info.js` | File search for @-mentions and git status/diff. |
+| `lib/workspace-info.js` | Folder browser listing/creation, file search for @-mentions, git status/diff. |
 | `lib/api-routes.js` | Route table and session routes. |
 | `lib/api-routes-tools.js` | Routes behind the panels (catalog, control, cli, files, transcripts, git). |
 | `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area. |
@@ -68,12 +68,13 @@ _Last updated: 2026-10-26_
 | `public/js/render-items.js` | Items -> DOM; Markdown export. |
 | `public/js/render-tools.js` | Tool rows: terminal, diffs, todos, results. |
 | `public/js/markdown.js` | Safe Markdown renderer with code copy. |
-| `public/js/composer.js` | Message box, chips, send/stop, history, Shift+Tab. |
-| `public/js/composer-menus.js` | `/` command menu and `@` mention menu. |
+| `public/js/composer.js` | Message box, chips, send/stop, queue strip, history, Shift+Tab. |
+| `public/js/composer-menus.js` | `/` command menu (whole message), `/` skills menu mid-sentence, `@` mention menu. |
 | `public/js/popover.js` | Dropdowns and keyboard-driven list menus. |
 | `public/js/prompt-cards.js` | Permission, AskUserQuestion and plan-approval cards. |
 | `public/js/sidebar.js` | Session list grouped by date, with search. |
 | `public/js/chrome.js` | Top bar and welcome page. |
+| `public/js/folder-browser.js` | "Open folder" dialog (welcome page, /add-dir) over GET/POST /api/folders. |
 | `public/js/ui.js` | Toasts, confirm/prompt dialogs, theme. |
 | `public/js/risk.js` | Confirmations before significant actions (`guardedApi`, risky modes, account/cloud commands). |
 | `public/js/dom.js` | `h()` element helper and small utilities. |

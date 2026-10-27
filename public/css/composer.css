@@ -25,6 +25,20 @@
 .send-button:disabled { background: var(--surface-3); color: var(--faint); cursor: default; }
 .send-button .icon { width: 18px; height: 18px; }
 .send-button.stop { background: var(--text); color: var(--bg); }
+.send-button.queue-send { background: var(--surface-3); color: var(--text); }
+.send-button.queue-send:hover { background: var(--border-strong); }
+
+/* Messages queued while Claude works */
+.queue { display: grid; gap: 2px; margin-bottom: 8px; padding: 6px 8px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); background: var(--surface); }
+.queue-head { display: flex; gap: 8px; align-items: center; padding: 2px 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.queue-head .icon { width: 15px; height: 15px; }
+.queue-head .btn { margin-inline-start: auto; }
+.queue-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 4px; align-items: center; padding: 2px 4px; border-radius: var(--radius-sm); }
+.queue-row:hover { background: var(--surface-2); }
+.queue-index { color: var(--faint); font: 11.5px var(--font-mono); text-align: center; }
+.queue-text { overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.queue-row .icon-button { width: 26px; height: 26px; }
+.queue-row .icon-button .icon { width: 14px; height: 14px; }
 .context-ring { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; }
 .context-ring:hover { background: var(--surface-2); }
 .context-ring svg { width: 18px; height: 18px; transform: rotate(-90deg); }

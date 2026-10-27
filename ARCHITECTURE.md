@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-26_
+_Last updated: 2026-10-27_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -16,6 +16,8 @@ sessions are kept in memory and saved to `data/sessions.json`.
    permission prompt; everything else -> `event-translator` -> UI items / streaming deltas -> SSE (`/api/events`)
 5. Browser `events.js` updates state and views; a permission answer goes back as `control_response`
 6. `result` ends the turn; the process stays warm and closes itself after `idleMinutes`
+7. A message sent while a turn runs goes to `session.queue`; the end of the turn sends the next one (step 2).
+   Stop empties the queue first and hands the texts back to the browser
 
 ## Slash commands
 - Built-in commands of the installed version (read from the 2.1.308 binary) live in `public/js/commands-data.js` with
