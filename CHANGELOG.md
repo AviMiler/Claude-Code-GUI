@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 (per-turn stats)
+- Added: the meta line of each finished turn now shows total time · output tokens per second · input → output tokens (input includes cache) · rounds (when more than 1) · tool calls · cost (when above 0), with a tooltip giving the full breakdown (model time vs tools/other time, cache read/write, speed). Why: user request (feature 10 of 12); with a local model speed matters more than cost. Files: lib/event-translator.js (`translateResult` also keeps `durationApiMs`, `usage.cacheRead`, `usage.cacheWrite`), public/js/turn-stats.js (new), render-items.js (`renderResult`, `appendItem(container, item, context)`), thread.js
+- Speed uses API time; when it is unknown (older saved items, fake CLI) it uses total time and the tooltip says so. Tool calls are counted on the frontend, nothing new stored. Failed turns keep the old "נכשל" line. No deviation from the plan
+- Known nit: the tooltip always lists rounds and tool calls even when the line hides them
+
 ## 2026-10-27 (model server health indicator)
 - Added: a green / red / grey dot in the sidebar footer next to the Claude Code version label shows whether the model server is up, so a failed turn is quickly explained (is qwen down?). Up = 2xx answer to `GET {ANTHROPIC_BASE_URL}/v1/models`; down = timeout (4 s), connection error, or any non-2xx (401, 404, 500...); grey = Anthropic's own base URL or none (no request is made). Tooltip: URL, latency, error; click = check now + toast. Checked on load, every 60 s while the tab is visible, and right after a turn ends with an error. Why: user request (feature 9 of 12). Files: lib/model-health.js (new), lib/model-list.js (exports `envOf`, `isAnthropic`; header comment reworded), lib/api-routes-tools.js (`GET /api/model-health[?refresh=1]`), public/js/model-health.js (new), api.js, index.html, css/layout.css, app.js, events.js
 - Server cache 15 s; the displayed URL has no user:password or query; the token is never returned. No new kind of network call (same GET as the model list); no deviation from the plan

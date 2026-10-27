@@ -97,3 +97,14 @@ Clicking a file path in a tool row opens the file's CURRENT text in a read-only 
 - Known nit: the 2 MB cut can split a multibyte character (one replacement character at the very end of a truncated file).
 - Security: the first GET that returns file contents. Cross-site pages cannot read the response (no CORS; Host and Origin checks), and a local program with API access can already run commands through a session. See ARCHITECTURE.md -> Security.
 - Code: `lib/file-view.js`, route in `lib/api-routes-tools.js`, `public/js/api.js` (`viewFile`), `public/js/file-viewer.js` (dialog and one delegated listener `enableFileLinks`, wired in `app.js`), buttons in `render-tools.js` and `turn-changes.js`, `css/panels.css` (viewer), `css/messages.css` (buttons).
+
+## Per-turn stats (confirmed permanent, 2026-10-27)
+Each finished turn shows its performance on the `result` meta line. With a local model the cost is irrelevant but the speed matters. Per turn only: no session totals (the usage panel keeps session cost and context). No model call.
+- Line, in this order: total time · output tokens per second · "input → output טוקנים" (input includes cache read and cache write) · rounds (only when more than 1) · tool calls ("כלי אחד" / "N כלים", hidden at 0) · cost (only when above 0).
+- Speed = output tokens divided by API seconds (time spent waiting for the model). When API time is unknown it uses total seconds; the tooltip then adds "(לפי הזמן הכולל)".
+- Native `title` tooltip with the breakdown: total time, model time and tools/other time (only when API time is known), input, cache read, cache write, output, speed, rounds, tool calls, cost. The tooltip always lists rounds and tool calls even when the line hides them.
+- Old saved items degrade gracefully: no API time means speed from total time; no cache fields count as 0; `usage` null shows time only. A failed turn keeps the unchanged "נכשל" line.
+- Tool calls are counted on the frontend (nothing stored): `tool` items, top level and inside subagents, from the last user item back from the result (same turn boundary as the changed-files card; same untested mid-turn-result edge).
+- Server stores three more fields on the `result` item: `durationApiMs` (from `duration_api_ms`), `usage.cacheRead` and `usage.cacheWrite` (from `cache_read_input_tokens` and `cache_creation_input_tokens`).
+- The result node keeps its `data-item-index`, so search is unaffected.
+- Code: `public/js/turn-stats.js` (`turnStats`, `countToolCalls(items, resultIndex)`), `renderResult` and `appendItem(container, item, context)` in `public/js/render-items.js`, `resultContext` in `public/js/thread.js`, `translateResult` in `lib/event-translator.js`.

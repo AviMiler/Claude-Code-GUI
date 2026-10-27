@@ -9,6 +9,7 @@ import { appendItem, renderAssistantText, renderThinking, copySourceOf } from '.
 import { settleTools } from './render-tools.js';
 import { createWorkingLine } from './working-line.js';
 import { turnChanges, renderTurnChanges } from './turn-changes.js';
+import { countToolCalls } from './turn-stats.js';
 
 const NEAR_BOTTOM_PX = 140;
 
@@ -89,6 +90,8 @@ export function createThread({ scroller, messages, onOpenGit }) {
 
   /** The turn's "files changed" card, right after its result item (turn-changes.js); null when nothing changed. */
   const changesCard = (items, index) => renderTurnChanges(turnChanges(items, index), { onOpenGit });
+  /** A result's meta line counts its turn's tool calls (turn-stats.js). */
+  const resultContext = (item, items, index) => (item.kind === 'result' && items ? { toolCalls: countToolCalls(items, index) } : undefined);
 
   /** @param {object} item @param {number} [index] position in session.items @param {object[]} [items] session.items */
   function append(item, index, items) {
@@ -101,7 +104,7 @@ export function createThread({ scroller, messages, onOpenGit }) {
       if (!item.parent && (item.kind === 'text' || item.kind === 'thinking')) dropLive(item.kind);
       // Thinking that streamed but arrives empty (redacted/summarized) never gets its own item; the next step ends it.
       if (!item.parent && (item.kind === 'text' || item.kind === 'tool')) dropLive('thinking');
-      tag(appendItem(messages, item), index)?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
+      tag(appendItem(messages, item, resultContext(item, items, index)), index)?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
       const changes = item.kind === 'result' && items ? changesCard(items, index) : null;
       if (changes) messages.append(changes);
       // Live elements and the working line always stay after the newest item.
@@ -134,7 +137,7 @@ export function createThread({ scroller, messages, onOpenGit }) {
     setRunning(false);
     messages.replaceChildren();
     (session?.items || []).forEach((item, index) => {
-      tag(appendItem(messages, item), index);
+      tag(appendItem(messages, item, resultContext(item, session.items, index)), index);
       if (item.kind === 'result') { const changes = changesCard(session.items, index); if (changes) messages.append(changes); }
     });
     if (session?.status === 'running') {

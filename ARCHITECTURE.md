@@ -156,6 +156,7 @@ the right to run commands as that user.
   every request, routes load only at startup, so after an update a new screen may call a route the old server lacks
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, divider, notice (`stopped: true` when a
   stop ended the turn), error
+- Result item: `{ kind: 'result', isError, subtype, text, durationMs, durationApiMs?, costUsd, turns, usage: { input, output, cacheRead?, cacheWrite? } | null }`; the `?` fields are missing in older saved items
 - Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks)
 - Sidebar grouping: `session-groups.js` (pure: sessions + mode -> groups: pinned first, then by date or by project folder) feeds `sidebar.js`;
   the mode is per browser in localStorage `claude-gui.sidebar-grouping`. Frontend only
@@ -165,6 +166,8 @@ the right to run commands as that user.
 - Per-turn changed files: `turn-changes.js` derives a card from `session.items` (the edit tool items from the last user item to the `result`, top level and subagents, minus
   calls with an error tool-result); `thread.js` renders it after result items (history and live); nothing is stored and the card has no `data-item-index`. Frontend only.
   Bash-made changes are invisible to it (the git panel covers those)
+- Per-turn stats: `turn-stats.js` builds the result meta line and tooltip from the result item; `thread.js` passes `{ toolCalls }` (`countToolCalls`, counted back to the last
+  user item) to `appendItem` for result items. Tool calls are never stored; missing API time or cache fields fall back (speed from total time, cache 0). Frontend plus three fields in `translateResult`
 - Claude's spark: `working-line.js` (used by `thread.js`) sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
   done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)
 - Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the

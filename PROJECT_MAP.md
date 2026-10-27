@@ -1,5 +1,5 @@
 # Project Map
-_Last updated: 2026-10-27 (added lib/model-health.js, public/js/model-health.js; earlier: lib/file-view.js, public/js/file-viewer.js; earlier: turn-changes.js, working-line.js, lib/templates.js, templates.js, panels/panel-templates.js, session-groups.js, session-search.js, search-hits.js, chip-menus.js)_
+_Last updated: 2026-10-27 (added public/js/turn-stats.js; earlier: lib/model-health.js, public/js/model-health.js; earlier: lib/file-view.js, public/js/file-viewer.js; earlier: turn-changes.js, working-line.js, lib/templates.js, templates.js, panels/panel-templates.js, session-groups.js, session-search.js, search-hits.js, chip-menus.js)_
 
 ## File Tree
 ```
@@ -15,7 +15,7 @@ _Last updated: 2026-10-27 (added lib/model-health.js, public/js/model-health.js;
 ./public/index.html  ./public/icon.svg
 ./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css  ./public/css/animations.css
 ./public/js/app.js  ./public/js/events.js  ./public/js/notify.js  ./public/js/page-status.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
-./public/js/thread.js  ./public/js/working-line.js  ./public/js/turn-changes.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
+./public/js/thread.js  ./public/js/working-line.js  ./public/js/turn-changes.js  ./public/js/turn-stats.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
 ./public/js/sidebar.js  ./public/js/session-groups.js  ./public/js/session-search.js  ./public/js/search-hits.js  ./public/js/chip-menus.js  ./public/js/side-question.js  ./public/js/file-viewer.js  ./public/js/model-health.js  ./public/js/templates.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
 ./public/js/commands-data.js  ./public/js/command-catalog.js  ./public/js/command-runner.js
@@ -44,7 +44,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/cli-args.js` | Flags for a session process, filtered by capabilities (always `--add-dir` for the uploads folder). |
 | `lib/cli-process.js` | One long-lived stream-json process and its control protocol. |
 | `lib/session-runtime.js` | Process per session: start, route events, permission prompts, interrupt, idle shutdown (skipped while background tasks run); warm-up while typing and the spare process for a new session. |
-| `lib/event-translator.js` | CLI `stream-json` events -> UI items and streaming deltas; `readTaskEvent` normalizes `task_started` / `task_progress` / `task_notification`. |
+| `lib/event-translator.js` | CLI `stream-json` events -> UI items and streaming deltas; `readTaskEvent` normalizes `task_started` / `task_progress` / `task_notification`; `translateResult` keeps time (`durationMs`, `durationApiMs`), cost, rounds and usage (input, output, cacheRead, cacheWrite). |
 | `lib/task-tracker.js` | Background tasks of each session, in memory only (they die with the CLI process): apply/list/endAll/forget, 50 per session, a `started` event always starts a fresh record. |
 | `lib/failure-messages.js` | Hebrew explanation of a failed CLI process. |
 | `lib/session-service.js` | Glue: sessions, messages and their queue, stop, clear, fork, permissions, settings, warm-up; broadcasts the `tasks` SSE event and marks running tasks "killed" when the CLI exits. |
@@ -81,10 +81,11 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
 | `public/js/api.js` | Fetch wrappers (incl. `modelHealth`, `viewFile`, `sideQuestion`, `templates` / `saveTemplate` / `deleteTemplate`) and SSE subscription. |
 | `public/js/actions.js` | Session actions (incl. `sideQuestion`, `setPinned`) and the context given to panels (incl. `composerText()`). |
-| `public/js/thread.js` | Conversation view: items, live streaming (`append(item, index, items)`), message copy; shows the working line from `working-line.js` and the changed-files card from `turn-changes.js` after each result (history in `show`, live in `append`); every item node carries `data-item-index` (index in `session.items`) so search hits can find it (the card has none). |
+| `public/js/thread.js` | Conversation view: items, live streaming (`append(item, index, items)`), message copy; shows the working line from `working-line.js` and the changed-files card from `turn-changes.js` after each result (history in `show`, live in `append`); passes each result item its tool-call count (`resultContext`, history and live); every item node carries `data-item-index` (index in `session.items`) so search hits can find it (the card has none). |
 | `public/js/working-line.js` | The "working" line under a running turn: Claude's spark in the current state (`data-state`: starting, thinking, writing, tool, waiting, done/error/stopped; animated in css/animations.css), a verb, the elapsed time, and a short done/error/stopped moment when the turn ends. Moved from thread.js. |
 | `public/js/turn-changes.js` | "Files changed in this turn" card after a turn's `result`: files written by Edit, MultiEdit, Write ("נכתב"), NotebookEdit (top level and subagents; error results skipped; edits to a file merged) with +/− counts; click a file for that turn's diffs, "הכול" for all, "git diff" opens the git panel, a row button opens the file viewer. Recomputed from the session's items, nothing stored; turns without edits show nothing. |
-| `public/js/render-items.js` | Items -> DOM (user messages with image thumbnails and file chips, copy buttons); Markdown export. |
+| `public/js/render-items.js` | Items -> DOM (user messages with image thumbnails and file chips, copy buttons); the result meta line from `turn-stats.js` (`appendItem(container, item, context)`, context = `{ toolCalls }`); Markdown export. |
+| `public/js/turn-stats.js` | Numbers of one finished turn for its meta line and tooltip: time, output tokens/s (API time, or total time when unknown), tokens in/out (input includes cache), rounds, tool calls, cost when above 0. `countToolCalls(items, resultIndex)` counts `tool` items back to the last user item. Nothing stored. |
 | `public/js/render-tools.js` | Tool rows: terminal, diffs, todos, results, the open-file button on file tools; `toolMeta` (verb/target of a tool, also used by the working line). |
 | `public/js/markdown.js` | Safe Markdown renderer with code copy. |
 | `public/js/composer.js` | Message box, chips, send/stop, attachments (picker, paste, drop), queue strip, history, Shift+Tab. |

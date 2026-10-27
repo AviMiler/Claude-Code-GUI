@@ -23,7 +23,8 @@ Built for a corporate Windows machine without another terminal.
   full-text search across all sessions in the sidebar (snippets, match bar in the thread),
   per-turn "files changed" card after each result (Edit/MultiEdit/Write/NotebookEdit; that turn's diffs on click),
   file viewer: open button on Read/Edit/MultiEdit/Write/NotebookEdit tool rows and card rows (line numbers, relevant lines highlighted; read-only, session folders only),
-  model server health dot in the sidebar footer (green up / red down / grey unknown; polled every 60 s, rechecked after a failed turn)
+  model server health dot in the sidebar footer (green up / red down / grey unknown; polled every 60 s, rechecked after a failed turn),
+  per-turn stats on the result line (time, output tokens/s, tokens in/out, rounds, tool calls, cost; tooltip breakdown)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -62,6 +63,10 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Per-turn stats (feature 10 of 12): the result meta line now shows total time · output tokens/s (output ÷ API time, total time when unknown) · input(incl. cache) → output · rounds (>1) ·
+  tool calls · cost (>0), with a native tooltip breakdown. `translateResult` also keeps `durationApiMs`, `usage.cacheRead`, `usage.cacheWrite`. Tool calls counted on the frontend
+  (`countToolCalls` in new public/js/turn-stats.js, passed by thread.js via `appendItem(..., { toolCalls })`); nothing else stored. render-items.js, thread.js, event-translator.js.
+  No deviation. Verified in a browser (plain, tool, API time + cache, reload, old items, failed turn). Nit kept: tooltip always lists rounds and tool calls.
 - 2026-10-27 — Model server health indicator (feature 9 of 12): green/red/grey dot in the sidebar footer by the version label. Up = 2xx from `GET {ANTHROPIC_BASE_URL}/v1/models`;
   down = timeout 4 s, connection error or any non-2xx; grey = Anthropic/no base URL (no request). `GET /api/model-health[?refresh=1]` (lib/model-health.js, new, cached 15 s,
   URL shown without credentials, token never returned); public/js/model-health.js (new): checks on load, every 60 s while visible, after a failed turn (silent), click = check + toast.
