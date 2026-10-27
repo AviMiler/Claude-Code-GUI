@@ -1,18 +1,26 @@
 /**
  * The conversation view of the active session: items, live streaming text, and the "working" line.
- * The working line's spark shows what Claude is doing (data-state, animated in css/animations.css):
+ * The working line's crab shows what Claude is doing (data-state, animated in css/animations.css):
  * starting (the CLI is starting up) · thinking · writing · tool · waiting (for the user's approval),
  * and a short "done" / "error" moment when the turn ends.
  */
 import { h, copyText } from './dom.js';
 import { icon } from './icons.js';
+import { crab, setCrabState } from './crab.js';
 import { renderMarkdown, enableCodeCopy } from './markdown.js';
 import { appendItem, renderAssistantText, renderThinking, copySourceOf } from './render-items.js';
 import { settleTools, toolMeta } from './render-tools.js';
 
 const NEAR_BOTTOM_PX = 140;
 const VERBS = ['חושב', 'מעבד', 'מתכנן', 'בודק', 'מנתח', 'מגבש', 'מהרהר', 'מבשל רעיון'];
-const END_MOMENT_MS = 900;
+const END_MOMENT_MS = 2200;
+
+/** Plays a CSS animation class again from its start. */
+function restartAnimation(node, className) {
+  node.classList.remove(className);
+  void node.offsetWidth;
+  node.classList.add(className);
+}
 
 /** The tool a running turn is in (top level only), from its items: the last tool call without a result yet. */
 function openTool(items) {
@@ -81,8 +89,11 @@ export function createThread({ scroller, messages }) {
     if (!working) return;
     const seconds = Math.floor((Date.now() - status.startedAt) / 1000);
     const { state, verb } = currentState();
+    const verbNode = working.querySelector('.verb');
+    if (working.dataset.state !== state) restartAnimation(verbNode, 'swap'); // the text slides in with the crab's new move
     working.dataset.state = state;
-    working.querySelector('.verb').textContent = `${verb}…`;
+    setCrabState(working.querySelector('.crab'), state);
+    verbNode.textContent = `${verb}…`;
     working.querySelector('.elapsed').textContent = `${seconds} שנ׳`;
   }
 
@@ -102,7 +113,7 @@ export function createThread({ scroller, messages }) {
       heard = false;
       outcome = 'done';
       working = h('div', { class: 'working', dataset: { verb: VERBS[Math.floor(Math.random() * VERBS.length)], state: 'starting' } },
-        icon('spark', 'claude-mark'), h('span', { class: 'verb' }), h('span', { class: 'elapsed' }), h('kbd', null, 'Esc'));
+        crab(), h('span', { class: 'verb' }), h('span', { class: 'elapsed' }), h('kbd', null, 'Esc'));
       keepPinned(() => messages.append(working));
       clearInterval(tick);
       tick = setInterval(renderWorking, 1000);
@@ -110,9 +121,11 @@ export function createThread({ scroller, messages }) {
     renderWorking();
   }
 
-  /** The spark stays a moment after the turn: a small burst when it finished, a shake when it failed. */
+  /** The crab stays a moment after the turn: a happy move when it finished, a scare when it failed. */
   function endMoment(node) {
+    restartAnimation(node.querySelector('.verb'), 'swap');
     node.dataset.state = outcome;
+    setCrabState(node.querySelector('.crab'), outcome);
     node.querySelector('.verb').textContent = { error: 'משהו השתבש', stopped: 'נעצר' }[outcome] || 'סיים';
     node.querySelector('kbd')?.remove();
     node.classList.add('ending');
@@ -136,9 +149,12 @@ export function createThread({ scroller, messages }) {
       if (!item.parent && (item.kind === 'text' || item.kind === 'thinking')) dropLive(item.kind);
       // Thinking that streamed but arrives empty (redacted/summarized) never gets its own item; the next step ends it.
       if (!item.parent && (item.kind === 'text' || item.kind === 'tool')) dropLive('thinking');
-      appendItem(messages, item)?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
-      // Live elements and the working line always stay after the newest item.
-      [live.thinking, live.text, working].filter(Boolean).forEach(node => messages.append(node));
+      const node = appendItem(messages, item);
+      node?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
+      // Live elements and the working line always stay after the newest item. The new item moves above them rather than
+      // them below it: moving the working line would restart the crab's animation on every item.
+      const firstLive = [...messages.children].find(child => child === live.thinking || child === live.text || child === working);
+      if (node?.parentNode === messages && firstLive) messages.insertBefore(node, firstLive);
     });
     renderWorking();
   }

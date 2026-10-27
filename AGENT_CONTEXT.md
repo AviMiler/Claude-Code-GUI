@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — end of the session that added the queue, folder browser, inline skills, warm-up, system models, animations and copy buttons_
+_Last updated: 2026-10-27 — end of the session that added the queue, folder browser, inline skills, warm-up, system models, animations (Claude's crab), copy buttons and the folder browser fixes_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -22,7 +22,12 @@ Built for a corporate Windows machine without another terminal.
   permissions (allow, deny with feedback), questions, plan approval, stop, live model switch, fork, resume, clear
 - ✅ Tested on 2026-10-27 against the fake CLI only (with `FAKE_CLAUDE_STARTUP_MS=2500`) in a real browser: queue
   (order, edit, remove, stop returns texts), folder browser, inline skills, warm-up (first answer 2.8 s -> 0.1 s),
-  non-blocking menus, model list with 1 and 3 models from a fake `/v1/models`, all spark states, copy buttons
+  non-blocking menus, model list with 1 and 3 models from a fake `/v1/models`, copy buttons (the animations of that day were
+  the sun spark's states, replaced since by the crab)
+- ✅ Tested on 2026-10-27 in a real browser: the crab renders on the welcome page and in the sidebar; all 9 states x 3 behaviors
+  map to a CSS animation (set by hand on the welcome crab). On 2026-10-27 the working line's crab was
+  watched switching through a fake turn (starting -> thinking -> tool -> waiting -> tool -> writing -> done) with a behavior re-roll every 5 s.
+  🚧 Not tested with a real CLI turn. Browsers show favicons static, so `icon.svg`'s motion is not visible in the tab
 - 🎯 Target: closed (offline) machine with Claude Code 2.1.246 and a local qwen model (`config.json`: ANTHROPIC_BASE_URL + qwen model);
   development machine runs the same CLI version against Anthropic. Get 2.1.246 with `npm pack @anthropic-ai/claude-code-win32-x64@2.1.246`
 - 🚧 Not tested: the `claude plugin` JSON shapes with installed plugins, the corporate Ollama setup (`config.json`);
@@ -42,9 +47,16 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Livelier crab: larger motion (squash/stretch hops with a shadow, walks, claw rotation via `--dir`), a pop on every state
+  or behavior change (`.swap`), the verb slides in; new thread items go above the working line so the crab's animation is not restarted.
+- 2026-10-27 — Folder browser fixes: an unknown /api route names itself and says to restart `node server.js`; a missing
+  starting folder opens the default/home folder (`fallback` in `listFolders`) and its error stays in the list; paths pasted with
+  Explorer's "Copy as path" quotes work.
 - 2026-10-27 — Icon-only copy button under every user message and Claude answer (copies the original Markdown).
 - 2026-10-27 — CLI warm-up while typing (spare process for new sessions), non-blocking `/` and model menus, catalog
-  prefetch, model list from the model server (lib/model-list.js), state animations of Claude's spark (css/animations.css).
+  prefetch, model list from the model server (lib/model-list.js), state animations of Claude's mascot (css/animations.css).
+- 2026-10-27 — The sun-shaped spark became an animated pixel crab (public/js/crab.js): 9 states x 3 behaviors, one picked at random.
+  `לשליחה.zip` is in .gitignore.
 - 2026-10-27 — Server-side message queue (session.queue), folder browser (/api/folders), inline `/` skills menu,
   context ring no longer starts a CLI process (`ifRunning`), Markdown heading and title-rename fixes.
 - 2026-10-26 — Initial implementation of server, API, and UI.
@@ -72,7 +84,9 @@ Built for a corporate Windows machine without another terminal.
   and options (`lib/cli-commands.js`); writes need an explicit folder (no fallback to the home folder)
 - The UI never waits for the CLI to open a menu: read cached data (`peekCatalog`, `peekModels`) and update when the
   real answer arrives; background reads pass `ifRunning` so they never start a process
-- Claude's state is a `data-state` on the working line (`thread.js` `currentState`); motion lives only in `public/css/animations.css`
+- Claude's state is a `data-state` on the working line (`thread.js` `currentState`) and on the crab inside it (`setCrabState`);
+  motion lives only in `public/css/animations.css`. `data-b` (1..3) picks the behavior and is re-rolled at random on every
+  state change and every 5 s while a state loops (not for done/error/stopped, which play once for 2.2 s)
 - Significant actions are never blocked, only confirmed: panels get `guardedApi` from `public/js/risk.js` (settings with
   hooks/env/allow rules, user-wide files, MCP add, plugin install/marketplaces); also bypass/auto mode and slash commands
   that act on the Anthropic account or the cloud (design-*, schedule, ultrareview, usage-credits)
@@ -91,11 +105,17 @@ Built for a corporate Windows machine without another terminal.
   before adoption — `adoptSpare` changes it
 - Models: with one model in the system the chip is static on purpose (user request: no switch = no menu).
   A base URL on anthropic.com counts as Anthropic (CLI list), so a dev shell exporting it does not hide the menu
-- The spark's rays exist twice: `icons.js` (`spark`) and the inline SVG of the brand in `public/index.html`.
-  Change both; animations rely on 8 `.ray` paths with `--i` 0..7 clockwise from the top
+- The crab is built once, in `public/js/crab.js` (18x12 pixel grid; parts `.c-all .c-body .c-arm .c-eyes .c-leg` and the hidden
+  marks `.c-dots .c-bang .c-q .c-sparks .c-sweat`). The sidebar brand gets its crab from `app.js`; `public/icon.svg` is a separate
+  copy for the browser tab (its CSS motion only shows when the file is opened directly; tabs show it static). New behavior = one more `data-b` value in `crab.js` (`BEHAVIORS`) and its CSS rules
+- The crab's CSS has no `.ray`/`claude-mark` left; do not bring back whole-icon rotation (it spins the crab upside down)
 - `session-service` keeps `lastConfig` from the last request: queued messages start from a turn end, which has no config
 - Copy buttons find their text through a WeakMap in `render-items.js` (`copySourceOf`), not a data attribute;
   live streaming answers get the button only when the final item arrives
+- After updating the code, restart `node server.js`: `public/` is served from disk at once but routes load at startup, so a
+  stale server answers `נתיב API לא קיים: <path>` (and a stale `/api/models` was a 404 in the console)
+- `GET /api/folders` without `path` passes `fallback: true` (the default folder may not exist); with a `path` a missing
+  folder is an error the browser dialog shows in its list
 - Queue: `sendMessage` on a running session appends to `session.queue` (persisted); `onTurnEnd` sends the next one.
   Stop empties the queue *before* interrupting (otherwise the interrupted turn's end would send the next message)
   and returns the texts to the browser. After a crash or a server restart the queue waits for "שליחת הבאה" (resume)

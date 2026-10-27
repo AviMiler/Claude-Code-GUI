@@ -97,8 +97,12 @@ the right to run commands as that user.
 - Event format isolation: `lib/event-translator.js` (live events and saved transcripts)
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, divider, notice (`stopped: true` when a
   stop ended the turn), error
+- An unknown `/api` route answers 404 with the route's path and a hint to restart the server (routes load at startup, `public/` does not)
+- `GET /api/folders`: a `path` that is not a folder is an error; no `path` means the default folder and falls back to the home folder
 - Session fields beyond settings: `queue` ([{ id, text, at }], persisted), `status`, `costUsd`, `claudeSessionId`
 - SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved
-- Claude's spark: `thread.js` sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
-  done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)
+- Claude's crab (`public/js/crab.js`): `thread.js` sets `data-state` on the working line and on the crab (starting ->
+  thinking/writing/tool/waiting -> done/error/stopped); `data-b` 1..3 is a random behavior of that state; the sidebar crab follows
+  all sessions (waiting / working / idle) from `app.js`; all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion); every change adds `.swap` (a squash-and-pop)
+  so the switch is not a cut, and new items are inserted above the working line instead of moving it (moving it restarts the crab's animation)
 - Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`

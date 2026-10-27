@@ -1,6 +1,7 @@
 /** Frontend entry point: receives live events, keeps the views in sync, and wires the composer and menus. */
 import { api, subscribe } from './api.js';
 import { h } from './dom.js';
+import { crab, setCrabState } from './crab.js';
 import { state, activeSession, currentScope, getCatalog, getCommands, getModels, peekModels } from './state.js';
 import { createThread } from './thread.js';
 import { createComposer } from './composer.js';
@@ -22,6 +23,7 @@ const els = {
   messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'), brand: byId('brand'),
 };
 const thread = createThread({ scroller: els.scroller, messages: els.messages });
+els.brand.prepend(crab());
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: texts => composer.restore(texts) });
 const runCommand = createCommandRunner(actions);
@@ -132,7 +134,9 @@ function refresh() {
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
   const waiting = [...state.sessions.values()].filter(item => item.pendingPermissions?.length).length;
   els.brand.classList.toggle('waiting', waiting > 0);
-  els.brand.classList.toggle('busy', !waiting && [...state.sessions.values()].some(item => item.status === 'running'));
+  const busy = !waiting && [...state.sessions.values()].some(item => item.status === 'running');
+  els.brand.classList.toggle('busy', busy);
+  setCrabState(els.brand.querySelector('.crab'), waiting ? 'waiting' : busy ? 'writing' : 'idle');
   document.title = `${waiting ? `(${waiting}) ` : ''}${session ? `${session.name} – ` : ''}Claude Code`;
 }
 

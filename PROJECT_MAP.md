@@ -17,7 +17,7 @@ _Last updated: 2026-10-27_
 ./public/js/app.js  ./public/js/events.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
 ./public/js/thread.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
-./public/js/sidebar.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
+./public/js/sidebar.js  ./public/js/chrome.js  ./public/js/crab.js  ./public/js/folder-browser.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
 ./public/js/commands-data.js  ./public/js/command-catalog.js  ./public/js/command-runner.js
 ./public/js/panels/registry.js  ./public/js/panels/panel-host.js  ./public/js/panels/kit.js  ./public/js/panels/file-editor.js
 ./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
@@ -51,16 +51,16 @@ _Last updated: 2026-10-27_
 | `lib/cli-commands.js` | Whitelisted `claude mcp|plugin|doctor|auth ...` subcommands. |
 | `lib/claude-files.js` | Read/write settings, CLAUDE.md, agents, skills, commands, output styles by kind. |
 | `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import. |
-| `lib/workspace-info.js` | Folder browser listing/creation, file search for @-mentions, git status/diff. |
-| `lib/api-routes.js` | Route table and session routes (messages, queue, stop, warm, permissions...). |
+| `lib/workspace-info.js` | Folder browser listing/creation (a missing default folder falls back to home), file search for @-mentions, git status/diff. |
+| `lib/api-routes.js` | Route table and session routes (messages, queue, stop, warm, permissions...); an unknown route's 404 says to restart the server. |
 | `lib/api-routes-tools.js` | Routes behind the panels (catalog, control, models, cli, files, transcripts, git, folders). |
-| `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area. The brand spark is inline SVG (same rays as `icons.js`). |
+| `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area. The brand crab is added by `app.js` (`crab.js`). |
 | `public/css/tokens.css` | Colors (light/dark), fonts, base elements. |
 | `public/css/layout.css` | Sidebar, top bar, welcome page, buttons. |
 | `public/css/messages.css` | Messages and their copy buttons, thinking, tool rows, diffs, todos, results, working line. |
 | `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards. |
 | `public/css/panels.css` | Settings modal, panel building blocks, dialogs (incl. the folder browser), toasts. |
-| `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
+| `public/css/animations.css` | Claude's crab: 3 behaviors for each state (idle, starting, thinking, writing, tool, waiting, done, error, stopped) with squash-and-stretch hops, walks and a ground shadow; a squash-and-pop (`.swap`) on every change; the working line's slide-in. |
 | `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, model menu. |
 | `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state). |
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
@@ -76,11 +76,12 @@ _Last updated: 2026-10-27_
 | `public/js/prompt-cards.js` | Permission, AskUserQuestion and plan-approval cards. |
 | `public/js/sidebar.js` | Session list grouped by date, with search. |
 | `public/js/chrome.js` | Top bar and welcome page. |
-| `public/js/folder-browser.js` | "Open folder" dialog (welcome page, /add-dir) over GET/POST /api/folders. |
+| `public/js/folder-browser.js` | "Open folder" dialog (welcome page, /add-dir) over GET/POST /api/folders; accepts quoted paths, opens the home folder when the start folder is missing, keeps errors visible. |
 | `public/js/ui.js` | Toasts, confirm/prompt dialogs, theme. |
 | `public/js/risk.js` | Confirmations before significant actions (`guardedApi`, risky modes, account/cloud commands). |
+| `public/js/crab.js` | The animated crab mascot: `crab()` builds it, `setCrabState()` sets state and rolls a random behavior (`data-b`), playing the `.swap` pop. |
 | `public/js/dom.js` | `h()` element helper and small utilities. |
-| `public/js/icons.js` | Inline SVG icons; `spark` is Claude's mark with one path per ray (`--i`) for animations.css. |
+| `public/js/icons.js` | Inline SVG icons; the old sun `spark` was removed (the mascot is in `crab.js`). |
 | `public/js/modes.js` | Permission modes and effort levels. |
 | `public/js/commands-data.js` | Built-in slash commands of 2.1.308, Hebrew text, where each runs. |
 | `public/js/command-catalog.js` | Merge with the live CLI catalog, grouping, filtering, parsing. |

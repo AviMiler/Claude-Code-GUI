@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-27 (livelier crab)
+- Changed: bigger, smoother crab motion: hops with squash and stretch and a ground shadow, sideways walks and dashes, claws that rotate, wave and pinch, rising thought bubbles, twinkling sparks, a dripping sweat drop (css/animations.css, js/crab.js)
+- Added: every state or behavior change plays a short squash-and-pop, the working line's crab slides in, and its text slides in on every state change (css/animations.css, js/crab.js, js/thread.js)
+- Fixed: every new item moved the working line to the end of the thread, which restarted the crab's animation; new items now go above it (js/thread.js)
+- Changed: the end-of-turn moment lasts 2.2 s so the longer done/error moves finish
+- Fixed: the staggered thought dots, sparks and sweat drop no longer show as still pixels before their delay or after a finite run (animation-fill-mode both)
+
+## 2026-10-27 (the crab)
+- Changed: Claude's mark is now an animated pixel crab instead of the sun-shaped spark: sidebar, welcome page (a click or hover plays a move), the working line and the browser-tab icon (public/js/crab.js, css/animations.css, icon.svg)
+- Added: every state has 3 behaviors shown at random (re-rolled on each state change and every 5 s): idle, starting, thinking, writing, tool, waiting, done, error, stopped = 27 in all, with small marks (thought dots, "!", "?", sparks, sweat drop)
+- Changed: the end-of-turn moment lasts 1.8 s instead of 0.9 s so the done/error/stopped behavior can be seen (public/js/thread.js)
+- Removed: the `spark` icon and the ray-based sun animations (public/js/icons.js, css/animations.css, inline SVG in index.html)
+- Housekeeping: `לשליחה.zip` added to .gitignore
+
 ## 2026-10-27 (folder browser fixes)
 - Fixed: an API route missing on a server that was not restarted after an update answered a bare "נתיב לא קיים"; it now names the route and says to restart `node server.js` (lib/api-routes.js)
 - Fixed: the folder browser stayed empty when its starting folder did not exist; it now opens the default (or home) folder, and its error stays visible in the list (public/js/folder-browser.js, lib/workspace-info.js)
