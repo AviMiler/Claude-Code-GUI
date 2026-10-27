@@ -9,7 +9,7 @@ const copySources = new WeakMap(); // copy button -> the message's original text
 
 /** "Copy" under a message (shown on hover); the thread's click handler copies copySourceOf(button). */
 function copyButton(text) {
-  const button = h('button', { type: 'button', class: 'btn ghost small', title: 'העתקת ההודעה', dataset: { copyMessage: '' } }, icon('copy'), 'העתקה');
+  const button = h('button', { type: 'button', class: 'icon-button', title: 'העתקה', 'aria-label': 'העתקת ההודעה', dataset: { copyMessage: '' } }, icon('copy'));
   copySources.set(button, text);
   return h('div', { class: 'msg-actions' }, button);
 }

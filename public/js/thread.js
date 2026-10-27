@@ -44,9 +44,9 @@ export function createThread({ scroller, messages }) {
     const text = button && copySourceOf(button);
     if (text === null || text === undefined) return;
     await copyText(text);
-    const label = button.lastChild;
-    label.textContent = 'הועתק ✓';
-    setTimeout(() => { label.textContent = 'העתקה'; }, 1400);
+    button.replaceChildren(icon('check')); // icon-only button: a check mark says it was copied
+    button.title = 'הועתק';
+    setTimeout(() => { button.replaceChildren(icon('copy')); button.title = 'העתקה'; }, 1400);
   });
 
   const isNearBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < NEAR_BOTTOM_PX;

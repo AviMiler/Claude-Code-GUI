@@ -4,7 +4,8 @@
 /* Copy button under each message of the user and of Claude: quiet until the message is hovered or focused */
 .msg-actions { display: flex; gap: 4px; height: 26px; margin-top: 2px; opacity: 0; transition: opacity .12s; }
 .msg-user:hover .msg-actions, .msg-assistant-wrap:hover .msg-actions, .msg-actions:focus-within { opacity: 1; }
-.msg-actions .btn { color: var(--muted); }
+.msg-actions .icon-button { width: 26px; height: 26px; }
+.msg-actions .icon-button .icon { width: 15px; height: 15px; }
 .msg-assistant-wrap { margin-bottom: 4px; }
 .msg-assistant-wrap > .msg-assistant { margin-bottom: 0; }
 @media (hover: none) { .msg-actions { opacity: 1; } }
