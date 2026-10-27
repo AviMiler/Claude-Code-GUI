@@ -133,13 +133,15 @@ the right to run commands as that user.
 **Known and accepted (not fixed on purpose — closed network)**
 | Issue | Impact | Fix when needed |
 |---|---|---|
-| Cross-site GET allowed (simple GETs carry no Origin) | A web page in the same browser can start `claude` probes in any folder (`/api/catalog?cwd=`), run git there, list files and folders (`/api/files`, `/api/folders`), load attachments whose uuid it knows (`/api/images`, `/api/uploads` — uuids are not guessable), make the server ask the model server for its models (`/api/models`), exhaust memory. It cannot read responses. | Startup token required on every /api call; reject `Sec-Fetch-Site: cross-site`; process-starting endpoints as POST |
+| Cross-site GET allowed (simple GETs carry no Origin) | A web page in the same browser can start `claude` probes in any folder (`/api/catalog?cwd=`), run git there, list files and folders (`/api/files`, `/api/folders`), load attachments whose uuid it knows (`/api/images`, `/api/uploads` — uuids are not guessable), make the server ask the model server for its models (`/api/models`, `/api/model-health?refresh=1`), exhaust memory. It cannot read responses. | Startup token required on every /api call; reject `Sec-Fetch-Site: cross-site`; process-starting endpoints as POST |
 | No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders, edit ~/.claude settings and read text files inside any session's folders (`/api/file-view`; a local program could read them directly anyway) | Same startup token |
 
 **Outside this computer**
-- The GUI server makes one network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured token) to
-  list the models, only when the base URL is not Anthropic's. Claude Code talks to the model server only through the
-  messages API, which cannot change the server's configuration.
+- The GUI server makes one kind of network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured
+  token), only when the base URL is not Anthropic's. It serves the model list (`lib/model-list.js`, cached 5 min) and the
+  health dot (`GET /api/model-health`, `lib/model-health.js`, cached 15 s, polled by each visible tab every 60 s and after
+  a failed turn). The cloud is never pinged. Claude Code talks to the model server only through the messages API, which
+  cannot change the server's configuration.
 - Tools Claude runs (Bash/PowerShell) can reach any host the user can, including the model server's own HTTP API
   (Ollama's API has no authentication: pull/delete/create models). This needs the user's approval in the ask modes,
   and happens freely in bypass mode. Protect the model server itself if that matters.

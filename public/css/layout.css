@@ -121,3 +121,13 @@ button.chip:hover { background: var(--surface-2); color: var(--text); }
 .grouping-switch { display: flex; gap: 2px; margin: 4px 10px 0; padding: 2px; border-radius: var(--radius-sm); background: var(--surface-2); }
 .grouping-switch button { flex: 1; padding: 3px 6px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12px; }
 .grouping-switch button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.08)); }
+
+/* Model server health dot (model-health.js) */
+.health-dot { flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: none; display: grid; place-items: center; cursor: pointer; }
+.health-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.health-dot[data-state="up"]::before { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+.health-dot[data-state="down"]::before { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+.health-dot[data-state="checking"]::before { animation: pulse 1.2s ease-in-out infinite; }
+.health-dot:hover { background: var(--surface-3); }
+.sidebar-footer .health-dot { margin-inline-start: auto; }
+.sidebar-footer .health-dot + .version { margin-inline-start: 2px; }

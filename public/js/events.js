@@ -29,7 +29,7 @@ function turnOutcome(session) {
 
 /**
  * @param {{type:string, sessionId?:string}} event
- * @param {{thread:object, refresh:()=>void, selectSession:(id:string|null)=>void, fetchContext:(id:string)=>void}} view
+ * @param {{thread:object, refresh:()=>void, selectSession:(id:string|null)=>void, fetchContext:(id:string)=>void, onTurnFailed:()=>void}} view
  */
 export function handleEvent(event, view) {
   const session = event.sessionId ? state.sessions.get(event.sessionId) : null;
@@ -64,6 +64,7 @@ export function handleEvent(event, view) {
         view.fetchContext(event.sessionId);
         const outcome = turnOutcome(session);
         if (outcome) notify(outcome, session, { activeId: state.activeId, onOpen: view.selectSession });
+        if (outcome === 'error') view.onTurnFailed(); // was it the model server? (model-health.js)
       }
       break;
     case 'runtime':

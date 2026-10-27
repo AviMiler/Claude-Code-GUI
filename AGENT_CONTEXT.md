@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding the file viewer (on top of the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding the model server health dot (on top of the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -22,7 +22,8 @@ Built for a corporate Windows machine without another terminal.
   background tasks panel `/tasks` (live status, stop, output; topbar chip; in memory only),
   full-text search across all sessions in the sidebar (snippets, match bar in the thread),
   per-turn "files changed" card after each result (Edit/MultiEdit/Write/NotebookEdit; that turn's diffs on click),
-  file viewer: open button on Read/Edit/MultiEdit/Write/NotebookEdit tool rows and card rows (line numbers, relevant lines highlighted; read-only, session folders only)
+  file viewer: open button on Read/Edit/MultiEdit/Write/NotebookEdit tool rows and card rows (line numbers, relevant lines highlighted; read-only, session folders only),
+  model server health dot in the sidebar footer (green up / red down / grey unknown; polled every 60 s, rechecked after a failed turn)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -50,14 +51,22 @@ Built for a corporate Windows machine without another terminal.
   1. Cross-site GET: a website open in the same browser can trigger GET endpoints (no Origin is sent for simple GETs).
      Responses are unreadable, but `/api/catalog?cwd=` starts a `claude` probe in any folder (in `-p` mode the folder's
      own settings/hooks load without a trust prompt), `/api/git` runs git there, `/api/folders` lists folders,
-     `/api/models` makes the server call the model server, and repeated calls can exhaust memory.
+     `/api/models` and `/api/model-health` make the server call the model server, and repeated calls can exhaust memory.
   2. No authentication: any program or user on the machine can use the API on 127.0.0.1 — including sessions in
      bypassPermissions mode (run any command), writing ~/.claude settings (hooks = persistence), starting CLI processes
      (`/api/warm`) and creating folders (`POST /api/folders`).
+  3. A base URL with `user:password@` (not fixed, found 2026-10-27): `/api/models` fails ("Request cannot be constructed from a URL that
+     includes credentials") and its error text echoes the full URL with the credentials to the browser. The health dot already strips them.
+     Fix: build the request from a cleaned URL (as lib/model-health.js does) and strip credentials from the error text in lib/model-list.js.
   Fix when needed: random token generated at startup and required on every /api call (cookie or header), reject
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Model server health indicator (feature 9 of 12): green/red/grey dot in the sidebar footer by the version label. Up = 2xx from `GET {ANTHROPIC_BASE_URL}/v1/models`;
+  down = timeout 4 s, connection error or any non-2xx; grey = Anthropic/no base URL (no request). `GET /api/model-health[?refresh=1]` (lib/model-health.js, new, cached 15 s,
+  URL shown without credentials, token never returned); public/js/model-health.js (new): checks on load, every 60 s while visible, after a failed turn (silent), click = check + toast.
+  Also model-list.js exports envOf/isAnthropic; api-routes-tools.js, api.js, index.html, layout.css, app.js, events.js. No deviation. Verified in a browser against a fake model server.
+  Found, not fixed: a base URL with `user:password@` breaks `/api/models` and its error text echoes the URL with the credentials to the browser.
 - 2026-10-27 — File viewer (feature 8 of 12): open button on file tool rows (Read, Edit, MultiEdit, Write, NotebookEdit) and changed-files card rows opens the file's current
   text with line numbers and the tool's lines highlighted. `GET /api/file-view?sessionId=&path=` (lib/file-view.js, new) only inside the session folder, addDirs and uploads
   (real paths; `cwd` param ignored); 2 MB cap, binary 415. New public/js/file-viewer.js; api.js, render-tools.js, turn-changes.js, app.js, panels.css, messages.css.
@@ -136,6 +145,8 @@ Built for a corporate Windows machine without another terminal.
 - [ ] On the corporate machine: send one image to check the local model's vision, and one file to check the Read path
 - [ ] On the corporate machine: try `/btw` (does 2.1.246 support `side_question`? real response shape)
 - [ ] On the corporate machine: try `/tasks` (does 2.1.246 emit task events and support `stop_task` / `get_task_output`? real output response field)
+- [ ] On the corporate machine: check the health dot against the real model server (does `/v1/models` answer 2xx? otherwise the dot is red although turns work)
+- [ ] Fix the credentials-in-ANTHROPIC_BASE_URL problem of `/api/models` (see Known security issues, item 3)
 - [ ] Split `lib/session-service.js` (283 lines) and `lib/session-runtime.js` (243) — over the ~150-line budget
 
 ## Gotchas / Watch Out
@@ -188,8 +199,9 @@ Built for a corporate Windows machine without another terminal.
 - `.cmd` shims on Windows run through cmd.exe; arguments are quoted by `lib/spawn-utils.js`, JSON goes through files, never arguments;
   arguments containing `%` are refused there (cmd.exe expands %VAR% even in quotes)
 - The git panel disables repository-configured programs (fsmonitor, external diff, textconv) — keep those flags in `lib/workspace-info.js`
-- The GUI server's only network call is GET {ANTHROPIC_BASE_URL}/v1/models (lib/model-list.js, 4 s timeout, cached 5 min,
-  only for a custom base URL). Everything else outside the machine happens through Claude Code
+- The GUI server's only network call is GET {ANTHROPIC_BASE_URL}/v1/models, used by the model list (lib/model-list.js, 4 s timeout, cached 5 min)
+  and the health dot (lib/model-health.js, cached 15 s, polled every 60 s per visible tab), only for a custom base URL; never ping the cloud.
+  Health = 2xx only (any other answer is red, no `/api/tags` fallback). Everything else outside the machine happens through Claude Code
   (model API calls, MCP/plugins) or through tools Claude runs (Bash can reach the model server's HTTP API — e.g.
   Ollama's unauthenticated /api/delete — when the user approves it or in bypass mode)
 - Requiring `lib/session-store.js` registers an exit hook that writes `data/sessions.json`; set `CLAUDE_GUI_DATA` in experiments

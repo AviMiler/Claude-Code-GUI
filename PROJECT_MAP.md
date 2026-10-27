@@ -1,5 +1,5 @@
 # Project Map
-_Last updated: 2026-10-27 (added lib/file-view.js, public/js/file-viewer.js; earlier: turn-changes.js, working-line.js, lib/templates.js, templates.js, panels/panel-templates.js, session-groups.js, session-search.js, search-hits.js, chip-menus.js)_
+_Last updated: 2026-10-27 (added lib/model-health.js, public/js/model-health.js; earlier: lib/file-view.js, public/js/file-viewer.js; earlier: turn-changes.js, working-line.js, lib/templates.js, templates.js, panels/panel-templates.js, session-groups.js, session-search.js, search-hits.js, chip-menus.js)_
 
 ## File Tree
 ```
@@ -9,7 +9,7 @@ _Last updated: 2026-10-27 (added lib/file-view.js, public/js/file-viewer.js; ear
 ./dev/config.fake.json  ./dev/fake-claude.cmd  ./dev/fake-claude.js
 ./lib/api-routes.js  ./lib/api-routes-tools.js  ./lib/catalog-service.js  ./lib/claude-files.js
 ./lib/cli-args.js  ./lib/cli-capabilities.js  ./lib/cli-commands.js  ./lib/cli-process.js  ./lib/config.js
-./lib/event-hub.js  ./lib/event-translator.js  ./lib/failure-messages.js  ./lib/file-view.js  ./lib/http-utils.js  ./lib/model-list.js  ./lib/images.js  ./lib/uploads.js
+./lib/event-hub.js  ./lib/event-translator.js  ./lib/failure-messages.js  ./lib/file-view.js  ./lib/http-utils.js  ./lib/model-list.js  ./lib/model-health.js  ./lib/images.js  ./lib/uploads.js
 ./lib/session-runtime.js  ./lib/session-service.js  ./lib/session-store.js  ./lib/side-questions.js  ./lib/spawn-utils.js
 ./lib/static-files.js  ./lib/task-tracker.js  ./lib/templates.js  ./lib/transcripts.js  ./lib/workspace-info.js
 ./public/index.html  ./public/icon.svg
@@ -17,7 +17,7 @@ _Last updated: 2026-10-27 (added lib/file-view.js, public/js/file-viewer.js; ear
 ./public/js/app.js  ./public/js/events.js  ./public/js/notify.js  ./public/js/page-status.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
 ./public/js/thread.js  ./public/js/working-line.js  ./public/js/turn-changes.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
-./public/js/sidebar.js  ./public/js/session-groups.js  ./public/js/session-search.js  ./public/js/search-hits.js  ./public/js/chip-menus.js  ./public/js/side-question.js  ./public/js/file-viewer.js  ./public/js/templates.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
+./public/js/sidebar.js  ./public/js/session-groups.js  ./public/js/session-search.js  ./public/js/search-hits.js  ./public/js/chip-menus.js  ./public/js/side-question.js  ./public/js/file-viewer.js  ./public/js/model-health.js  ./public/js/templates.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
 ./public/js/commands-data.js  ./public/js/command-catalog.js  ./public/js/command-runner.js
 ./public/js/panels/registry.js  ./public/js/panels/panel-host.js  ./public/js/panels/kit.js  ./public/js/panels/file-editor.js
 ./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
@@ -52,7 +52,8 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/catalog-service.js` | Commands/skills/agents/models catalog and whitelisted control requests (session, warm spare, or probe; incl. `get_task_output`, `stop_task`); `ifRunning` reads never start a process. |
 | `lib/images.js` | Images attached to messages: validation (type, magic bytes, 5 MB), storage in `data/images/`, image blocks for the CLI, serving, cleanup. |
 | `lib/uploads.js` | Other attached files: storage in `data/uploads/<id>/<name>`, the "[Attached files]" paths in the message, download serving, cleanup; the folder every session gets with `--add-dir`. |
-| `lib/model-list.js` | Models the user can switch between: model server (/v1/models) + config.json, or the CLI's list on Anthropic. |
+| `lib/model-list.js` | Models the user can switch between: model server (/v1/models) + config.json, or the CLI's list on Anthropic. Exports `envOf` / `isAnthropic` (used by `model-health.js`). |
+| `lib/model-health.js` | Is the model server up? `checkModelServer(config, {refresh})`: the same read-only GET /v1/models, only for a custom base URL (Anthropic/none -> `unknown`, no request); up = 2xx, down = timeout / connection error / any non-2xx; cached 15 s; URL shown without credentials, token never returned. |
 | `lib/cli-commands.js` | Whitelisted `claude mcp|plugin|doctor|auth ...` subcommands. |
 | `lib/claude-files.js` | Read/write settings, CLAUDE.md, agents, skills, commands, output styles by kind. |
 | `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import (images marked as "[תמונה]"). |
@@ -60,25 +61,25 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/api-routes.js` | Route table and session routes (messages with attachments, queue, stop, warm, side-question, permissions...); serves `/api/images` and `/api/uploads` as raw bytes. |
 | `lib/templates.js` | Prompt templates the user saves and reuses, in `data/templates.json` next to `sessions.json`: list (newest first), save (create or update; name 80, text 20000, 200 max; temp file + rename), remove (404 when missing). |
 | `lib/file-view.js` | Read-only text of a file for the file viewer: only inside the session's folder, `addDirs` and the uploads folder (roots from the session, real paths, separator boundary); relative paths against the cwd; 404 missing, 400 directory, 403 outside, 415 binary; 2 MB cap with `truncated`; `totalLines` excludes the final newline. |
-| `lib/api-routes-tools.js` | Routes behind the panels (catalog, control, models, cli, files, transcripts, git, folders, templates, `GET /api/file-view`). |
-| `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area. The brand spark is inline SVG (same rays as `icons.js`). |
+| `lib/api-routes-tools.js` | Routes behind the panels (catalog, control, models, cli, files, transcripts, git, folders, templates, `GET /api/file-view`, `GET /api/model-health`). |
+| `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area; the model health dot (`#model-health`) in the sidebar footer. The brand spark is inline SVG (same rays as `icons.js`). |
 | `public/css/tokens.css` | Colors (light/dark), fonts, base elements. |
-| `public/css/layout.css` | Sidebar (incl. search snippets, grouping switch, pin button), top bar, search-matches bar and hit outlines in the thread, welcome page, buttons. |
+| `public/css/layout.css` | Sidebar (incl. search snippets, grouping switch, pin button), top bar, search-matches bar and hit outlines in the thread, welcome page, buttons, the model health dot. |
 | `public/css/messages.css` | Messages and their copy buttons, thinking, tool rows, diffs, todos, results, working line, the per-turn changed-files card, the open-file buttons. |
 | `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards, the `/btw` side card. |
 | `public/css/panels.css` | File viewer dialog, settings modal, panel building blocks, dialogs (incl. the folder browser), toasts, template editor, variable fill dialog and the "+" menu template search. |
 | `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
 | `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions, Background tasks, Full-text session search, Sidebar pinning and grouping, Prompt templates, Per-turn changed-files summary, File viewer); new permanent features are added here. |
-| `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, sidebar search (150 ms debounce, Enter opens the first result, `openFromSidebar`); page status via `page-status.js`; chip dropdowns via `chip-menus.js`; passes `onOpenGit` to the thread (the changed-files card's "git diff" button); enables the file viewer links (`enableFileLinks`). Still over the size budget (175 lines). |
+| `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, sidebar search (150 ms debounce, Enter opens the first result, `openFromSidebar`); page status via `page-status.js`; chip dropdowns via `chip-menus.js`; passes `onOpenGit` to the thread (the changed-files card's "git diff" button); enables the file viewer links (`enableFileLinks`); creates the model health dot (`createModelHealth`, `eventView.onTurnFailed`). Still over the size budget (175 lines). |
 | `public/js/chip-menus.js` | Dropdowns of the composer's chips: permission mode, model + effort, and the "+" menu (moved from app.js; has the "תבניות פרומפטים" item: searchable template list + "ניהול תבניות…"). |
 | `public/js/templates.js` | Using prompt templates in the composer: the "+" menu's searchable list, `{{variable}}` parsing (any-script names, unique, order of first appearance), and the fill form. The filled text is inserted into the composer (replaces an empty one, appended to a draft), never sent by itself. |
 | `public/js/session-search.js` | Full-text search over every session's messages (user, Claude's text incl. subagents, shell commands): case-insensitive, ignores niqqud, newest 3000 items per session, count capped at 99; returns hits with snippets. Pure, no DOM. |
 | `public/js/search-hits.js` | Search matches inside the open conversation: sticky bar "k מתוך N" with ▲ ▼ and close (Enter / Shift+Enter / Esc), outlines the matching messages, scrolls to the current one; cleared on session change. |
-| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request); handles the `tasks` event (also as window event `claude-gui:tasks`); passes the item index and `session.items` for live items (`data-item-index`; the items let the thread build the changed-files card). |
+| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request); handles the `tasks` event (also as window event `claude-gui:tasks`); passes the item index and `session.items` for live items (`data-item-index`; the items let the thread build the changed-files card); calls `view.onTurnFailed()` when a finished turn's outcome is an error (rechecks the model health dot). |
 | `public/js/notify.js` | User-chosen notifications (desktop, sound, tab-title count) when a turn ends, waits for approval or fails; preferences in localStorage `claude-gui.notifications`. |
 | `public/js/page-status.js` | Page-wide status: the brand spark (busy / waiting) and the tab title with the count of sessions that need the user (waiting or finished-unread). |
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
-| `public/js/api.js` | Fetch wrappers (incl. `viewFile`, `sideQuestion`, `templates` / `saveTemplate` / `deleteTemplate`) and SSE subscription. |
+| `public/js/api.js` | Fetch wrappers (incl. `modelHealth`, `viewFile`, `sideQuestion`, `templates` / `saveTemplate` / `deleteTemplate`) and SSE subscription. |
 | `public/js/actions.js` | Session actions (incl. `sideQuestion`, `setPinned`) and the context given to panels (incl. `composerText()`). |
 | `public/js/thread.js` | Conversation view: items, live streaming (`append(item, index, items)`), message copy; shows the working line from `working-line.js` and the changed-files card from `turn-changes.js` after each result (history in `show`, live in `append`); every item node carries `data-item-index` (index in `session.items`) so search hits can find it (the card has none). |
 | `public/js/working-line.js` | The "working" line under a running turn: Claude's spark in the current state (`data-state`: starting, thinking, writing, tool, waiting, done/error/stopped; animated in css/animations.css), a verb, the elapsed time, and a short done/error/stopped moment when the turn ends. Moved from thread.js. |
@@ -92,6 +93,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/prompt-cards.js` | Permission, AskUserQuestion and plan-approval cards. |
 | `public/js/side-question.js` | `/btw` card above the composer: question, loader, Markdown answer, follow-ups with history, close/Esc; closes on session change. Nothing persisted. |
 | `public/js/file-viewer.js` | File viewer dialog: the file's current text with line numbers, the lines a tool read or wrote highlighted and scrolled into view (Read offset/limit, Edit/MultiEdit `new_string`, Write whole file), copy path / content, Esc / backdrop; textContent only, first 20000 lines. `enableFileLinks` is the one delegated click listener for every open button (wired in app.js). |
+| `public/js/model-health.js` | `createModelHealth`: the model server's health dot in the sidebar footer (green up, red down, grey unknown). Checks on load, every 60 s while the tab is visible, after a failed turn (silent) and on a click (refresh + toast); one request at a time; tooltip with URL, latency, error. |
 | `public/js/session-groups.js` | How the sidebar groups sessions: pinned first ("מוצמדים"), then by date or by project folder (collision titles "parent/name"); the mode is in localStorage `claude-gui.sidebar-grouping`. Pure, no DOM. |
 | `public/js/sidebar.js` | Session list: "לפי תאריך / לפי פרויקט" switch, pinned sessions first, rows with a pin button (hover; always visible when pinned), grouping from `session-groups.js`, with a search over names, folders and the text of every conversation (snippet with the match marked + match count; empty state "אין סשנים או הודעות תואמים"). |
 | `public/js/chrome.js` | Top bar (incl. the "N ברקע" chip that opens the tasks panel, and the "עוד" menu item pin/unpin) and welcome page. |

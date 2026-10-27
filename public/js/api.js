@@ -18,6 +18,8 @@ export const api = {
   warm: target => request('POST', '/api/warm', target),
   /** Models of the system: { source: 'cli'|'server', models, current, error }. */
   models: () => request('GET', '/api/models'),
+  /** Is the model server up? { state: 'up'|'down'|'unknown', latencyMs, error, url, checkedAt }. */
+  modelHealth: refresh => request('GET', `/api/model-health${refresh ? '?refresh=1' : ''}`),
   createSession: body => request('POST', '/api/sessions', body),
   updateSession: (id, body) => request('PATCH', `/api/sessions/${id}`, body),
   deleteSession: id => request('DELETE', `/api/sessions/${id}`),

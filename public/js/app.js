@@ -16,6 +16,7 @@ import { renderPageStatus, watchPageVisibility } from './page-status.js';
 import { createSideQuestions } from './side-question.js';
 import { createSearchHits } from './search-hits.js';
 import { enableFileLinks } from './file-viewer.js';
+import { createModelHealth } from './model-health.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -27,6 +28,7 @@ const thread = createThread({ scroller: els.scroller, messages: els.messages, on
 const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 enableFileLinks(els.messages, () => state.activeId);
+const modelHealth = createModelHealth(byId('model-health'));
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });
@@ -149,7 +151,7 @@ async function loadState() {
 }
 
 // ifRunning: the context ring must never start a CLI process by itself (e.g. right after one crashed).
-const eventView = { thread, refresh, selectSession, fetchContext: id => api.control({ sessionId: id }, 'get_context_usage', { ifRunning: true })
+const eventView = { thread, refresh, selectSession, onTurnFailed: () => modelHealth.afterFailedTurn(), fetchContext: id => api.control({ sessionId: id }, 'get_context_usage', { ifRunning: true })
   .then(usage => { if (!usage) return; state.context.set(id, usage.percentage ?? Math.round((usage.totalTokens / usage.maxTokens) * 100)); refresh(); })
   .catch(() => {}) };
 subscribe(event => handleEvent(event, eventView), () => loadState().catch(error => console.error('[app] cannot load state:', error)));

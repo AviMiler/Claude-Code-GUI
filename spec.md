@@ -76,6 +76,16 @@ After each turn the user sees which files Claude changed in THAT turn, and can o
 - The card nodes carry no `data-item-index`, so search hits and item indexes are unaffected.
 - Code: `public/js/turn-changes.js`; rendered by `thread.js` after result items (history in `show`, live in `append(item, index, items)`); `events.js` passes `session.items`; `app.js` passes `onOpenGit`; `css/messages.css`.
 
+## Model server health indicator (confirmed permanent, 2026-10-27)
+A small dot in the sidebar footer, next to the Claude Code version label, tells at once whether the model server behind `ANTHROPIC_BASE_URL` (for example a local qwen on Ollama or LiteLLM) is up, so a failed turn can be told apart from a server that is down. No model call, no tokens.
+- States: green = up, red = down, grey = unknown. Unknown = the base URL is Anthropic's own (or empty): no request is made at all, the cloud is never pinged.
+- The check is the same read-only `GET {ANTHROPIC_BASE_URL}/v1/models` that the model list uses (4 s timeout, same auth headers), and only for a custom base URL. There is no `/api/tags` fallback for health.
+- Up = a 2xx answer. Down = no answer within 4 seconds ("אין תשובה תוך 4 שניות"), a connection error (its code, for example ECONNREFUSED), or ANY non-2xx answer ("השרת ענה HTTP 401"): a server that answers 401 or 404 cannot be used by Claude Code either.
+- Server: `GET /api/model-health[?refresh=1]` -> `{ state, latencyMs, error, url, checkedAt }`. Cached 15 s, so many tabs do not multiply requests; `refresh=1` bypasses the cache. The displayed `url` has no user:password and no query. The token and key are sent only as request headers and are never returned.
+- Tooltip on the dot: the URL, the latency and the error. Click = check now (refresh) plus a toast.
+- When it checks: on page load, every 60 s while the tab is visible (paused while hidden, resumes when visible), right after a turn ends with an error (silent, no extra notification), and on a click. One request at a time.
+- Code: `lib/model-health.js` (`checkModelServer(config, {refresh})`), `envOf` / `isAnthropic` exported from `lib/model-list.js`, route in `lib/api-routes-tools.js`, `modelHealth(refresh)` in `public/js/api.js`, `public/js/model-health.js`, the `#model-health` button in `public/index.html`, `css/layout.css`, `createModelHealth` and `eventView.onTurnFailed` in `app.js`, `view.onTurnFailed()` called from `events.js`.
+
 ## File viewer (confirmed permanent, 2026-10-27)
 Clicking a file path in a tool row opens the file's CURRENT text in a read-only viewer with line numbers and the relevant lines highlighted. No model call, no tokens.
 - Where: an open button on the tool row of Read, Edit, MultiEdit, Write and NotebookEdit (it does not toggle the row), and on each row of the per-turn changed-files card. Grep, Glob and Bash are NOT linked (their path is usually a folder or a command).
