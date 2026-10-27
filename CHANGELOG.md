@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-27 (per-turn changed-files summary)
+- Added: a card after each turn's result, "שונה קובץ אחד" / "שונו N קבצים", listing the files Claude's edit tools (Edit, MultiEdit, Write, NotebookEdit; top level and subagents; failed or denied calls skipped; edits to one file merged) wrote in that turn, with +added/−removed counts. Click a file for that turn's diffs only, "הכול" for all, "git diff" opens the git panel. Recomputed from the session's items, nothing stored. Why: user request (feature 7 of 12). Files: public/js/turn-changes.js (new), thread.js, events.js, app.js, css/messages.css
+- Changed from the plan: Write shows the badge "נכתב", not "חדש", because the GUI cannot tell a new file from an overwrite. The card stays visible in focus view. A tooltip says Bash-made changes show only in the git panel
+- Refactor: the working line (Claude's spark state, verb, elapsed time, done/error/stopped moment) moved verbatim from thread.js to the new public/js/working-line.js (thread.js 193 -> 150 lines)
+- Fixed: the templates panel failed to open (view.composerText missing in app.js) — follow-up fix to feature 6
+- Not tested: a turn that continues after a mid-turn result (counted from the last user message); the "tool" working-line state was checked by code review only (other states checked in a browser against the fake CLI)
+
 ## 2026-10-27 (prompt templates)
 - Added: prompt templates library — saved prompts with `{{variables}}` (Hebrew or English names), picked from a searchable list in the "+" menu or managed in the new panel "תבניות פרומפטים" (create, edit, duplicate, delete, use, "save the current message as a template"). A template with variables opens a fill form; the text is inserted into the composer (replaces an empty one, appended to a draft) and never sent automatically. Why: user request (feature 6 of 12). Files: lib/templates.js (new), lib/api-routes-tools.js (GET/PUT/DELETE /api/templates), public/js/templates.js (new), public/js/panels/panel-templates.js (new), registry.js, chip-menus.js, api.js, actions.js, app.js, css/panels.css
 - Changed: stored on the server in `data/templates.json` (survives a browser reset, shared by all tabs), not in localStorage; limits name 80, text 20000, 200 templates; the browser generates the id. The panels count is 18

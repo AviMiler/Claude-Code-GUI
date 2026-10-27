@@ -1,5 +1,5 @@
 # Project Map
-_Last updated: 2026-10-27 (added lib/templates.js, public/js/templates.js, panels/panel-templates.js; earlier: session-groups.js, session-search.js, search-hits.js, chip-menus.js)_
+_Last updated: 2026-10-27 (added public/js/turn-changes.js, working-line.js; earlier: lib/templates.js, templates.js, panels/panel-templates.js, session-groups.js, session-search.js, search-hits.js, chip-menus.js)_
 
 ## File Tree
 ```
@@ -15,7 +15,7 @@ _Last updated: 2026-10-27 (added lib/templates.js, public/js/templates.js, panel
 ./public/index.html  ./public/icon.svg
 ./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css  ./public/css/animations.css
 ./public/js/app.js  ./public/js/events.js  ./public/js/notify.js  ./public/js/page-status.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
-./public/js/thread.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
+./public/js/thread.js  ./public/js/working-line.js  ./public/js/turn-changes.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
 ./public/js/sidebar.js  ./public/js/session-groups.js  ./public/js/session-search.js  ./public/js/search-hits.js  ./public/js/chip-menus.js  ./public/js/side-question.js  ./public/js/templates.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
 ./public/js/commands-data.js  ./public/js/command-catalog.js  ./public/js/command-runner.js
@@ -63,23 +63,25 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area. The brand spark is inline SVG (same rays as `icons.js`). |
 | `public/css/tokens.css` | Colors (light/dark), fonts, base elements. |
 | `public/css/layout.css` | Sidebar (incl. search snippets, grouping switch, pin button), top bar, search-matches bar and hit outlines in the thread, welcome page, buttons. |
-| `public/css/messages.css` | Messages and their copy buttons, thinking, tool rows, diffs, todos, results, working line. |
+| `public/css/messages.css` | Messages and their copy buttons, thinking, tool rows, diffs, todos, results, working line, the per-turn changed-files card. |
 | `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards, the `/btw` side card. |
 | `public/css/panels.css` | Settings modal, panel building blocks, dialogs (incl. the folder browser), toasts, template editor, variable fill dialog and the "+" menu template search. |
 | `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
-| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions, Background tasks, Full-text session search, Sidebar pinning and grouping, Prompt templates); new permanent features are added here. |
-| `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, sidebar search (150 ms debounce, Enter opens the first result, `openFromSidebar`); page status via `page-status.js`; chip dropdowns via `chip-menus.js`. Still over the size budget (175 lines). |
+| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions, Background tasks, Full-text session search, Sidebar pinning and grouping, Prompt templates, Per-turn changed-files summary); new permanent features are added here. |
+| `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, sidebar search (150 ms debounce, Enter opens the first result, `openFromSidebar`); page status via `page-status.js`; chip dropdowns via `chip-menus.js`; passes `onOpenGit` to the thread (the changed-files card's "git diff" button). Still over the size budget (175 lines). |
 | `public/js/chip-menus.js` | Dropdowns of the composer's chips: permission mode, model + effort, and the "+" menu (moved from app.js; has the "תבניות פרומפטים" item: searchable template list + "ניהול תבניות…"). |
 | `public/js/templates.js` | Using prompt templates in the composer: the "+" menu's searchable list, `{{variable}}` parsing (any-script names, unique, order of first appearance), and the fill form. The filled text is inserted into the composer (replaces an empty one, appended to a draft), never sent by itself. |
 | `public/js/session-search.js` | Full-text search over every session's messages (user, Claude's text incl. subagents, shell commands): case-insensitive, ignores niqqud, newest 3000 items per session, count capped at 99; returns hits with snippets. Pure, no DOM. |
 | `public/js/search-hits.js` | Search matches inside the open conversation: sticky bar "k מתוך N" with ▲ ▼ and close (Enter / Shift+Enter / Esc), outlines the matching messages, scrolls to the current one; cleared on session change. |
-| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request); handles the `tasks` event (also as window event `claude-gui:tasks`); passes the item index for live items (`data-item-index`). |
+| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request); handles the `tasks` event (also as window event `claude-gui:tasks`); passes the item index and `session.items` for live items (`data-item-index`; the items let the thread build the changed-files card). |
 | `public/js/notify.js` | User-chosen notifications (desktop, sound, tab-title count) when a turn ends, waits for approval or fails; preferences in localStorage `claude-gui.notifications`. |
 | `public/js/page-status.js` | Page-wide status: the brand spark (busy / waiting) and the tab title with the count of sessions that need the user (waiting or finished-unread). |
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
 | `public/js/api.js` | Fetch wrappers (incl. `sideQuestion`, `templates` / `saveTemplate` / `deleteTemplate`) and SSE subscription. |
 | `public/js/actions.js` | Session actions (incl. `sideQuestion`, `setPinned`) and the context given to panels (incl. `composerText()`). |
-| `public/js/thread.js` | Conversation view: items, live streaming, working line with Claude's state (starting, thinking, writing, tool, waiting, done/error/stopped), message copy; every item node carries `data-item-index` (index in `session.items`) so search hits can find it. |
+| `public/js/thread.js` | Conversation view: items, live streaming (`append(item, index, items)`), message copy; shows the working line from `working-line.js` and the changed-files card from `turn-changes.js` after each result (history in `show`, live in `append`); every item node carries `data-item-index` (index in `session.items`) so search hits can find it (the card has none). |
+| `public/js/working-line.js` | The "working" line under a running turn: Claude's spark in the current state (`data-state`: starting, thinking, writing, tool, waiting, done/error/stopped; animated in css/animations.css), a verb, the elapsed time, and a short done/error/stopped moment when the turn ends. Moved from thread.js. |
+| `public/js/turn-changes.js` | "Files changed in this turn" card after a turn's `result`: files written by Edit, MultiEdit, Write ("נכתב"), NotebookEdit (top level and subagents; error results skipped; edits to a file merged) with +/− counts; click a file for that turn's diffs, "הכול" for all, "git diff" opens the git panel. Recomputed from the session's items, nothing stored; turns without edits show nothing. |
 | `public/js/render-items.js` | Items -> DOM (user messages with image thumbnails and file chips, copy buttons); Markdown export. |
 | `public/js/render-tools.js` | Tool rows: terminal, diffs, todos, results; `toolMeta` (verb/target of a tool, also used by the working line). |
 | `public/js/markdown.js` | Safe Markdown renderer with code copy. |

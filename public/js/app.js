@@ -22,7 +22,7 @@ const els = {
   app: byId('app'), list: byId('session-list'), search: byId('session-search'), topbar: byId('topbar'), scroller: byId('thread'),
   messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'), brand: byId('brand'),
 };
-const thread = createThread({ scroller: els.scroller, messages: els.messages });
+const thread = createThread({ scroller: els.scroller, messages: els.messages, onOpenGit: () => actions.openPanel('diff') });
 const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),

@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding prompt templates (on top of pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding the per-turn changed-files summary (on top of prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -20,7 +20,8 @@ Built for a corporate Windows machine without another terminal.
   prompt templates with `{{variables}}` ("+" menu, panel; stored in `data/templates.json`),
   user-chosen notifications (desktop, sound, tab title), `/btw` side questions (not in thread, not persisted),
   background tasks panel `/tasks` (live status, stop, output; topbar chip; in memory only),
-  full-text search across all sessions in the sidebar (snippets, match bar in the thread)
+  full-text search across all sessions in the sidebar (snippets, match bar in the thread),
+  per-turn "files changed" card after each result (Edit/MultiEdit/Write/NotebookEdit; that turn's diffs on click)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -56,6 +57,11 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Per-turn changed-files summary (feature 7 of 12): card after each `result` listing files Claude's edit tools wrote that turn (+/− counts, "נכתב" for Write,
+  failed calls skipped, edits merged), click = that turn's diffs only. Recomputed from session items, nothing stored. New public/js/turn-changes.js; thread.js, events.js,
+  app.js, messages.css. Deviations from the plan: "נכתב" instead of "חדש" (new file vs overwrite is unknowable); card stays in focus view. Refactor: working line moved
+  from thread.js to public/js/working-line.js (thread.js 150 lines). Also fixed feature 6: templates panel failed to open (view.composerText missing in app.js).
+  Verified in a browser against the fake CLI; "tool" working-line state by code review only; a turn continuing after a mid-turn result is untested.
 - 2026-10-27 — Prompt templates (feature 6 of 12): saved prompts with `{{variables}}` in `data/templates.json` (server, so they survive a browser reset),
   GET/PUT/DELETE /api/templates (browser-generated id, PUT upserts), "+" menu list and panel "תבניות פרומפטים". The filled text is inserted into the
   composer (empty composer replaced, draft appended), never sent. New lib/templates.js, public/js/templates.js, panels/panel-templates.js. Verified in a
@@ -112,7 +118,7 @@ Built for a corporate Windows machine without another terminal.
   and options (`lib/cli-commands.js`); writes need an explicit folder (no fallback to the home folder)
 - The UI never waits for the CLI to open a menu: read cached data (`peekCatalog`, `peekModels`) and update when the
   real answer arrives; background reads pass `ifRunning` so they never start a process
-- Claude's state is a `data-state` on the working line (`thread.js` `currentState`); motion lives only in `public/css/animations.css`
+- Claude's state is a `data-state` on the working line (`working-line.js`); motion lives only in `public/css/animations.css`
 - Significant actions are never blocked, only confirmed: panels get `guardedApi` from `public/js/risk.js` (settings with
   hooks/env/allow rules, user-wide files, MCP add, plugin install/marketplaces); also bypass/auto mode and slash commands
   that act on the Anthropic account or the cloud (design-*, schedule, ultrareview, usage-credits)

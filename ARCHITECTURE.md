@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (prompt templates; earlier: pinned sessions, grouping)_
+_Last updated: 2026-10-27 (per-turn changed-files card, working-line.js; earlier: prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -149,7 +149,10 @@ the right to run commands as that user.
 - User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`
 - SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks
 - `tasks` are in the session meta (`/api/state`, `session` events) but not in `data/sessions.json`
-- Claude's spark: `thread.js` sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
+- Per-turn changed files: `turn-changes.js` derives a card from `session.items` (the edit tool items from the last user item to the `result`, top level and subagents, minus
+  calls with an error tool-result); `thread.js` renders it after result items (history and live); nothing is stored and the card has no `data-item-index`. Frontend only.
+  Bash-made changes are invisible to it (the git panel covers those)
+- Claude's spark: `working-line.js` (used by `thread.js`) sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
   done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)
 - Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the
   per-browser preferences (localStorage) and fires desktop / sound; `page-status.js` owns the tab title count and brand state. Frontend only

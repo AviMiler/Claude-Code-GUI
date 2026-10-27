@@ -64,3 +64,14 @@ The user saves prompts they reuse, with variables, picks them from the composer'
 - The filled text is INSERTED into the composer and never sent automatically, so the user can still edit it. Rule everywhere (menu and panel): an empty composer is replaced, a composer with a draft gets the text appended.
 - UI: "+" menu item "תבניות פרומפטים" opens a searchable list (Enter picks the first visible) with "ניהול תבניות…"; the settings panel "תבניות פרומפטים" (id `templates`, group session) creates, edits, duplicates, deletes and uses templates, and shows "שמירת ההודעה הנוכחית כתבנית" (prefilled from the composer) when the composer has text.
 - Code: `lib/templates.js`, routes in `lib/api-routes-tools.js`, `public/js/templates.js` (variables, fill form, pick menu), `public/js/panels/panel-templates.js`, `public/js/panels/registry.js`, `chip-menus.js` ("+" menu), `api.js`, `actions.js` (`composerText`), `app.js`, `css/panels.css`.
+
+## Per-turn changed-files summary (confirmed permanent, 2026-10-27)
+After each turn the user sees which files Claude changed in THAT turn, and can open that turn's diffs only (not the whole git diff). Frontend only: recomputed from the session's items, nothing extra is stored and no server change.
+- A card "Files changed in this turn" appears after the turn's `result` item, in history (re-rendered sessions) and for live turns. A turn is everything from the last user item to the result. Turns without file edits show nothing. The card stays visible in focus view (it is the turn's outcome).
+- Counted: the edit tools Claude called — Edit, MultiEdit (its edits merged), Write, NotebookEdit — at top level and inside subagents. Calls whose tool result is an error (denied or failed) are skipped. Several edits to the same file are merged into one row.
+- Header "שונה קובץ אחד" / "שונו N קבצים". One row per file: name (LTR, full path as tooltip) and +added / −removed line counts. Write counts all its lines as added and gets the badge "נכתב" (not "חדש": the GUI cannot tell a new file from an overwrite). NotebookEdit counts the lines of `new_source` as added and shows the raw cell text.
+- Clicking a row expands that file's diffs from this turn only (reusing `diffLines` / `renderDiff` of `render-tools.js`). A "הכול" toggle expands all. A separate "git diff" button opens the existing git diff panel.
+- Limit, said in a tooltip: only what Claude's edit tools wrote is shown. Files changed by Bash commands appear only in the git panel.
+- Known edge (untested): if a turn continues after a mid-turn `result`, it is counted from the last user item.
+- The card nodes carry no `data-item-index`, so search hits and item indexes are unaffected.
+- Code: `public/js/turn-changes.js`; rendered by `thread.js` after result items (history in `show`, live in `append(item, index, items)`); `events.js` passes `session.items`; `app.js` passes `onOpenGit`; `css/messages.css`.
