@@ -8,15 +8,24 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/messages.css">
+  <link rel="stylesheet" href="css/transcript.css">
   <link rel="stylesheet" href="css/composer.css">
   <link rel="stylesheet" href="css/panels.css">
   <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/split.css">
+  <link rel="stylesheet" href="css/panes.css">
+  <link rel="stylesheet" href="css/changes-pane.css">
+  <link rel="stylesheet" href="css/shortcuts.css">
+  <link rel="stylesheet" href="css/worktree.css">
+  <link rel="stylesheet" href="css/archive.css">
+  <link rel="stylesheet" href="css/context-menu.css">
 </head>
 <body>
   <div class="app" id="app">
     <aside class="sidebar" aria-label="סשנים">
       <div class="sidebar-top">
         <div class="brand" id="brand">
+          <span class="icon spark claude-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path class="ray" style="--i:0" d="M12 2.6v5.6"/><path class="ray" style="--i:1" d="M18.6 5.4l-4 4"/><path class="ray" style="--i:2" d="M15.8 12h5.6"/><path class="ray" style="--i:3" d="M14.6 14.6l4 4"/><path class="ray" style="--i:4" d="M12 15.8v5.6"/><path class="ray" style="--i:5" d="M9.4 14.6l-4 4"/><path class="ray" style="--i:6" d="M2.6 12h5.6"/><path class="ray" style="--i:7" d="M5.4 5.4l4 4"/></svg></span>
           <span>Claude Code</span>
         </div>
         <button id="collapse-sidebar" class="icon-button" type="button" title="הסתרת הסרגל (Ctrl+B)">
@@ -41,21 +50,29 @@
       <div class="session-groups" id="session-list"></div>
       <div class="sidebar-footer">
         <button id="open-settings" class="icon-button" type="button" title="הגדרות (Ctrl+,)"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></span></button>
+        <button class="icon-button" type="button" data-panel="notifications" title="התראות"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span></button>
         <button id="theme-toggle" class="icon-button" type="button" title="מראה (/theme)"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span></button>
+        <button class="health-dot" id="model-health" type="button" data-state="checking" title="בודק את שרת המודל…" aria-label="מצב שרת המודל"></button>
         <span class="version" id="version-label"></span>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar" id="topbar"></header>
-      <section class="thread" id="thread">
-        <div class="welcome" id="welcome"></div>
-        <div class="thread-column messages" id="messages" aria-live="polite" hidden></div>
-      </section>
-      <div class="composer-area" id="composer-area">
-        <div class="prompt-cards" id="prompt-cards" aria-live="assertive"></div>
+      <div class="workspace" id="workspace">
+        <div class="chat">
+          <section class="thread" id="thread">
+            <div class="welcome" id="welcome"></div>
+            <div class="thread-column messages" id="messages" aria-live="polite" hidden></div>
+          </section>
+          <div class="composer-area" id="composer-area">
+            <div class="prompt-cards" id="prompt-cards" aria-live="assertive"></div>
+          </div>
+        </div>
+        <aside class="pane-area" id="pane-area" aria-label="חלוניות" hidden></aside>
       </div>
     </main>
+    <aside class="split-pane" id="split-pane" aria-label="חלון מפוצל" hidden></aside>
   </div>
   <script type="module" src="js/app.js"></script>
 </body>

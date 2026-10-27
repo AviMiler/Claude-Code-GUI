@@ -1,0 +1,9 @@
+/* Worktree per session (js/worktree/): the welcome page's switch. The topbar branch chip is a plain .chip. */
+.worktree-toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 5px 10px; border: 1px solid var(--border);
+  border-radius: 999px; color: var(--text); font-size: 13px; cursor: pointer; user-select: none; }
+.worktree-toggle input { margin: 0; accent-color: var(--accent); }
+.worktree-toggle .icon { width: 14px; height: 14px; }
+.worktree-toggle:hover:not(.disabled) { background: var(--surface-2); }
+.worktree-toggle.disabled { color: var(--faint); cursor: default; }
+.worktree-note { color: var(--muted); font-size: 12px; }
+.worktree-toggle.disabled .worktree-note { color: var(--faint); }

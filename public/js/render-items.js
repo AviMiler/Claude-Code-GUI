@@ -3,6 +3,8 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { renderMarkdown } from './markdown.js';
 import { renderTool, attachToolResult } from './render-tools.js';
+import { turnStats } from './turn-stats.js';
+import { imageUrl, fileUrl, formatSize } from './attachments.js';
 
 const LOOKS_LIKE_MARKDOWN = /(^|\n)(#{1,4} |\|.*\||[-*] |\*\*)/;
 const copySources = new WeakMap(); // copy button -> the message's original text (Markdown for Claude's answers)
@@ -17,12 +19,28 @@ function copyButton(text) {
 /** Text a message copy button stands for (null for any other element). */
 export const copySourceOf = button => copySources.get(button) ?? null;
 
+/** Thumbnails of the images sent with a message; a click opens the full image in a new tab. */
+function messageImages(images) {
+  return h('div', { class: 'msg-images' }, images.map(image => h('a', { href: imageUrl(image), target: '_blank', rel: 'noopener', title: image.name },
+    h('img', { src: imageUrl(image), alt: image.name, loading: 'lazy' }))));
+}
+
+/** Files sent with a message: name and size; a click downloads the stored copy. */
+function messageFiles(files) {
+  return h('div', { class: 'msg-files' }, files.map(file => h('a', { class: 'msg-file', href: fileUrl(file), download: file.name, title: file.path },
+    icon('file'), h('span', { dir: 'auto' }, file.name), h('small', null, formatSize(file.size)))));
+}
+
 function renderUser(item) {
-  const bubble = h('div', { class: 'bubble', dir: 'auto' });
+  const images = item.images?.length ? messageImages(item.images) : null;
+  const files = item.files?.length ? messageFiles(item.files) : null;
+  const bubble = item.text ? h('div', { class: 'bubble', dir: 'auto' }) : null;
   const slash = item.text.match(/^(\/[^\s]+)([\s\S]*)$/);
-  if (slash) bubble.append(h('span', { class: 'slash' }, slash[1]), slash[2]);
-  else bubble.textContent = item.text;
-  return h('div', { class: 'msg-user' }, bubble, copyButton(item.text));
+  if (slash && !images) bubble.append(h('span', { class: 'slash' }, slash[1]), slash[2]);
+  else if (bubble) bubble.textContent = item.text;
+  // A correction sent while Claude worked (it joined the running turn at its next step).
+  const label = item.correction ? h('span', { class: 'correction-label' }, icon('pencil'), 'תיקון באמצע התור') : null;
+  return h('div', { class: `msg-user${item.correction ? ' correction' : ''}` }, label, images, files, bubble, item.text ? copyButton(item.text) : null);
 }
 
 export function renderAssistantText(text, live = false) {
@@ -39,15 +57,13 @@ function withCopy(node, text) {
   return h('div', { class: 'msg-assistant-wrap' }, node, copyButton(text));
 }
 
-function renderResult(item) {
+/** @param {object} item @param {number|null} toolCalls tool calls of the turn (turn-stats.js), null when unknown */
+function renderResult(item, toolCalls = null) {
   if (item.isError) {
     return h('div', { class: 'turn-meta error' }, icon('x-circle'), `נכשל${item.text ? `: ${item.text}` : ` (${item.subtype})`}`);
   }
-  const parts = [`${(item.durationMs / 1000).toFixed(1)} שנ׳`];
-  if (item.turns > 1) parts.push(`${item.turns} סבבים`);
-  if (item.usage) parts.push(`${item.usage.input + item.usage.output} טוקנים`);
-  if (item.costUsd > 0) parts.push(`$${item.costUsd.toFixed(4)}`);
-  return h('div', { class: 'turn-meta' }, icon('check'), parts.join(' · '));
+  const { text, details } = turnStats(item, toolCalls);
+  return h('div', { class: 'turn-meta', title: details }, icon('check'), text);
 }
 
 function renderCommandOutput(item) {
@@ -57,13 +73,13 @@ function renderCommandOutput(item) {
   return h('div', { class: 'command-output' }, h('div', { class: 'head' }, icon('terminal'), 'פלט פקודה'), body);
 }
 
-function build(item) {
+function build(item, context) {
   switch (item.kind) {
     case 'user': return renderUser(item);
     case 'text': return item.parent ? renderAssistantText(item.text) : withCopy(renderAssistantText(item.text), item.text);
     case 'thinking': return renderThinking(item.text);
     case 'tool': return renderTool(item);
-    case 'result': return renderResult(item);
+    case 'result': return renderResult(item, context?.toolCalls ?? null);
     case 'command-output': return renderCommandOutput(item);
     case 'divider': return h('div', { class: 'divider' }, item.text);
     case 'error': return h('div', { class: 'error-card', dir: 'auto' }, icon('alert'), h('div', null, item.text));
@@ -75,16 +91,17 @@ function build(item) {
  * Appends one item. Items of a subagent (item.parent) go inside the parent tool row.
  * @param {HTMLElement} container The messages element.
  * @param {{kind:string, parent?:string}} item
+ * @param {{toolCalls?:number}} [context] facts from the rest of the conversation (a result's tool-call count)
  * @returns {HTMLElement|null} the new element (null for a tool result, which goes into its tool row)
  */
-export function appendItem(container, item) {
+export function appendItem(container, item, context) {
   if (item.kind === 'tool-result') { attachToolResult(container, item); return null; }
   const parentRow = item.parent && container.querySelector(`[data-tool-id="${CSS.escape(item.parent)}"] > .tool-children`);
   const target = parentRow || container;
   if (item.kind === 'tool' && item.name === 'TodoWrite') {
     container.querySelectorAll('.todo-card.latest').forEach(card => card.classList.remove('latest'));
   }
-  const node = build(item);
+  const node = build(item, context);
   target.append(node);
   return node;
 }
@@ -93,7 +110,10 @@ export function appendItem(container, item) {
 export function exportMarkdown(session) {
   const lines = [`# ${session.name}`, '', `תיקייה: \`${session.cwd}\``, ''];
   for (const item of session.items) {
-    if (item.kind === 'user') lines.push('## 🧑 משתמש', '', item.text, '');
+    if (item.kind === 'user') {
+      lines.push('## 🧑 משתמש', '', ...(item.images || []).map(image => `[תמונה: ${image.name}]`),
+        ...(item.files || []).map(file => `[קובץ: ${file.name}]`), item.text, '');
+    }
     else if (item.kind === 'text' && !item.parent) lines.push('## ✻ Claude', '', item.text, '');
     else if (item.kind === 'tool') lines.push(`> כלי: **${item.name}** \`${JSON.stringify(item.input).slice(0, 200)}\``, '');
     else if (item.kind === 'command-output') lines.push('```', item.text, '```', '');

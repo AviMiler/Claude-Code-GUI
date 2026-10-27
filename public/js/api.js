@@ -18,17 +18,41 @@ export const api = {
   warm: target => request('POST', '/api/warm', target),
   /** Models of the system: { source: 'cli'|'server', models, current, error }. */
   models: () => request('GET', '/api/models'),
+  /** Is the model server up? { state: 'up'|'down'|'unknown', latencyMs, error, url, checkedAt }. */
+  modelHealth: refresh => request('GET', `/api/model-health${refresh ? '?refresh=1' : ''}`),
   createSession: body => request('POST', '/api/sessions', body),
   updateSession: (id, body) => request('PATCH', `/api/sessions/${id}`, body),
-  deleteSession: id => request('DELETE', `/api/sessions/${id}`),
-  /** @returns {Promise<{ok:boolean, queued:boolean}>} queued: the session was busy, the message waits in its queue. */
-  sendMessage: (id, text) => request('POST', `/api/sessions/${id}/messages`, { text }),
+  /** removeWorktree: also remove the session's worktree folder (its branch stays). @returns {Promise<{worktreeRemoved:boolean, worktreeError?:string}>} */
+  deleteSession: (id, { removeWorktree = false } = {}) => request('DELETE', `/api/sessions/${id}${removeWorktree ? '?worktree=remove' : ''}`),
+  /** @returns {Promise<{isRepo:boolean, hasCommits?:boolean, branch?:string}>} can this folder get a worktree */
+  probeWorktree: cwd => request('POST', '/api/worktree/probe', { cwd }),
+  /** @returns {Promise<{worktreeRemoved:boolean, worktreeError?:string}>} archiving also removes a clean worktree */
+  archive: id => request('POST', `/api/sessions/${id}/archive`),
+  unarchive: id => request('POST', `/api/sessions/${id}/unarchive`),
+  /**
+   * images / files: [{ data, mediaType?, name }] or [{ ref, name }] (see attachments.js forServer). delivery while the
+   * session works: 'correct' joins the running turn, 'queue' (or nothing) waits for its end.
+   * @returns {Promise<{ok:boolean, queued:boolean, corrected?:boolean}>}
+   */
+  sendMessage: (id, text, images, files, delivery) => request('POST', `/api/sessions/${id}/messages`,
+    { text, ...(images?.length && { images }), ...(files?.length && { files }), ...(delivery && { delivery }) }),
   /** @returns {Promise<{stopped:boolean, queued:string[]}>} queued: messages taken off the queue by the stop. */
   stop: id => request('POST', `/api/sessions/${id}/stop`),
   removeQueued: (id, queueId) => request('DELETE', `/api/sessions/${id}/queue/${queueId}`),
   resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
   clear: id => request('POST', `/api/sessions/${id}/clear`),
   fork: id => request('POST', `/api/sessions/${id}/fork`),
+  /** Branch and uncommitted line counts of the session's folder: { isRepo, branch, files, untracked, added, removed }. */
+  gitSummary: sessionId => request('GET', `/api/sessions/${sessionId}/git-summary`),
+  /** The session folder's uncommitted diff against HEAD, new files included: { isRepo, diff, truncated, newFilesSkipped }. */
+  sessionDiff: sessionId => request('GET', `/api/sessions/${sessionId}/diff`),
+  /** Text of a file in the session's folders: { path, content, totalLines, truncated, size }. */
+  viewFile: (sessionId, path) => request('GET', `/api/file-view?${query({ sessionId, path })}`),
+  /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */
+  templates: () => request('GET', '/api/templates'),
+  saveTemplate: (id, template) => request('PUT', `/api/templates/${id}`, template),
+  deleteTemplate: id => request('DELETE', `/api/templates/${id}`),
+  sideQuestion: (id, question, history) => request('POST', `/api/sessions/${id}/side-question`, { question, history }),
   answerPermission: (id, requestId, answer) => request('POST', `/api/sessions/${id}/permissions/${requestId}`, answer),
 
   /** Catalog of commands/skills/agents/models: from the session's process, or a folder probe without a session. */

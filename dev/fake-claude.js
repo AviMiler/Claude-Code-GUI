@@ -1,18 +1,22 @@
 /**
  * Fake `claude` CLI for developing the GUI without an API key. Speaks the stream-json + control protocol.
- * Prompt keywords: "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
- * "slow" -> long streaming (to test stop), "fail" -> crash. Anything else -> streamed echo.
+ * Prompt keywords (whole words where they overlap): "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
+ * "slow" -> long streaming (to test stop), "fail" -> crash, "task" -> a background task that ends 8 s later
+ * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
+ * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
  */
 const readline = require('readline');
 const args = process.argv.slice(2);
 const out = message => process.stdout.write(`${JSON.stringify(message)}\n`);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const { createCorrections } = require('./fake-corrections');
+const { fakeCatalog } = require('./fake-catalog');
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
   console.log(`Usage: claude [options]\n  --model <model>\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
-  --include-partial-messages\n  --permission-prompts <target>\n  --fork-session\n  --settings <file-or-json>
+  --include-partial-messages\n  --replay-user-messages\n  --permission-prompts <target>\n  --fork-session\n  --settings <file-or-json>
   --permission-mode <mode>  Permission mode (choices: "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan")
 Commands:\n  mcp  Configure MCP\n  plugin|plugins  Manage plugins\n  doctor  Check health`);
   process.exit(0);
@@ -24,24 +28,27 @@ if (args[0] === 'doctor' || args[0] === 'auth') { console.log('Claude Code docto
 const sessionId = args.includes('--resume') ? args[args.indexOf('--resume') + 1] : `fake-${Date.now()}`;
 let mode = args.includes('--permission-mode') ? args[args.indexOf('--permission-mode') + 1] : 'default';
 let interrupted = false;
+let running = false;
+const corrections = createCorrections(out, sessionId);
 const waiting = new Map();
 let counter = 0;
 
-const CATALOG = {
-  commands: [
-    { name: 'compact', description: 'Free up context by summarizing the conversation so far', argumentHint: '<instructions>', builtin: true },
-    { name: 'context', description: 'Show current context usage', argumentHint: '', builtin: true },
-    { name: 'init', description: 'Initialize a new CLAUDE.md file', argumentHint: '', builtin: true },
-    { name: 'dataviz', description: 'Bundled skill for charts', argumentHint: '', builtin: true },
-    { name: 'hello-skill', description: 'Says hello (project)', argumentHint: '' },
-    { name: 'my-plugin:deploy', description: 'Deploy via plugin (plugin)', argumentHint: '<env>' },
-  ],
-  agents: [{ name: 'Explore', description: 'Fast read-only search agent' }, { name: 'bar-agent', description: 'Test agent', model: 'haiku' }],
-  models: [{ value: 'default', displayName: 'Default (recommended)', description: 'Fake default', supportedEffortLevels: ['low', 'medium', 'high'] },
-    { value: 'sonnet', displayName: 'Sonnet', description: 'Fake sonnet', supportedEffortLevels: ['low', 'medium', 'high'] }],
-  output_style: 'default', available_output_styles: ['default', 'Explanatory', 'Learning'],
-  claude_code_version: '2.1.308', current_permission_mode: mode, account: { apiProvider: 'firstParty' },
-};
+const CATALOG = fakeCatalog(mode);
+const tasks = new Map(); // task id -> timer of a running background task
+function endTask(id, status, summary) {
+  if (!tasks.has(id)) return false;
+  clearTimeout(tasks.get(id));
+  tasks.delete(id);
+  out({ type: 'system', subtype: 'task_notification', task_id: id, tool_use_id: `toolu_${id}`, status, summary, output_file: `/tmp/${id}.output`, usage: { total_tokens: 0, tool_uses: 1, duration_ms: 1000 }, session_id: sessionId });
+  return true;
+}
+function startTask() {
+  const id = `task_${++counter}`;
+  out({ type: 'system', subtype: 'task_started', task_id: id, tool_use_id: `toolu_${id}`, description: 'npm run build', task_type: 'local_bash', is_backgrounded: true, session_id: sessionId });
+  setTimeout(() => tasks.has(id) && out({ type: 'system', subtype: 'task_progress', task_id: id, tool_use_id: `toolu_${id}`, description: 'npm run build', usage: { total_tokens: 1200, tool_uses: 2, duration_ms: 1500 }, last_tool_name: 'Bash', session_id: sessionId }), 1500);
+  tasks.set(id, setTimeout(() => endTask(id, 'completed', 'Build finished'), Number(process.env.FAKE_TASK_MS || 8000)));
+}
+
 const CONTROL = {
   initialize: () => CATALOG,
   get_skills_dialog: () => ({ skills: [{ name: 'hello-skill', description: 'Says hello', source: 'project', tokens: 13, state: 'on' }] }),
@@ -53,7 +60,11 @@ const CONTROL = {
   get_hooks_listing: () => ({ hooks: [], eventCatalog: [{ name: 'PreToolUse', summary: 'Before tool execution' }] }),
   get_memory_dialog: () => ({ files: [], folders: [], memories: [] }),
   get_settings: () => ({ effective: {}, sources: [] }),
-  set_model: () => ({}), interrupt: () => { interrupted = true; return {}; },
+  side_question: async request => { await sleep(600); return { response: `**תשובת צד מזויפת** ל: ${request.question} (היסטוריה: ${(request.history || []).length})`, synthetic: false }; },
+  stop_task: request => { if (!endTask(request.task_id, 'stopped', 'Stopped by the user')) throw new Error(`No running task ${request.task_id}`); return {}; },
+  get_task_output: request => ({ output: `> build\ncompiling ${request.task_id}...\ndone` }),
+  set_model: () => ({}), interrupt: () => { interrupted = true; corrections.sweep(); return {}; },
+  cancel_async_message: request => ({ cancelled: corrections.cancel(request.message_uuid) }),
   set_permission_mode: request => { mode = request.mode; return { mode }; },
 };
 
@@ -83,6 +94,7 @@ async function toolTurn(name, input, resultText) {
 
 async function turn(prompt) {
   interrupted = false;
+  running = true;
   const started = Date.now();
   out({ type: 'system', subtype: 'init', session_id: sessionId, model: 'fake-model', permissionMode: mode, tools: ['Bash', 'Read'], mcp_servers: [{ name: 'dummy', status: 'connected' }], claude_code_version: '2.1.308' });
   if (prompt.startsWith('/cost')) {
@@ -93,13 +105,19 @@ async function turn(prompt) {
   } else {
     out({ type: 'assistant', message: { content: [{ type: 'thinking', thinking: `The user said: ${prompt}. I will answer.` }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/bash/.test(prompt)) await toolTurn('Bash', { command: 'npm test', description: 'Run tests' }, () => 'All 12 tests passed');
-    if (/ask/.test(prompt)) await toolTurn('AskUserQuestion', { questions: [{ question: 'איזה צבע?', header: 'צבע', multiSelect: false, options: [{ label: 'כתום', description: 'צבע Claude' }, { label: 'כחול', description: 'קלאסי' }] }] }, input => `answers: ${JSON.stringify(input.answers)}`);
+    if (/\bask/.test(prompt)) await toolTurn('AskUserQuestion', { questions: [{ question: 'איזה צבע?', header: 'צבע', multiSelect: false, options: [{ label: 'כתום', description: 'צבע Claude' }, { label: 'כחול', description: 'קלאסי' }] }] }, input => `answers: ${JSON.stringify(input.answers)}`);
     if (/plan/.test(prompt)) await toolTurn('ExitPlanMode', { plan: '## התוכנית\n1. לקרוא קבצים\n2. לערוך את `app.js`\n3. להריץ בדיקות' }, () => 'Plan approved');
+    if (/task/.test(prompt)) startTask();
     if (/edit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_edit', name: 'Edit', input: { file_path: 'C:\\repo\\app.js', old_string: 'const a = 1;\nconst b = 2;', new_string: 'const a = 1;\nconst b = 3;\nconst c = 4;' } }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/todo/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_todo', name: 'TodoWrite', input: { todos: [{ content: 'Read code', status: 'completed', activeForm: 'Reading' }, { content: 'Write fix', status: 'in_progress', activeForm: 'Writing fix' }, { content: 'Run tests', status: 'pending', activeForm: 'Running tests' }] } }] }, parent_tool_use_id: null, session_id: sessionId });
-    await stream(`**תשובה מזויפת** ל: ${prompt}. זה טקסט שמוזרם מילה אחרי מילה כדי לבדוק את הממשק \`code\` וגם רשימה.`, /slow/.test(prompt) ? 400 : 25);
+    const heard = corrections.drain(); // the step before the answer: corrections that came during the tools join here
+    const seen = heard.length ? ` (תיקון שהתקבל באמצע: ${heard.join(' | ')})` : '';
+    await stream(`**תשובה מזויפת** ל: ${prompt}${seen}. זה טקסט שמוזרם מילה אחרי מילה כדי לבדוק את הממשק \`code\` וגם רשימה.`, /slow/.test(prompt) ? 400 : 25);
   }
   out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: 0.0012, usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
+  running = false;
+  // Too late for this turn (it was already answering): the waiting corrections start the next one, like the real CLI.
+  if (corrections.size()) { const late = corrections.drain(); queue = queue.then(() => turn(`תיקון: ${late.join(' | ')}`)); }
 }
 
 const ready = sleep(Number(process.env.FAKE_CLAUDE_STARTUP_MS || 0));
@@ -113,12 +131,18 @@ function handle(line) {
   if (message.type === 'control_response') return waiting.get(message.response.request_id)?.(message.response.response);
   if (message.type === 'control_request') {
     const handler = CONTROL[message.request.subtype];
-    return out({ type: 'control_response', response: handler
-      ? { subtype: 'success', request_id: message.request_id, response: handler(message.request) }
-      : { subtype: 'error', request_id: message.request_id, error: `unsupported: ${message.request.subtype}` } });
+    if (!handler) return out({ type: 'control_response', response: { subtype: 'error', request_id: message.request_id, error: `Unsupported control request subtype: ${message.request.subtype}` } });
+    // Answered in the background, so a slow request (side_question) never holds up the turn.
+    return Promise.resolve().then(() => handler(message.request))
+      .then(response => out({ type: 'control_response', response: { subtype: 'success', request_id: message.request_id, response } }))
+      .catch(error => out({ type: 'control_response', response: { subtype: 'error', request_id: message.request_id, error: error.message } }));
   }
   if (message.type === 'user') {
     const content = message.message.content;
-    queue = queue.then(() => turn(typeof content === 'string' ? content : content.map(block => block.text).join('')));
+    const images = Array.isArray(content) ? content.filter(block => block.type === 'image') : [];
+    const text = typeof content === 'string' ? content : content.map(block => block.text || '').join('');
+    const seen = images.map(image => `${image.source.media_type} ${Math.round(image.source.data.length * 0.75 / 1024)}KB`);
+    if (running && message.uuid) return corrections.add(message.uuid, text);
+    queue = queue.then(() => turn(images.length ? `${text} [${images.length} images: ${seen.join(', ')}]` : text));
   }
 }

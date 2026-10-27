@@ -10,15 +10,19 @@ let openMenu = null;
 function position(popover, anchor, placement) {
   const rect = anchor.getBoundingClientRect();
   const rtl = document.documentElement.dir === 'rtl';
-  popover.style.insetInlineStart = 'auto';
-  if (rtl) popover.style.right = `${Math.max(8, innerWidth - rect.right)}px`;
-  else popover.style.left = `${Math.max(8, rect.left)}px`;
   if (placement === 'top') popover.style.bottom = `${innerHeight - rect.top + 6}px`;
   else popover.style.top = `${rect.bottom + 6}px`;
   if (anchor.dataset.matchWidth) {
     popover.style.width = `${rect.width}px`;
     popover.style.maxWidth = `${rect.width}px`;
   }
+  // Its natural width with the whole screen free; then it opens from the anchor's start edge, or from its end edge when
+  // that would run off the screen (the topbar's "עוד" sits at the far end in RTL).
+  Object.assign(popover.style, { left: '0px', right: 'auto' });
+  const width = Math.min(popover.offsetWidth, innerWidth - 16);
+  const fromRight = rtl ? rect.right - width >= 8 : rect.left + width > innerWidth - 8;
+  if (fromRight) Object.assign(popover.style, { left: 'auto', right: `${Math.max(8, innerWidth - rect.right)}px` });
+  else popover.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - 8 - width))}px`; // a narrow screen: kept inside
 }
 
 function renderEntry(entry, index, onPick) {

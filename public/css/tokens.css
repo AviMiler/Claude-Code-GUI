@@ -55,6 +55,7 @@ code, .msg-user .slash { font-family: var(--font-mono); direction: ltr; unicode-
 
 .icon { display: inline-flex; flex: none; align-items: center; justify-content: center; }
 .icon svg { width: 100%; height: 100%; }
+.spark { color: var(--accent); }
 .spinning { animation: spin 2.4s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: .35; } }
