@@ -35,6 +35,8 @@ export const api = {
   fork: id => request('POST', `/api/sessions/${id}/fork`),
   /** Branch and uncommitted line counts of the session's folder: { isRepo, branch, files, untracked, added, removed }. */
   gitSummary: sessionId => request('GET', `/api/sessions/${sessionId}/git-summary`),
+  /** The session folder's uncommitted diff against HEAD, new files included: { isRepo, diff, truncated, newFilesSkipped }. */
+  sessionDiff: sessionId => request('GET', `/api/sessions/${sessionId}/diff`),
   /** Text of a file in the session's folders: { path, content, totalLines, truncated, size }. */
   viewFile: (sessionId, path) => request('GET', `/api/file-view?${query({ sessionId, path })}`),
   /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */

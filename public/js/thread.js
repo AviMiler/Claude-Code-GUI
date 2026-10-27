@@ -25,7 +25,7 @@ function openTool(items) {
 }
 
 /**
- * @param {{scroller:HTMLElement, messages:HTMLElement, onOpenGit:()=>void}} elements onOpenGit: the git diff panel
+ * @param {{scroller:HTMLElement, messages:HTMLElement, onOpenGit:()=>void}} elements onOpenGit: the Changes pane (a turn card's "all changes" button)
  * @returns {{show:Function, append:Function, delta:Function, setRunning:Function, scrollToEnd:Function}}
  */
 export function createThread({ scroller, messages, onOpenGit }) {

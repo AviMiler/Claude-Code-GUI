@@ -30,11 +30,12 @@ function remember(key, value) {
  */
 
 /**
- * @param {{workspace:HTMLElement, area:HTMLElement}} elements workspace: the row holding the chat and the area
- * @returns {{register:(pane:PaneDefinition)=>void, toggle:(id:string)=>void, isOpen:(id:string)=>boolean,
+ * @param {{workspace:HTMLElement, area:HTMLElement, onChange:()=>void}} elements workspace: the row holding the chat and the
+ *   area; onChange: a pane opened or closed (the topbar shows which ones are open)
+ * @returns {{register:(pane:PaneDefinition)=>void, toggle:(id:string)=>void, open:(id:string)=>void, isOpen:(id:string)=>boolean,
  *   closeFocused:()=>void, refresh:(session:object|null)=>void}}
  */
-export function createPaneHost({ workspace, area }) {
+export function createPaneHost({ workspace, area, onChange }) {
   const definitions = new Map();
   const sections = new Map(); // id -> { section, body }
   let open = recall(OPEN_KEY, DEFAULT_OPEN).filter(id => typeof id === 'string');
@@ -80,7 +81,8 @@ export function createPaneHost({ workspace, area }) {
     open = opening ? [...open, id] : open.filter(item => item !== id);
     remember(OPEN_KEY, open);
     if (!opening && focusedId === id) focusedId = null;
-    return refresh();
+    refresh();
+    return onChange();
   }
 
   // Dragging the edge that faces the chat resizes the column (mirrored in RTL, where the area is on the left).
@@ -103,6 +105,8 @@ export function createPaneHost({ workspace, area }) {
   return {
     register(pane) { definitions.set(pane.id, pane); },
     toggle,
+    /** Opens a pane (a button that "opens the diff" must not close it when it is already open). */
+    open(id) { if (!open.includes(id)) toggle(id); else refresh(); },
     isOpen: id => open.includes(id), // the user's choice (the area may still be hidden for lack of room)
     /** Closes the pane the user clicked or focused last (Desktop: Ctrl+\). */
     closeFocused() { if (focusedId && open.includes(focusedId)) toggle(focusedId); },

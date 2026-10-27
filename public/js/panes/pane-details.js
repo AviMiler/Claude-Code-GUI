@@ -9,21 +9,10 @@ import { state } from '../state.js';
 import { MODES } from '../modes.js';
 import { toast } from '../ui.js';
 import { renderContextUsage } from '../panels/panel-usage.js';
+import { createSessionFetch } from './session-fetch.js';
 
-const summaries = new Map(); // session id -> { status, value, promise } — git summary, refetched when a turn ends
-
-/** The git summary of a session's folder, fetched again when its status changed since the last fetch (a turn ended). */
-function gitSummaryOf(session, onReady, force = false) {
-  const cached = summaries.get(session.id);
-  if (cached && !force && (cached.promise || cached.status === session.status)) return cached.value;
-  const entry = { status: session.status, value: cached?.value, promise: null };
-  entry.promise = api.gitSummary(session.id).then(value => { entry.value = value; }).catch(error => {
-    console.error('[pane-details] git summary failed:', error);
-    entry.value = { isRepo: false, error: error.message };
-  }).finally(() => { entry.promise = null; onReady(); });
-  summaries.set(session.id, entry);
-  return entry.value;
-}
+// The git summary of the shown session, fetched again when a turn starts or ends, or another session is shown.
+const summaries = createSessionFetch(id => api.gitSummary(id), error => ({ isRepo: false, error: error.message }));
 
 /** A card: a header row (title, value, chevron when it opens something) and optional content. */
 function card({ title, iconName, value, onClick, tooltip }, ...content) {
@@ -48,14 +37,14 @@ function environmentCard(session, summary, modelLabel) {
     row('הרשאות', mode?.label || session.mode));
 }
 
-function changesCard(summary, openPanel, onRefresh) {
+function changesCard(summary, openPane, onRefresh) {
   const refresh = h('button', { type: 'button', class: 'icon-button detail-refresh', title: 'רענון', onClick: onRefresh }, icon('refresh'));
   if (!summary) return card({ title: 'שינויים', iconName: 'diff', value: '…' });
   if (!summary.isRepo) return card({ title: 'שינויים', iconName: 'diff', value: '' }, h('p', { class: 'detail-muted' }, 'התיקייה אינה מאגר git.'), refresh);
   const value = h('span', { class: 'detail-counts', dir: 'ltr' }, h('span', { class: 'added' }, `+${summary.added}`), h('span', { class: 'removed' }, `−${summary.removed}`));
   const files = summary.files ? `${summary.files} קבצים${summary.untracked ? ` · ${summary.untracked} חדשים` : ''}` : 'אין שינויים שלא נשמרו';
-  return card({ title: 'שינויים', iconName: 'diff', value, onClick: () => openPanel('diff'),
-    tooltip: 'שינויים בתיקייה שעוד לא נשמרו ב-commit (גם כאלה שלא נעשו בסשן הזה). לחיצה פותחת את ה-diff.' },
+  return card({ title: 'שינויים', iconName: 'diff', value, onClick: () => openPane('changes'),
+    tooltip: 'שינויים בתיקייה שעוד לא נשמרו ב-commit (גם כאלה שלא נעשו בסשן הזה). לחיצה פותחת את חלונית השינויים.' },
   h('div', { class: 'detail-row detail-muted' }, h('span', null, files), refresh));
 }
 
@@ -67,12 +56,11 @@ function tasksCard(session, openPanel) {
 }
 
 /**
- * @param {{openPanel:(id:string)=>void, modelLabel:(session:object)=>string, rerender:()=>void}} deps
- *   openPanel: the settings panels (diff, tasks); rerender: draws the panes again once a fetch is back
+ * @param {{openPanel:(id:string)=>void, openPane:(id:string)=>void, modelLabel:(session:object)=>string, rerender:()=>void}} deps
+ *   openPanel: the settings panels (tasks); openPane: another pane (changes); rerender: draws the panes again once a fetch is back
  * @returns {import('./pane-host.js').PaneDefinition}
  */
-export function createDetailsPane({ openPanel, modelLabel, rerender }) {
-  let shownId = null; // the session drawn last: another one means its git summary is fetched again
+export function createDetailsPane({ openPanel, openPane, modelLabel, rerender }) {
   let contextOpen = false;
   let contextBox = null;
   let contextFor = null;
@@ -97,12 +85,10 @@ export function createDetailsPane({ openPanel, modelLabel, rerender }) {
   return {
     id: 'details', title: 'פרטי סשן', icon: 'panel-right',
     render(body, session) {
-      const switched = shownId !== session.id;
-      shownId = session.id;
-      const summary = gitSummaryOf(session, rerender, switched);
+      const summary = summaries.get(session, rerender);
       body.replaceChildren(h('div', { class: 'detail-cards' },
         environmentCard(session, summary, modelLabel),
-        changesCard(summary, openPanel, () => gitSummaryOf(session, rerender, true)),
+        changesCard(summary, openPane, () => summaries.get(session, rerender, true)),
         tasksCard(session, openPanel),
         contextCard(session)));
     },

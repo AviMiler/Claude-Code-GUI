@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after D1 (workspace panes + session details rail), the first of 16 features that copy the latest Claude Code Desktop Code tab; before it the split view, the last of the earlier 12 user-approved features (on top of images in resumed conversations, per-turn stats, the model server health dot, the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after D2 (the Changes pane with line comments), the second of 16 features that copy the latest Claude Code Desktop Code tab; before it D1 (workspace panes + session details rail) and the split view, the last of the earlier 12 user-approved features (on top of images in resumed conversations, per-turn stats, the model server health dot, the file viewer, the per-turn changed-files summary, prompt templates, pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -30,7 +30,10 @@ Built for a corporate Windows machine without another terminal.
   topbar button or Ctrl+\; picker, swap, per browser; refuses below 1000 px; a pane session counts as on screen for notifications),
   workspace panes + session details rail (D1 of the Desktop-parity batch): a resizable pane area beside the chat of the main session
   (topbar button / "עוד" menu; per browser; hidden without room or on the welcome page) with the cards Environment, Changes (+N −M from git),
-  Tasks and Context (percentage; categories on click, never starts the CLI)
+  Tasks and Context (percentage; categories on click, never starts the CLI),
+  Changes pane (D2): the folder's uncommitted changes file by file against HEAD (new untracked files included), old/new line numbers, "+" beside a line number
+  to comment (Enter adds, Esc cancels), Ctrl+Enter / footer sends all comments to Claude as ONE message; opened from the rail card, the topbar diff icon, Ctrl+Shift+D,
+  and the changed-files cards' "כל השינויים" button; comments in memory only
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -53,7 +56,9 @@ Built for a corporate Windows machine without another terminal.
   response is unknown (the panel reads output/content/text/tail defensively);
   the features of the 12-feature batch were all checked in a browser against the fake CLI only (search, pinning, templates, changed-files card, health dot,
   file viewer, stats, imported images, split view); the real CLI and the real model server have not been tried with them. Split view: the search-hits bar with the
-  split open and light/dark screenshots of the pane were not checked
+  split open and light/dark screenshots of the pane were not checked;
+  Changes pane: checked in a browser against the fake CLI (3 verify rounds), but not in the light theme, not with the real CLI or a real model answering a comment message,
+  not with a real Windows repository (Hebrew file names, CRLF files), and the last fix (the in-flight send flag is per session) was not re-run in a browser
 - ❌ Known limits: images inside tool results of resumed CLI conversations still show "[תמונה]" (images the user sent are shown); non-image files reach the model
   only as paths it must read; terminal-only commands (login, ide, remote-control, ...) are
   listed but only explained; partial streamed text of a stopped turn is not kept
@@ -72,6 +77,15 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — D2 of 16 (Desktop-parity batch): Changes pane with line comments. New `public/js/panes/` files: `pane-changes.js` (the pane), `diff-parse.js` (pure parser), `diff-view.js` (one file's table, "+" button, comment box and bubbles),
+  `diff-comments.js` (per-session comments in memory + `composeMessage`), `changes-chrome.js` (toolbar, notes, footer), `session-fetch.js` (fetch cache shared with the rail); `public/css/changes-pane.css`;
+  server `lib/git/session-diff.js` + `GET /api/sessions/:id/diff` (api-routes-tools.js, `sessionDiff` in api.js) and `core.quotepath=false` in `lib/git/run.js`. The pane shows the WHOLE repository against HEAD (staged + unstaged in
+  one diff per file) plus untracked files synthesized in node (100 files, 512 KB each, 2 MB, symlinks skipped). Entry points: rail card, topbar diff icon (now the pane toggle), Ctrl+Shift+D (`event.code`, in app.js), the
+  per-turn card's button (renamed "כל השינויים") and the split pane's card button. pane-host.js gained `open(id)` and `onChange`; split-view.js `openPanel` became `openChanges`. The settings-modal git panel `/diff` is unchanged.
+  spec.md: new section + the stale lines replaced (per-turn card button, split card button, rail card). Deviations from the Invocation-1 plan: own route and diff against HEAD instead of reusing `gitChanges`; whole repository,
+  not only the session folder; untracked files shipped (no descope); footer text "N הערות · ניקוי · שליחה ל-Claude"; Ctrl+Shift+D in app.js for now. Stage 3: round 1 No-Go (`--`/`++` content lines dropped, trailing tab in paths,
+  draft lost at turn end, double send, weak anchors), round 2 No-Go (non-repository stuck on "טוען…", errors while typing during a send), round 3 Go; one small fix after Go not re-run in a browser (send flag per session).
+  Known: the rail's counts and the pane's toolbar counts can differ (untracked files); `app.js` is 170 lines (over budget); comments are lost on reload; the synthesized new-file diffs have mode 100644 and no "No newline" line.
 - 2026-10-27 — D1 of 16 (Desktop-parity batch: copy the latest Claude Code Desktop Code tab, Hebrew labels, one folder per feature): workspace panes + session details rail.
   Layout: `.main` = topbar + `.workspace` (`.chat` = thread + composer, ids unchanged; `#pane-area` on the chat's inline-end, physical left in RTL). New `public/js/panes/` (`panes.js` is the only module
   app.js talks to; `pane-host.js` registry, stacked panes, resize, room rule, `closeFocused()` not bound; `pane-details.js` the rail), `public/css/panes.css`. Rail: Environment (no process state —
@@ -189,8 +203,9 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Fix the credentials-in-ANTHROPIC_BASE_URL problem of `/api/models` (see Known security issues, item 3)
 - [ ] D4 (keyboard shortcuts): ask the user the Ctrl+\ question (see Last Changes, PENDING (c)); wire `panes.closeFocused()` to whatever key they choose
 - [ ] Look at the rail and pane area in the light theme and at the room limits (window just above and below 560 px chat + pane); only the dark theme was inspected. Also try the rail with a real CLI session (Context card, model label)
-- [ ] D2 (Changes pane): retarget the rail's Changes card click and the changed-files card's "git diff" button from the git panel to the new pane (spec sections "Workspace panes..." and "Per-turn changed-files summary" then change)
-- [ ] File-size debt (~150-line budget): `lib/session-service.js` (283 lines), `lib/session-runtime.js` (243), `public/js/app.js` (167, was 162 before D1, 183 before warm-up.js)
+- [ ] D4 (keyboard shortcuts): move Ctrl+Shift+D (Changes pane toggle, `event.code === 'KeyD'`, one line in the app.js keydown listener) into the shortcut module. The letter bindings there (Ctrl+K, Ctrl+Shift+O, Ctrl+B) test `event.key`, which reports a Hebrew letter while the Hebrew layout is active, so they likely do not fire (not tested); use `event.code`
+- [ ] Look at the Changes pane in the light theme and at the room limits; try it on the corporate machine with a real Windows repository (Hebrew file names, CRLF files, a session in a subfolder) and send one comment message to the real model
+- [ ] File-size debt (~150-line budget): `lib/session-service.js` (283 lines), `lib/session-runtime.js` (243), `public/js/app.js` (170, was 167 before D2, 162 before D1, 183 before warm-up.js)
 
 ## Gotchas / Watch Out
 - Split view: `events.js` updates every thread showing the event's session, so any new live view update must go through that list (main thread if active + `view.paneThread(id)`),
@@ -249,8 +264,12 @@ Built for a corporate Windows machine without another terminal.
 - Panes: the pane area belongs to the main session only (`getSession` = the active session); a new pane registers in `public/js/panes/panes.js` with `{ id, title, icon, render(body, session) }`, and `render` runs on every refresh, so
   keep its own state (open sections, cached fetches, in-flight requests) outside the DOM it rebuilds. The host re-attaches section nodes only when the open set changes (moving a node drops focus). The saved open set
   (`claude-gui.panes-open`) is kept when there is no room, and a toggle without room must not change it. `panes/` (side panes of the chat) is not `panels/` (the settings modal's pages). The rail's git summary is cached per
-  session and refetched only when `session.status` changes, on switch or by hand: do not add a timer. The `refresh()` guard in app.js protects only focused text fields; do not widen it to any focused element
-- The Changes card counts the folder's uncommitted changes (git), not only what this session wrote: that is stated in its tooltip and the spec on purpose; untracked files are counted as files, not lines
+  session and refetched only when `session.status` changes, on switch or by hand: do not add a timer (both panes use `createSessionFetch` from `panes/session-fetch.js`). The `refresh()` guard in app.js protects only focused text fields; do not widen it to any focused element
+- The Changes card counts the folder's uncommitted changes (git), not only what this session wrote: that is stated in its tooltip and the spec on purpose; untracked files are counted as files, not lines (the Changes pane's toolbar does count their lines, so the two can differ)
+- Changes pane: `view.refresh()` runs on nearly every SSE `item` event and the host calls the pane's `render` each time, so `pane-changes.js` redraws only when the diff text changed and one file at a time otherwise; never rebuild the body on every render or a half-typed comment loses its text and focus.
+  Esc in the comment box must `preventDefault` + `stopPropagation` (the page's Esc handler stops a running turn). Ctrl+Enter is bound on the pane element, not on `document` (the composer has its own). Comments are cleared only when `send` returns true.
+  `diff-parse.js` relies on the fixed `a/` `b/` prefixes of `session-diff.js` and on `core.quotepath=false` (`run.js`); lines inside a hunk that start with `--`/`++` are content, not headers. The route reads the whole repository and untracked file text: keep the limits (100 files, 512 KB, 2 MB, `lstat`) and
+  keep every git call going through `lib/git/run.js`. `/api/git` and the `/diff` panel are separate and unchanged (staged and unstaged apart, no untracked files)
 - The GUI server's only network call is GET {ANTHROPIC_BASE_URL}/v1/models, used by the model list (lib/model-list.js, 4 s timeout, cached 5 min)
   and the health dot (lib/model-health.js, cached 15 s, polled every 60 s per visible tab), only for a custom base URL; never ping the cloud.
   Health = 2xx only (any other answer is red, no `/api/tags` fallback). Everything else outside the machine happens through Claude Code

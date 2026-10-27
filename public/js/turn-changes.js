@@ -50,7 +50,7 @@ export function turnChanges(items, resultIndex) {
 
 /**
  * @param {ReturnType<typeof turnChanges>} changes
- * @param {{onOpenGit:()=>void}} handlers opens the git diff panel (all changes in the folder)
+ * @param {{onOpenGit:()=>void}} handlers opens the Changes pane (all uncommitted changes in the folder)
  * @returns {HTMLElement|null} null when the turn changed no files
  */
 export function renderTurnChanges(changes, { onOpenGit }) {
@@ -71,8 +71,8 @@ export function renderTurnChanges(changes, { onOpenGit }) {
     const open = rows.some(row => row.querySelector('.turn-change-diff').hidden);
     rows.forEach(row => { row.querySelector('.turn-change-diff').hidden = !open; row.querySelector('.turn-change').setAttribute('aria-expanded', String(open)); });
   } }, 'הכול');
-  return h('div', { class: 'turn-changes', title: 'קבצים שכלי העריכה של Claude כתבו בתור הזה. שינויים מפקודות טרמינל מופיעים רק בחלון ה-git.' },
+  return h('div', { class: 'turn-changes', title: 'קבצים שכלי העריכה של Claude כתבו בתור הזה. שינויים מפקודות טרמינל מופיעים בחלונית השינויים.' },
     h('div', { class: 'turn-changes-head' }, icon('diff'), h('b', null, changes.length === 1 ? 'שונה קובץ אחד' : `שונו ${changes.length} קבצים`),
-      h('span', { class: 'spacer' }), all, h('button', { type: 'button', class: 'link-button', onClick: onOpenGit }, 'git diff')),
+      h('span', { class: 'spacer' }), all, h('button', { type: 'button', class: 'link-button', onClick: onOpenGit }, 'כל השינויים')),
     ...rows);
 }

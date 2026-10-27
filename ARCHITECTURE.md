@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-27 (D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -65,12 +65,22 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 ## Workspace panes and session details rail
 - Layout: `.main` = topbar + `.workspace` (`#workspace`), a row of `.chat` (thread + composer, ids unchanged) and `#pane-area`. `.app` still has the sidebar column and the optional split column, so the order in RTL is
   sidebar, chat, pane area, then the split pane. `public/js/panes/panes.js` is the only module `app.js` talks to; `pane-host.js` owns the area (registry, open set, width, room rule, `closeFocused()` unbound);
-  each pane is `{ id, title, icon, render(body, session) }` registered in `panes.js` (later Changes, Terminal, Files, Plan, Background tasks). The area belongs to the main session only
+  each pane is `{ id, title, icon, render(body, session) }` registered in `panes.js` (the details rail and Changes now; later Terminal, Files, Plan, Background tasks). The host has `open(id)` (never closes) and `toggle(id)`, and calls `onChange` after any open or close so the topbar toggles stay in step. The area belongs to the main session only
 - Room rule: shown only when `#workspace` is at least 560 px of chat plus the column wide (a `ResizeObserver` re-checks); otherwise hidden with the saved choice kept (`claude-gui.panes-open`, `claude-gui.panes-width`).
   The split view needs no special case: it narrows the main region, so the rule hides the area
 - The rail (`pane-details.js`) reads only what the browser has (`session`, `state.context`, `session.tasks`) plus the git summary: `GET /api/sessions/:id/git-summary` (`lib/git/changes.js` `gitSummary`: `git status --branch`
-  and `git diff --numstat` staged + unstaged through `lib/git/run.js`; the session's own folder, no `cwd` parameter). The summary is fetched on select/switch, on status change and by hand, never on a timer.
-  The Context card reads categories with `get_context_usage` and `ifRunning` (no CLI is started, no model call). Cards open the existing settings-modal panels (diff, tasks) until their panes exist
+  and `git diff --numstat` staged + unstaged through `lib/git/run.js`; the session's own folder, no `cwd` parameter). The summary is fetched on select/switch, on status change and by hand, never on a timer (`panes/session-fetch.js`, shared with the Changes pane).
+  The Context card reads categories with `get_context_usage` and `ifRunning` (no CLI is started, no model call). The Changes card opens the Changes pane; the Tasks card still opens the settings-modal tasks panel until its pane exists
+
+## Changes pane
+- `pane-changes.js` fetches `GET /api/sessions/:id/diff` (`lib/git/session-diff.js` `sessionDiff`) through `session-fetch.js` (first use, session switch, status change, refresh button; no timers), parses the text with the pure `diff-parse.js`,
+  and draws one section per file with `diff-view.js`. The server runs `git rev-parse --show-toplevel`, then `git diff HEAD --` (or git's empty tree without commits) for the whole repository with fixed `a/` `b/` prefixes, so staged and unstaged
+  changes are ONE diff per file, and adds every untracked file (`ls-files --others --exclude-standard -z`) as a synthesized "new file" diff built in node (max 100 files, 512 KB each, 2 MB total, `lstat` so symlinks are skipped, binary and empty handled).
+  The whole text is cut at 300000 characters (`truncated`). All git calls go through `lib/git/run.js`, which also sets `core.quotepath=false` (Hebrew names)
+- The pane redraws only when the diff text changed; an edit to one file (box, comment, collapse) redraws only that file, so the diff stays fast at the cap and a half-typed comment survives a turn end
+- Comments (`diff-comments.js`) live in a module-level Map per session id, in memory only. A comment is anchored by path + side + line + the line's text; `diff-view.js` places it under the line only while all four still match, otherwise it is listed as changed since (or, when its file left the diff, at the top). `composeMessage` builds ONE message; the pane sends it with the
+  `send` it is given (`actions.send`, the normal path: queued while Claude works) and clears the comments only when that returns true. One send at a time per session; Ctrl+Enter is bound on the pane element, not on the page
+- Entry points all go through `panes.open('changes')` or `panes.toggle('changes')`: the rail card, the topbar diff icon, Ctrl+Shift+D (`app.js`, `event.code`), the per-turn card's button (`onOpenGit`) and the split pane's card button (`openChanges`: swap, then open). The settings-modal git panel (`/api/git`, staged and unstaged apart, no untracked files) is unchanged
 
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
@@ -114,6 +124,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 | File viewer reads the current file through a session-scoped route | Tool items hold only partial content; roots come from the session on the server so the route is not an arbitrary-file reader. See DECISIONS.md |
 | Pane area for the main session only, hidden by a room rule | Desktop panes belong to the focused session; `/btw` and the search bar are already main-only; a width rule is simpler and safer than a special case for the split view. See DECISIONS.md |
 | Rail totals from a small `git-summary` route | `/api/git` returns up to 300000 characters of diff; the rail needs only counts and must not fetch that on every turn. See DECISIONS.md |
+| Changes pane has its own route against HEAD, untracked files synthesized in node | `/api/git` has no untracked files and shows staged and unstaged apart; Claude mostly creates new files, so the pane must show them. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -138,6 +149,8 @@ the right to run commands as that user.
 - `claude` subcommands: whitelist of commands *and* options (`lib/cli-commands.js`); `mcp add` passes through only after `--`
 - git runs with repository-configured programs disabled (fsmonitor, external diff, textconv); every git command goes through `lib/git/run.js`
 - `GET /api/sessions/:id/git-summary` (the session details rail): read-only, the folder is the session's own (taken from the server; there is no `cwd` parameter, so it does not widen the accepted cross-site-GET issue that `/api/git?cwd=` already has), unknown session 404, same git flags
+- `GET /api/sessions/:id/diff` (the Changes pane): read-only, the folder is the session's own (from the server; no `cwd` parameter), unknown session 404, same git flags. It returns TEXT OF FILES like `/api/file-view`, but with a wider reach: the whole repository from its top level (a session in a subfolder sees the files outside that folder),
+  and the content of untracked files (`.gitignore` honored; paths come from `git ls-files`, so they cannot leave the repository; `lstat` skips symlinks; max 100 files, 512 KB each, 2 MB per request; binary not returned). It does not apply `/api/file-view`'s session-folder and `addDirs` roots, on purpose: the pane shows the repository's changes
 - `.cmd` claudePath: arguments with `%` are refused (cmd.exe expansion)
 - Markdown from the model or files is escaped before rendering (checked against XSS payloads)
 - Risk confirmations in the browser (`public/js/risk.js`) before: settings changes touching hooks, env, auth helpers,
@@ -149,7 +162,7 @@ the right to run commands as that user.
 | Issue | Impact | Fix when needed |
 |---|---|---|
 | Cross-site GET allowed (simple GETs carry no Origin) | A web page in the same browser can start `claude` probes in any folder (`/api/catalog?cwd=`), run git there, list files and folders (`/api/files`, `/api/folders`), load attachments whose uuid it knows (`/api/images`, `/api/uploads` — uuids are not guessable), make the server ask the model server for its models (`/api/models`, `/api/model-health?refresh=1`), exhaust memory. It cannot read responses. | Startup token required on every /api call; reject `Sec-Fetch-Site: cross-site`; process-starting endpoints as POST |
-| No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders, edit ~/.claude settings and read text files inside any session's folders (`/api/file-view`; a local program could read them directly anyway) | Same startup token |
+| No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions), start CLI processes (`/api/warm`), create folders, edit ~/.claude settings, read text files inside any session's folders (`/api/file-view`) and the uncommitted changes and new files of any session's whole repository (`/api/sessions/:id/diff`; a local program could read them directly anyway) | Same startup token |
 
 **Outside this computer**
 - The GUI server makes one kind of network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured
@@ -180,7 +193,7 @@ the right to run commands as that user.
 - `tasks` are in the session meta (`/api/state`, `session` events) but not in `data/sessions.json`
 - Per-turn changed files: `turn-changes.js` derives a card from `session.items` (the edit tool items from the last user item to the `result`, top level and subagents, minus
   calls with an error tool-result); `thread.js` renders it after result items (history and live); nothing is stored and the card has no `data-item-index`. Frontend only.
-  Bash-made changes are invisible to it (the git panel covers those)
+  Bash-made changes are invisible to it (the Changes pane and the git panel cover those); its "כל השינויים" button opens the Changes pane
 - Per-turn stats: `turn-stats.js` builds the result meta line and tooltip from the result item; `thread.js` passes `{ toolCalls }` (`countToolCalls`, counted back to the last
   user item) to `appendItem` for result items. Tool calls are never stored; missing API time or cache fields fall back (speed from total time, cache 0). Frontend plus three fields in `translateResult`
 - Claude's spark: `working-line.js` (used by `thread.js`) sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
@@ -189,7 +202,7 @@ the right to run commands as that user.
   per-browser preferences (localStorage) and fires desktop / sound; `page-status.js` owns the tab title count and brand state. Frontend only
 - Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`. Not to be confused with panes (`public/js/panes/`): panels are the settings modal's pages, panes are the side area beside the chat
 - Panes: `panes.js` creates the host (`pane-host.js`) and registers each pane; `render(body, session)` runs on every refresh (`app.js` `refresh()` calls `panes.refresh()`), so a pane keeps its own state; the host re-attaches section nodes only when the open set changes.
-  A fetching pane re-renders through the `rerender` callback it is given. Frontend plus the `git-summary` route for the details rail
+  A fetching pane re-renders through the `rerender` callback it is given and gets its per-session data from `createSessionFetch` (`session-fetch.js`: no timers). Frontend plus the `git-summary` route (details rail) and the `diff` route (Changes pane)
 - Split view: `split-view.js` (`createSplitView`) owns a second pane (`#split-pane`) with its own `createThread` instance, prompt cards and a mini composer
   (send / stop only); its session id and open state are per browser in localStorage (`claude-gui.split-session`, `claude-gui.split-open`). `events.js` builds the list of
   threads showing an event's session (main thread if active + `view.paneThread(id)`); `notify.js` gets `onScreen` (main or pane) for the "away" rule and unread

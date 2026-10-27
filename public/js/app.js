@@ -27,13 +27,14 @@ const els = {
   app: byId('app'), list: byId('session-list'), search: byId('session-search'), topbar: byId('topbar'), scroller: byId('thread'),
   messages: byId('messages'), welcome: byId('welcome'), cards: byId('prompt-cards'), composerArea: byId('composer-area'), version: byId('version-label'), brand: byId('brand'),
 };
-const thread = createThread({ scroller: els.scroller, messages: els.messages, onOpenGit: () => actions.openPanel('diff') });
+const thread = createThread({ scroller: els.scroller, messages: els.messages, onOpenGit: () => panes.open('changes') });
 const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 enableFileLinks(els.messages, () => state.activeId);
 const modelHealth = createModelHealth(byId('model-health'));
-const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openPanel: id => actions.openPanel(id), onChange: () => refresh() });
-const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), openPanel: id => actions.openPanel(id), modelLabel, getSession: activeSession });
+const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh() });
+const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), openPanel: id => actions.openPanel(id), modelLabel,
+  getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value });
@@ -75,7 +76,8 @@ function refresh() {
     onToggleSidebar: toggleSidebar, onRename: name => actions.rename(name), onOpenPanel: id => actions.openPanel(id),
     onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
     onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onSplit: () => split.toggle(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
-    onToggleDetails: () => { panes.toggle('details'); refresh(); }, detailsOpen: panes.isOpen('details'),
+    onToggleDetails: () => panes.toggle('details'), detailsOpen: panes.isOpen('details'),
+    onToggleChanges: () => panes.toggle('changes'), changesOpen: panes.isOpen('changes'),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');
   els.welcome.hidden = Boolean(session);
@@ -161,6 +163,7 @@ document.addEventListener('keydown', event => {
   else if (mod && event.key.toLowerCase() === 'b') { event.preventDefault(); toggleSidebar(); }
   else if (mod && event.key === ',') { event.preventDefault(); actions.openPanel('model'); }
   else if (mod && event.key === '\\') { event.preventDefault(); split.toggle(); }
+  else if (mod && event.shiftKey && event.code === 'KeyD') { event.preventDefault(); panes.toggle('changes'); } // code: any keyboard layout
   else if (event.key === 'Escape' && !event.defaultPrevented && activeSession()?.status === 'running'
     && !document.querySelector('.modal-backdrop, .popover, dialog[open]')) actions.stop();
 });

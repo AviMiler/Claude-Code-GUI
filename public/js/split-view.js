@@ -20,12 +20,12 @@ const remember = (key, value) => { try { localStorage.setItem(key, value); } cat
 const recall = key => { try { return localStorage.getItem(key) || ''; } catch { return ''; } };
 
 /**
- * @param {{app:HTMLElement, pane:HTMLElement, selectMain:(id:string|null)=>void, openPanel:(id:string)=>void,
+ * @param {{app:HTMLElement, pane:HTMLElement, selectMain:(id:string|null)=>void, openChanges:()=>void,
  *   onChange:()=>void}} options app gets the `split` class; pane is the empty <aside> to fill; selectMain opens a session
  *   in the main pane; onChange re-renders the page (sidebar dots, title) after the pane's session changed
  * @returns {{toggle:()=>void, refresh:()=>void, threadFor:(sessionId:string)=>object|null, sessionId:()=>string|null}}
  */
-export function createSplitView({ app, pane, selectMain, openPanel, onChange }) {
+export function createSplitView({ app, pane, selectMain, openChanges, onChange }) {
   let sessionId = recall(SESSION_KEY) || null;
   let shownId = null; // the session the thread currently renders
   const title = h('button', { type: 'button', class: 'split-title', title: 'בחירת סשן לחלון הזה' });
@@ -40,7 +40,7 @@ export function createSplitView({ app, pane, selectMain, openPanel, onChange }) 
   const close = h('button', { type: 'button', class: 'icon-button', title: 'סגירת הפיצול (Ctrl+\\)' }, icon('x'));
   const empty = h('div', { class: 'split-empty' }, 'בחר סשן להצגה לצד הסשן הראשי.');
   // The thread's git button means "this session's changes": show the session in the main pane, then its git panel.
-  const thread = createThread({ scroller, messages, onOpenGit: () => { swapPanes(); openPanel('diff'); } });
+  const thread = createThread({ scroller, messages, onOpenGit: () => { swapPanes(); openChanges(); } });
   pane.append(h('div', { class: 'split-head' }, title, h('span', { class: 'spacer' }), swap, close), empty, scroller,
     h('div', { class: 'split-composer-area' }, cards, h('div', { class: 'split-composer' }, input, stop, send)));
   enableFileLinks(messages, () => shownId);
