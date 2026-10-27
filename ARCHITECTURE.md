@@ -35,6 +35,7 @@ sessions are kept in memory and saved to `data/sessions.json`.
 | Persistent stream-json process per session | Permission prompts, interrupt, live switches and catalog queries need an open stdin |
 | Capability detection from `--help` | Works with whatever CLI version is installed |
 | Probe process for catalogs of idle sessions | Looking at a session must not keep a 100–300 MB process alive |
+| Warm-up while typing (spare process for a new session) | CLI startup takes seconds; typing is intent, so the cost is paid before Enter |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -62,8 +63,9 @@ the right to run commands as that user.
 | No authentication on 127.0.0.1 | Any local program/user can drive sessions (incl. bypassPermissions) and edit ~/.claude settings | Same startup token |
 
 **Outside this computer**
-- The GUI server makes no network calls. Claude Code talks to the model server only through the messages API, which
-  cannot change the server's configuration.
+- The GUI server makes one network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured token) to
+  list the models, only when the base URL is not Anthropic's. Claude Code talks to the model server only through the
+  messages API, which cannot change the server's configuration.
 - Tools Claude runs (Bash/PowerShell) can reach any host the user can, including the model server's own HTTP API
   (Ollama's API has no authentication: pull/delete/create models). This needs the user's approval in the ask modes,
   and happens freely in bypass mode. Protect the model server itself if that matters.

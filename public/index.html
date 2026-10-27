@@ -10,13 +10,14 @@
   <link rel="stylesheet" href="css/messages.css">
   <link rel="stylesheet" href="css/composer.css">
   <link rel="stylesheet" href="css/panels.css">
+  <link rel="stylesheet" href="css/animations.css">
 </head>
 <body>
   <div class="app" id="app">
     <aside class="sidebar" aria-label="סשנים">
       <div class="sidebar-top">
-        <div class="brand">
-          <span class="icon spark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 2.6v5.6M12 15.8v5.6M2.6 12h5.6M15.8 12h5.6M5.4 5.4l4 4M14.6 14.6l4 4M18.6 5.4l-4 4M9.4 14.6l-4 4"/></svg></span>
+        <div class="brand" id="brand">
+          <span class="icon spark claude-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path class="ray" style="--i:0" d="M12 2.6v5.6"/><path class="ray" style="--i:1" d="M18.6 5.4l-4 4"/><path class="ray" style="--i:2" d="M15.8 12h5.6"/><path class="ray" style="--i:3" d="M14.6 14.6l4 4"/><path class="ray" style="--i:4" d="M12 15.8v5.6"/><path class="ray" style="--i:5" d="M9.4 14.6l-4 4"/><path class="ray" style="--i:6" d="M2.6 12h5.6"/><path class="ray" style="--i:7" d="M5.4 5.4l4 4"/></svg></span>
           <span>Claude Code</span>
         </div>
         <button id="collapse-sidebar" class="icon-button" type="button" title="הסתרת הסרגל (Ctrl+B)">

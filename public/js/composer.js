@@ -32,7 +32,7 @@ function queueList(queue, running, handlers) {
  * @param {{onSubmit:(text:string)=>Promise<boolean>, onStop:()=>void, onCommand:(command:object)=>void,
  *   onModeMenu:(anchor:HTMLElement)=>void, onModelMenu:(anchor:HTMLElement)=>void, onPlusMenu:(anchor:HTMLElement)=>void,
  *   onContext:()=>void, onCycleMode:()=>void, getHistory:()=>string[],
- *   onQueueRemove:(entry:object)=>void, onQueueEdit:(entry:object)=>void, onQueueResume:()=>void}} handlers
+ *   onQueueRemove:(entry:object)=>void, onQueueEdit:(entry:object)=>void, onQueueResume:()=>void, onTyping?:()=>void}} handlers
  */
 export function createComposer(root, handlers) {
   const textarea = h('textarea', { rows: 1, dir: 'auto', 'aria-label': 'הודעה ל-Claude' });
@@ -82,7 +82,10 @@ export function createComposer(root, handlers) {
     submit();
   });
   stop.addEventListener('click', () => handlers.onStop());
-  textarea.addEventListener('input', autosize);
+  textarea.addEventListener('input', () => {
+    autosize();
+    if (textarea.value.trim()) handlers.onTyping?.(); // lets the CLI start while the message is written
+  });
   textarea.addEventListener('keydown', event => {
     if (event.isComposing) return;
     if (menus.handleKey(event)) { event.preventDefault(); return; }
@@ -104,7 +107,8 @@ export function createComposer(root, handlers) {
   });
   plus.addEventListener('click', () => handlers.onPlusMenu(plus));
   modeChip.addEventListener('click', () => handlers.onModeMenu(modeChip));
-  modelChip.addEventListener('click', () => handlers.onModelMenu(modelChip));
+  let modelSwitchable = true;
+  modelChip.addEventListener('click', () => { if (modelSwitchable) handlers.onModelMenu(modelChip); });
   ring.addEventListener('click', () => handlers.onContext());
   autosize();
 
@@ -126,12 +130,16 @@ export function createComposer(root, handlers) {
       textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
       autosize();
     },
-    update({ mode, modelLabel, isRunning, contextPercent, hasSession, queue = [] }) {
+    /** modelSwitchable=false: the system has one model, so the chip is a plain label instead of a menu. */
+    update({ mode, modelLabel, modelSwitchable: switchable = true, isRunning, contextPercent, hasSession, queue = [] }) {
       running = isRunning;
       const info = modeInfo(mode);
       modeChip.className = `composer-chip mode-${info.value}`;
       modeChip.replaceChildren(icon(info.icon), h('span', { class: 'label' }, info.short), icon('chevron-down', 'chevron'));
-      modelChip.replaceChildren(icon('cpu'), h('span', { class: 'label' }, modelLabel), icon('chevron-down', 'chevron'));
+      modelSwitchable = switchable;
+      modelChip.classList.toggle('static', !switchable);
+      modelChip.title = switchable ? 'מודל ומאמץ' : `${modelLabel} – המודל היחיד שזמין במערכת`;
+      modelChip.replaceChildren(...[icon('cpu'), h('span', { class: 'label' }, modelLabel), switchable && icon('chevron-down', 'chevron')].filter(Boolean));
       stop.hidden = !running;
       send.title = running ? 'הוספה לתור (Enter) – תישלח כש-Claude יסיים' : 'שליחה (Enter)';
       send.classList.toggle('queue-send', running);

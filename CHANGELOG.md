@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (speed, real model list, Claude's animations)
+- Changed: the CLI starts while the message is typed (POST /api/warm): an existing session warms its own process; on the welcome page a "spare" process is started with the draft settings and handed to the new session (lib/session-runtime.js `prewarmNew`/`adoptSpare`). Measured with a 2.5 s simulated startup: first answer 2.8 s → 0.1 s
+- Changed: the `/` menu and the model menu never wait for the CLI catalog: built-in commands show at once, Skills join when the catalog arrives; the catalog is prefetched after a view settles (public/js/state.js `peekCatalog`, app.js)
+- Changed: a folder catalog reuses the warm spare instead of starting a probe process (lib/catalog-service.js)
+- Changed: the model list is the models the system really has: with a custom ANTHROPIC_BASE_URL it comes from the model server (GET /v1/models, or Ollama's /api/tags) plus config.json; on Anthropic from the CLI. With one model the model chip is a plain label and the panel says there is nothing to switch (lib/model-list.js, GET /api/models)
+- Added: Claude's spark has a state of its own: starting (CLI starting up), thinking, writing, tool (with the tool and its target), waiting for approval, then a burst when done, a shake on error, a fold when stopped; it floats on the welcome page and turns in the sidebar while any session works (public/css/animations.css, thread.js)
+- Added: FAKE_CLAUDE_STARTUP_MS in dev/fake-claude.js to simulate the real CLI's startup time
+
 ## 2026-10-27 (queue, folder browser, inline skills, fixes)
 - Added: message queue — Enter while Claude works queues the message on the server; queued messages are sent one by one after each turn, can be edited or removed above the composer, and Stop puts them back into the box instead of sending them (lib/session-service.js, public/js/composer.js, actions.js)
 - Added: folder browser ("עיון…") on the welcome page and in /add-dir: drives, breadcrumbs, filter, hidden folders, new folder (GET/POST /api/folders, public/js/folder-browser.js)

@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 after adding the message queue, folder browser and inline skills_
+_Last updated: 2026-10-27 after the speed work (warm-up, non-blocking menus), the system model list and Claude's animations_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -34,6 +34,8 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — CLI warm-up while typing (spare process for new sessions), non-blocking `/` and model menus, catalog
+  prefetch, model list from the model server (lib/model-list.js), state animations of Claude's spark (css/animations.css).
 - 2026-10-27 — Server-side message queue (session.queue), folder browser (/api/folders), inline `/` skills menu,
   context ring no longer starts a CLI process (`ifRunning`), Markdown heading and title-rename fixes.
 - 2026-10-26 — Initial implementation of server, API, and UI.
@@ -67,6 +69,10 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Background tasks panel (`/tasks`) from `task_started` / `task_notification` events
 
 ## Gotchas / Watch Out
+- Warm-up: typing calls POST /api/warm. A spare process (id `spare-…`) is used by `createSession` only if cwd, mode,
+  model and effort match exactly; it closes after 3 idle minutes. Never key anything else on the runtime's sessionId
+  before adoption — `adoptSpare` changes it
+- Models: with one model in the system the chip is static on purpose (user request: no switch = no menu)
 - Queue: `sendMessage` on a running session appends to `session.queue` (persisted); `onTurnEnd` sends the next one.
   Stop empties the queue *before* interrupting (otherwise the interrupted turn's end would send the next message)
   and returns the texts to the browser. After a crash or a server restart the queue waits for "שליחת הבאה" (resume)
@@ -81,7 +87,8 @@ Built for a corporate Windows machine without another terminal.
 - `.cmd` shims on Windows run through cmd.exe; arguments are quoted by `lib/spawn-utils.js`, JSON goes through files, never arguments;
   arguments containing `%` are refused there (cmd.exe expands %VAR% even in quotes)
 - The git panel disables repository-configured programs (fsmonitor, external diff, textconv) — keep those flags in `lib/workspace-info.js`
-- The GUI server itself never opens network connections; anything outside the machine happens through Claude Code
+- The GUI server's only network call is GET {ANTHROPIC_BASE_URL}/v1/models (lib/model-list.js, 4 s timeout, cached 5 min,
+  only for a custom base URL). Everything else outside the machine happens through Claude Code
   (model API calls, MCP/plugins) or through tools Claude runs (Bash can reach the model server's HTTP API — e.g.
   Ollama's unauthenticated /api/delete — when the user approves it or in bypass mode)
 - Requiring `lib/session-store.js` registers an exit hook that writes `data/sessions.json`; set `CLAUDE_GUI_DATA` in experiments

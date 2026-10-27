@@ -7,8 +7,8 @@
 import { h } from './dom.js';
 import { api } from './api.js';
 import { createListMenu } from './popover.js';
-import { GROUPS, filterCommands } from './command-catalog.js';
-import { currentScope, getCatalog, getCommands } from './state.js';
+import { GROUPS, buildCommands, filterCommands } from './command-catalog.js';
+import { currentScope, getCatalog, getCommands, peekCatalog } from './state.js';
 
 const SLASH_TOKEN = /^\/([^\s]*)$/;
 const INLINE_SLASH_TOKEN = /(^|\s)\/([^\s/]*)$/;
@@ -16,7 +16,8 @@ const INLINE_GROUPS = new Set(['skill', 'plugin', 'mcp']);
 const MENTION_TOKEN = /(^|\s)@([^\s@]*)$/;
 const MAX_PER_GROUP = 40;
 
-const footer = () => h('div', { class: 'menu-footer' }, h('span', null, '↑↓ ניווט'), h('span', null, 'Enter / Tab בחירה'), h('span', null, 'Esc סגירה'));
+const footer = (loading = false) => h('div', { class: 'menu-footer' }, h('span', null, '↑↓ ניווט'), h('span', null, 'Enter / Tab בחירה'),
+  h('span', null, 'Esc סגירה'), loading ? h('span', { class: 'menu-loading' }, 'טוען Skills מ-Claude Code…') : null);
 
 function commandEntries(commands, onPick) {
   const entries = [];
@@ -58,11 +59,17 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
     onChange();
   }
 
+  /** Built-in commands show at once; Skills and custom commands join when the CLI catalog arrives. */
   async function showCommands(query) {
     const id = ++requestId;
-    const commands = filterCommands(await getCommands(), query);
-    if (id !== requestId) return;
-    menu.update(commandEntries(commands, command => { menu.close(); onCommand(command); }), footer());
+    const draw = (catalog, loading) => menu.update(
+      commandEntries(filterCommands(buildCommands(catalog), query), command => { menu.close(); onCommand(command); }), footer(loading));
+    const cached = peekCatalog();
+    if (cached !== undefined) return draw(cached, false);
+    draw(null, true);
+    const catalog = await getCatalog();
+    if (id === requestId && menu.isOpen()) draw(catalog, false);
+    return undefined;
   }
 
   /** Skills in the middle of a sentence: the pick replaces the "/query" token and the text around it stays. */

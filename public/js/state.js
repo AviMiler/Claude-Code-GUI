@@ -16,7 +16,9 @@ export const state = {
   focusView: false,
 };
 
-const catalogs = new Map(); // scope key -> { at, promise }
+const catalogs = new Map(); // scope key -> { at, promise, value }
+let systemModels = null; // Promise of /api/models
+let modelsSnapshot = null; // last result of getModels, for views that must not wait
 
 export const activeSession = () => state.sessions.get(state.activeId) || null;
 
@@ -37,14 +39,37 @@ export function getCatalog(scope = currentScope(), { refresh = false } = {}) {
   const key = scopeKey(scope);
   const cached = catalogs.get(key);
   if (!refresh && cached && Date.now() - cached.at < CATALOG_TTL_MS) return cached.promise;
-  const promise = api.catalog(scope).catch(error => {
+  const entry = { at: Date.now(), promise: null, value: undefined };
+  entry.promise = api.catalog(scope).then(value => { entry.value = value; return value; }).catch(error => {
     console.error('[state] catalog failed:', error);
     catalogs.delete(key);
     return null;
   });
-  catalogs.set(key, { at: Date.now(), promise });
-  return promise;
+  catalogs.set(key, entry);
+  return entry.promise;
 }
+
+/** The catalog if it already arrived (undefined otherwise). Menus show this at once instead of waiting for the CLI. */
+export function peekCatalog(scope = currentScope()) {
+  const cached = catalogs.get(scopeKey(scope));
+  return cached && Date.now() - cached.at < CATALOG_TTL_MS ? cached.value : undefined;
+}
+
+/**
+ * Models the user can switch between. With a custom model server (Ollama...) they come from that server and
+ * config.json; otherwise from the CLI's own list.
+ * @returns {Promise<{models:object[], switchable:boolean, current:string, error:string|null}>}
+ */
+export async function getModels(scope = currentScope()) {
+  systemModels ||= api.models().catch(error => { systemModels = null; return { source: 'cli', models: [], current: '', error: error.message }; });
+  const system = await systemModels;
+  const models = system.source === 'server' ? system.models : ((await getCatalog(scope))?.models || []);
+  modelsSnapshot = { models, switchable: models.length > 1, current: system.current, error: system.error };
+  return modelsSnapshot;
+}
+
+/** The last model list without waiting (null before the first answer). */
+export const peekModels = () => modelsSnapshot;
 
 export function forgetCatalog(scope = currentScope()) {
   catalogs.delete(scopeKey(scope));

@@ -48,6 +48,7 @@ export function handleEvent(event, view) {
       break;
     case 'runtime':
       state.runtime.set(event.sessionId, event.info);
+      if (isActive) view.thread.activity(); // the CLI is up and working on the turn
       break;
     case 'permission':
       if (!session) return undefined;

@@ -11,6 +11,8 @@
 .composer-chip { display: inline-flex; gap: 6px; align-items: center; height: 30px; padding: 0 10px; border: 1px solid transparent; border-radius: 999px;
   background: transparent; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .composer-chip:hover { background: var(--surface-2); color: var(--text); }
+.composer-chip.static { cursor: default; }
+.composer-chip.static:hover { background: transparent; color: var(--muted); }
 .composer-chip .icon { width: 15px; height: 15px; }
 .composer-chip .chevron { width: 12px; height: 12px; opacity: .7; }
 .composer-chip.mode-plan { background: var(--info-soft); color: var(--info); }
@@ -62,6 +64,7 @@
 .menu-item.disabled { opacity: .55; }
 .menu-item .tag { padding: 0 6px; border-radius: 4px; background: var(--surface-3); color: var(--muted); font-size: 11px; }
 .menu-empty { padding: 10px; color: var(--muted); font-size: 13px; }
+.menu-footer .menu-loading { margin-inline-start: auto; color: var(--accent-strong); animation: pulse 1.2s ease-in-out infinite; }
 .menu-footer { display: flex; gap: 12px; margin: 4px 4px 0; padding: 6px 6px 2px; border-top: 1px solid var(--border); color: var(--faint); font-size: 11.5px; }
 .segmented { display: flex; gap: 2px; margin: 4px 6px 6px; padding: 2px; border-radius: var(--radius-sm); background: var(--surface-2); }
 .segmented button { flex: 1; padding: 3px 6px; white-space: nowrap; border: 0; border-radius: 5px; background: none; color: var(--muted); font-size: 12.5px; }

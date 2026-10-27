@@ -9,11 +9,11 @@ _Last updated: 2026-10-27_
 ./dev/config.fake.json  ./dev/fake-claude.cmd  ./dev/fake-claude.js
 ./lib/api-routes.js  ./lib/api-routes-tools.js  ./lib/catalog-service.js  ./lib/claude-files.js
 ./lib/cli-args.js  ./lib/cli-capabilities.js  ./lib/cli-commands.js  ./lib/cli-process.js  ./lib/config.js
-./lib/event-hub.js  ./lib/event-translator.js  ./lib/failure-messages.js  ./lib/http-utils.js
+./lib/event-hub.js  ./lib/event-translator.js  ./lib/failure-messages.js  ./lib/http-utils.js  ./lib/model-list.js
 ./lib/session-runtime.js  ./lib/session-service.js  ./lib/session-store.js  ./lib/spawn-utils.js
 ./lib/static-files.js  ./lib/transcripts.js  ./lib/workspace-info.js
 ./public/index.html  ./public/icon.svg
-./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css
+./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css  ./public/css/animations.css
 ./public/js/app.js  ./public/js/events.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
 ./public/js/thread.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
@@ -47,6 +47,7 @@ _Last updated: 2026-10-27_
 | `lib/failure-messages.js` | Hebrew explanation of a failed CLI process. |
 | `lib/session-service.js` | Glue: sessions, messages and their queue, stop, clear, fork, permissions, settings. |
 | `lib/catalog-service.js` | Commands/skills/agents/models catalog and whitelisted control requests (session or probe). |
+| `lib/model-list.js` | Models the user can switch between: model server (/v1/models) + config.json, or the CLI's list on Anthropic. |
 | `lib/cli-commands.js` | Whitelisted `claude mcp|plugin|doctor|auth ...` subcommands. |
 | `lib/claude-files.js` | Read/write settings, CLAUDE.md, agents, skills, commands, output styles by kind. |
 | `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import. |
@@ -59,6 +60,7 @@ _Last updated: 2026-10-27_
 | `public/css/messages.css` | Messages, thinking, tool rows, diffs, todos, results. |
 | `public/css/composer.css` | Composer, chips, popover menus, permission/question/plan cards. |
 | `public/css/panels.css` | Settings modal, panel building blocks, dialogs, toasts. |
+| `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
 | `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts. |
 | `public/js/events.js` | Applies SSE events to state and views. |
 | `public/js/state.js` | Client state, cached catalog, recent folders. |

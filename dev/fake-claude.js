@@ -2,6 +2,7 @@
  * Fake `claude` CLI for developing the GUI without an API key. Speaks the stream-json + control protocol.
  * Prompt keywords: "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
  * "slow" -> long streaming (to test stop), "fail" -> crash. Anything else -> streamed echo.
+ * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
  */
 const readline = require('readline');
 const args = process.argv.slice(2);
@@ -101,8 +102,12 @@ async function turn(prompt) {
   out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: 0.0012, usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
 }
 
-let queue = Promise.resolve();
-readline.createInterface({ input: process.stdin }).on('line', line => {
+const ready = sleep(Number(process.env.FAKE_CLAUDE_STARTUP_MS || 0));
+let queue = ready;
+readline.createInterface({ input: process.stdin }).on('line', line => { ready.then(() => handle(line)); })
+  .on('close', () => ready.then(() => queue).then(() => process.exit(0))); // after the lines read before close
+
+function handle(line) {
   if (!line.trim()) return;
   const message = JSON.parse(line);
   if (message.type === 'control_response') return waiting.get(message.response.request_id)?.(message.response.response);
@@ -116,4 +121,4 @@ readline.createInterface({ input: process.stdin }).on('line', line => {
     const content = message.message.content;
     queue = queue.then(() => turn(typeof content === 'string' ? content : content.map(block => block.text).join('')));
   }
-}).on('close', () => queue.then(() => process.exit(0)));
+}

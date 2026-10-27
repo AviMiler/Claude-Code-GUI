@@ -14,6 +14,10 @@ const query = params => new URLSearchParams(Object.entries(params).filter(([, va
 
 export const api = {
   state: () => request('GET', '/api/state'),
+  /** Starts the CLI ahead of the message being typed: { sessionId } or the draft { cwd, mode, model, effort }. */
+  warm: target => request('POST', '/api/warm', target),
+  /** Models of the system: { source: 'cli'|'server', models, current, error }. */
+  models: () => request('GET', '/api/models'),
   createSession: body => request('POST', '/api/sessions', body),
   updateSession: (id, body) => request('PATCH', `/api/sessions/${id}`, body),
   deleteSession: id => request('DELETE', `/api/sessions/${id}`),

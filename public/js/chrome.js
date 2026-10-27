@@ -76,7 +76,7 @@ export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggesti
   });
   const recents = recentFolders().filter(folder => folder !== input.value);
   container.replaceChildren(...[
-    icon('spark', 'big spark'),
+    icon('spark', 'big spark claude-mark'),
     h('h1', null, `${greeting()}, במה נעבוד היום?`),
     h('p', null, 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
     h('div', { class: 'folder-picker' }, icon('folder'), input, browse),

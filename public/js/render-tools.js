@@ -26,7 +26,8 @@ const TOOLS = {
   EnterPlanMode: { icon: 'map', verb: 'מצב תכנון', target: () => '' },
 };
 
-function metaFor(name, input) {
+/** How a tool call is described: icon, verb and its target (file, command, query...). */
+export function toolMeta(name, input) {
   if (TOOLS[name]) return TOOLS[name];
   const mcp = name.match(/^mcp__(.+?)__(.+)$/);
   if (mcp) return { icon: 'plug', verb: mcp[1], target: () => mcp[2] };
@@ -91,7 +92,7 @@ function renderTodos(item) {
 export function renderTool(item) {
   if (item.name === 'TodoWrite') return renderTodos(item);
   const input = item.input || {};
-  const meta = metaFor(item.name, input);
+  const meta = toolMeta(item.name, input);
   const summary = h('summary', null, icon(meta.icon, 'tool-icon'), h('span', { class: 'tool-verb' }, meta.verb),
     h('span', { class: 'tool-target', title: String(meta.target(input) || '') }, String(meta.target(input) || '')));
   const diffs = editDiffs(item.name, input);
