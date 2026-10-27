@@ -4,13 +4,14 @@ import { copyText, downloadText, folderName } from './dom.js';
 import { state, activeSession, currentScope, scopeFolder, getCatalog, getCommands, forgetCatalog, rememberFolder } from './state.js';
 import { availableModes, MODE_CYCLE } from './modes.js';
 import { exportMarkdown } from './render-items.js';
+import { forServer, fromStored } from './attachments.js';
 import { openPanel } from './panels/panel-host.js';
 import { toast, ask } from './ui.js';
 import { guardedApi, confirmMode, confirmOutwardCommand, isCancelled, CANCELLED_MESSAGE } from './risk.js';
 
 /**
  * @param {{refresh:()=>void, selectSession:(id:string|null)=>void, insert:(text:string, options?:object)=>void,
- *   restore:(texts:string[])=>void}} view restore puts messages back into the composer (from the queue).
+ *   restore:(entries:{text:string, attachments:object[]}[])=>void}} view restore puts messages back into the composer (from the queue).
  */
 export function createActions(view) {
   const report = error => {
@@ -20,10 +21,11 @@ export function createActions(view) {
   };
 
   /** Creates a session from the draft settings (folder, mode, model) for a first message. */
-  async function createFromDraft(firstText) {
+  async function createFromDraft(firstText, attachments = []) {
     const draft = state.draft;
     const cwd = draft.cwd || state.config.defaultCwd;
-    const name = firstText && !firstText.startsWith('/') ? firstText.replace(/\s+/g, ' ').slice(0, 48) : folderName(cwd);
+    const name = firstText && !firstText.startsWith('/') ? firstText.replace(/\s+/g, ' ').slice(0, 48)
+      : attachments.length ? attachments[0].name : folderName(cwd);
     const session = await api.createSession({ name, cwd, mode: draft.mode, model: draft.model, effort: draft.effort });
     rememberFolder(session.cwd);
     state.sessions.set(session.id, session);
@@ -35,12 +37,17 @@ export function createActions(view) {
     insert: (text, options) => view.insert(text, options),
     openPanel: id => openPanel(id, panelContext),
 
-    /** Sends now, or queues the message when the session is still working (sent after the running turn). */
-    async send(text) {
+    /**
+     * Sends now, or queues the message when the session is still working (sent after the running turn).
+     * @param {object[]} [attachments] composer attachments: images and files (attachments.js)
+     */
+    async send(text, attachments = []) {
       try {
         await confirmOutwardCommand(text);
-        const session = activeSession() || await createFromDraft(text);
-        await api.sendMessage(session.id, text); // a busy session queues it; the queue shows above the composer
+        const session = activeSession() || await createFromDraft(text, attachments);
+        const { images, files } = forServer(attachments);
+        // a busy session queues it; the queue shows above the composer
+        await api.sendMessage(session.id, text, images, files);
         return true;
       } catch (error) {
         report(error);
@@ -53,7 +60,7 @@ export function createActions(view) {
       if (session?.status !== 'running') return;
       const result = await api.stop(session.id).catch(report);
       if (result?.queued?.length) {
-        view.restore(result.queued);
+        view.restore(result.queued.map(entry => ({ text: entry.text, attachments: fromStored(entry) })));
         toast('ההודעות שבתור הוחזרו לתיבת הכתיבה');
       }
     },
@@ -65,7 +72,8 @@ export function createActions(view) {
     async editQueued(entry) {
       const session = activeSession();
       if (!session) return;
-      await api.removeQueued(session.id, entry.id).then(() => view.restore([entry.text])).catch(report);
+      await api.removeQueued(session.id, entry.id)
+        .then(() => view.restore([{ text: entry.text, attachments: fromStored(entry) }])).catch(report);
     },
     resumeQueue() {
       const session = activeSession();

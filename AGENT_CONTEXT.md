@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — end of the session that added the queue, folder browser, inline skills, warm-up, system models, animations and copy buttons_
+_Last updated: 2026-10-27 — after adding images and file attachments (on top of the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -13,6 +13,7 @@ Built for a corporate Windows machine without another terminal.
   (terminal, diffs, todos, nested subagents), interactive permission prompts, AskUserQuestion cards, plan approval,
   stop/interrupt, message queue (Enter while running), folder browser (welcome page, /add-dir), `/` skills mid-sentence,
   CLI warm-up while typing, model list from the model server, Claude's animated states, copy button per message,
+  attachments of any type (+ menu, paste, drag): images to the model as images, other files by path,
   live model/mode switch, Shift+Tab mode cycling, `/` menu with the live CLI catalog, `@` files + agents,
   15 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
   settings files, status/doctor, appearance, help), light/dark theme, persistence to `data/sessions.json`
@@ -22,13 +23,17 @@ Built for a corporate Windows machine without another terminal.
   permissions (allow, deny with feedback), questions, plan approval, stop, live model switch, fork, resume, clear
 - ✅ Tested on 2026-10-27 against the fake CLI only (with `FAKE_CLAUDE_STARTUP_MS=2500`) in a real browser: queue
   (order, edit, remove, stop returns texts), folder browser, inline skills, warm-up (first answer 2.8 s -> 0.1 s),
-  non-blocking menus, model list with 1 and 3 models from a fake `/v1/models`, all spark states, copy buttons
+  non-blocking menus, model list with 1 and 3 models from a fake `/v1/models`, all spark states, copy buttons,
+  attachments (picker, paste, shrink of a 3000 px PNG to 1568, text file by path, queue + stop restore, re-send by
+  reference) and their security checks (fake type, traversal, download headers)
 - 🎯 Target: closed (offline) machine with Claude Code 2.1.246 and a local qwen model (`config.json`: ANTHROPIC_BASE_URL + qwen model);
   development machine runs the same CLI version against Anthropic. Get 2.1.246 with `npm pack @anthropic-ai/claude-code-win32-x64@2.1.246`
 - 🚧 Not tested: the `claude plugin` JSON shapes with installed plugins, the corporate Ollama setup (`config.json`);
   everything from 2026-10-27 with the real CLI: spare adoption on 2.1.246, whether the proxy at the configured
-  ANTHROPIC_BASE_URL answers `/v1/models`, whether qwen invokes a skill named mid-sentence
-- ❌ Known limits: images/attachments are not supported; terminal-only commands (login, ide, remote-control, ...) are
+  ANTHROPIC_BASE_URL answers `/v1/models`, whether qwen invokes a skill named mid-sentence, whether the local model
+  accepts image blocks (vision) — without vision the turn fails with the model server's error
+- ❌ Known limits: images of resumed CLI conversations are not shown (only "[תמונה]"); non-image files reach the model
+  only as paths it must read; terminal-only commands (login, ide, remote-control, ...) are
   listed but only explained; partial streamed text of a stopped turn is not kept
 - ⚠️ Known security issues, accepted on purpose (closed network, single user; details in ARCHITECTURE.md → Security):
   1. Cross-site GET: a website open in the same browser can trigger GET endpoints (no Origin is sent for simple GETs).
@@ -42,6 +47,8 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Images and files attached to messages (lib/images.js, lib/uploads.js, public/js/attachments.js);
+  every session gets `--add-dir data/uploads`; body limit 90 MB.
 - 2026-10-27 — Icon-only copy button under every user message and Claude answer (copies the original Markdown).
 - 2026-10-27 — CLI warm-up while typing (spare process for new sessions), non-blocking `/` and model menus, catalog
   prefetch, model list from the model server (lib/model-list.js), state animations of Claude's spark (css/animations.css).
@@ -81,7 +88,7 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Run one real conversation on the corporate machine and adjust `lib/event-translator.js` if needed
 - [ ] On the corporate machine: check `/api/models` against the real ANTHROPIC_BASE_URL, and the warm-up (first answer
       time, memory of the spare process) with Claude Code 2.1.246
-- [ ] Image paste / file attachments (stream-json user content blocks)
+- [ ] On the corporate machine: send one image to check the local model's vision, and one file to check the Read path
 - [ ] `/btw` side questions via the `side_question` control request
 - [ ] Background tasks panel (`/tasks`) from `task_started` / `task_notification` events
 
@@ -93,6 +100,13 @@ Built for a corporate Windows machine without another terminal.
   A base URL on anthropic.com counts as Anthropic (CLI list), so a dev shell exporting it does not hide the menu
 - The spark's rays exist twice: `icons.js` (`spark`) and the inline SVG of the brand in `public/index.html`.
   Change both; animations rely on 8 `.ray` paths with `--i` 0..7 clockwise from the top
+- Attachments: messages and queue entries keep only references (`images: [{ id, mediaType, name }]`,
+  `files: [{ id, name, size, path }]`); bytes are read again when the turn is sent (`images.userContent`,
+  `uploads.messageText`). A plain-text message stays a string, so slash commands still work; with attachments the
+  composer never treats the text as a GUI command
+- Attachments taken off the queue are not deleted (they may be sent again by reference); `sweep` at startup removes
+  unreferenced ones older than a day, and deleting a session removes the ones no other session (fork) uses
+- `/api/images/:id` and `/api/uploads/:id/:name` are served before the JSON routes (raw bytes) in `lib/api-routes.js`
 - `session-service` keeps `lastConfig` from the last request: queued messages start from a turn end, which has no config
 - Copy buttons find their text through a WeakMap in `render-items.js` (`copySourceOf`), not a data attribute;
   live streaming answers get the button only when the final item arrives

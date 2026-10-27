@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-27 (images and file attachments)
+- Added: attach files of any type to a message — "העלאת קבצים ותמונות" in the + menu, paste (Ctrl+V: screenshots, copied images or files) or drag onto the composer; up to 10 images and 10 files, 60 MB per message (public/js/attachments.js, composer.js)
+- Added: images (PNG, JPEG, GIF, WebP; BMP converted) go to the model as image content blocks; larger than 1568 px or 3.75 MB they are shrunk in the browser first. Stored in `data/images/`, shown as thumbnails in the message (click = full size) (lib/images.js)
+- Added: other files are stored in `data/uploads/<id>/<name>` and listed by full path at the end of the message, so Claude reads them with its own tools (works with any model). Every session gets `--add-dir data/uploads`, so reading them needs no permission prompt. Shown as chips that download the stored copy (lib/uploads.js, lib/cli-args.js)
+- Added: queued messages keep their attachments; Stop / edit put them back in the composer and they are sent again by reference
+- Added: resumed CLI conversations mark where images were ("[תמונה]") (lib/transcripts.js)
+- Security: image bytes must match the declared type (no SVG/HTML as an image); uploads are always served as downloads (`application/octet-stream`, nosniff); file names are sanitized and stay in their own folder; references are checked against stored ids
+- Changed: request body limit 1 MB → 90 MB (attachments travel as base64) (lib/http-utils.js)
+- Changed: the fake CLI echoes the images it received (dev/fake-claude.js)
+
 ## 2026-10-27 (folder browser fixes)
 - Fixed: an API route missing on a server that was not restarted after an update answered a bare "נתיב לא קיים"; it now names the route and says to restart `node server.js` (lib/api-routes.js)
 - Fixed: the folder browser stayed empty when its starting folder did not exist; it now opens the default (or home) folder, and its error stays visible in the list (public/js/folder-browser.js, lib/workspace-info.js)

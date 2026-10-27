@@ -22,7 +22,9 @@ export const api = {
   updateSession: (id, body) => request('PATCH', `/api/sessions/${id}`, body),
   deleteSession: id => request('DELETE', `/api/sessions/${id}`),
   /** @returns {Promise<{ok:boolean, queued:boolean}>} queued: the session was busy, the message waits in its queue. */
-  sendMessage: (id, text) => request('POST', `/api/sessions/${id}/messages`, { text }),
+  /** images / files: [{ data, mediaType?, name }] or [{ ref, name }] (see attachments.js forServer). */
+  sendMessage: (id, text, images, files) => request('POST', `/api/sessions/${id}/messages`,
+    { text, ...(images?.length && { images }), ...(files?.length && { files }) }),
   /** @returns {Promise<{stopped:boolean, queued:string[]}>} queued: messages taken off the queue by the stop. */
   stop: id => request('POST', `/api/sessions/${id}/stop`),
   removeQueued: (id, queueId) => request('DELETE', `/api/sessions/${id}/queue/${queueId}`),

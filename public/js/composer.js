@@ -1,11 +1,14 @@
 /**
  * The message box: auto-growing text area, mode and model chips, context ring, send/stop, keyboard shortcuts,
- * and the queue of messages typed while Claude works (sent one by one after the running turn).
+ * the queue of messages typed while Claude works (sent one by one after the running turn),
+ * and attachments (paste, drop on the box, or the + menu) shown above the text: images as thumbnails, other files as chips.
  */
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { modeInfo } from './modes.js';
 import { attachComposerMenus } from './composer-menus.js';
+import { prepareAttachment, checkRoom, formatSize } from './attachments.js';
+import { toast } from './ui.js';
 
 const RING_LENGTH = 2 * Math.PI * 9;
 
@@ -18,7 +21,9 @@ function contextRing() {
 function queueList(queue, running, handlers) {
   const rows = queue.map((entry, index) => h('div', { class: 'queue-row' },
     h('span', { class: 'queue-index' }, String(index + 1)),
-    h('span', { class: 'queue-text', dir: 'auto', title: entry.text }, entry.text),
+    h('span', { class: 'queue-text', dir: 'auto', title: entry.text },
+      entry.images?.length ? h('span', { class: 'queue-images' }, icon('image'), String(entry.images.length)) : null,
+      entry.files?.length ? h('span', { class: 'queue-images' }, icon('file'), String(entry.files.length)) : null, entry.text),
     h('button', { type: 'button', class: 'icon-button', title: 'עריכה (מחזיר לתיבת הכתיבה)', onClick: () => handlers.onQueueEdit(entry) }, icon('pencil')),
     h('button', { type: 'button', class: 'icon-button', title: 'הסרה מהתור', onClick: () => handlers.onQueueRemove(entry) }, icon('x'))));
   const head = h('div', { class: 'queue-head' }, icon('list'),
@@ -29,7 +34,7 @@ function queueList(queue, running, handlers) {
 
 /**
  * @param {HTMLElement} root Container (.composer-area).
- * @param {{onSubmit:(text:string)=>Promise<boolean>, onStop:()=>void, onCommand:(command:object)=>void,
+ * @param {{onSubmit:(text:string, images:object[])=>Promise<boolean>, onStop:()=>void, onCommand:(command:object)=>void,
  *   onModeMenu:(anchor:HTMLElement)=>void, onModelMenu:(anchor:HTMLElement)=>void, onPlusMenu:(anchor:HTMLElement)=>void,
  *   onContext:()=>void, onCycleMode:()=>void, getHistory:()=>string[],
  *   onQueueRemove:(entry:object)=>void, onQueueEdit:(entry:object)=>void, onQueueResume:()=>void, onTyping?:()=>void}} handlers
@@ -43,20 +48,24 @@ export function createComposer(root, handlers) {
   const send = h('button', { type: 'submit', class: 'send-button', title: 'שליחה (Enter)' }, icon('arrow-up'));
   const stop = h('button', { type: 'button', class: 'send-button stop', title: 'עצירה (Esc)', hidden: true }, icon('stop'));
   const queueBox = h('div', { class: 'queue', hidden: true, 'aria-live': 'polite' });
-  const form = h('form', { class: 'composer' }, textarea,
+  const strip = h('div', { class: 'attachments', hidden: true });
+  const picker = h('input', { type: 'file', multiple: true, hidden: true });
+  const form = h('form', { class: 'composer' }, strip, picker, textarea,
     h('div', { class: 'composer-bar' }, plus, modeChip, h('span', { class: 'grow' }), ring, modelChip, stop, send));
   const hint = h('p', { class: 'composer-hint' }, h('kbd', null, '/'), ' פקודות ו-Skills · ', h('kbd', null, '@'), ' קבצים וסוכנים · ',
-    h('kbd', null, 'Shift+Tab'), ' מצב הרשאות · ', h('kbd', null, 'Esc'), ' עצירה · ', h('kbd', null, 'Enter'), ' בזמן עבודה – לתור');
+    h('kbd', null, 'Shift+Tab'), ' מצב הרשאות · ', h('kbd', null, 'Ctrl+V'), ' קבצים ותמונות · ', h('kbd', null, 'Esc'), ' עצירה · ',
+    h('kbd', null, 'Enter'), ' בזמן עבודה – לתור');
   root.append(queueBox, form, hint);
 
   let running = false;
   let historyIndex = -1;
+  let attachments = []; // { kind: 'image'|'file', data | ref, name, size, preview? } — see attachments.js
   const autosize = () => {
     textarea.style.height = 'auto';
     const max = innerHeight * 0.4;
     textarea.style.height = `${Math.min(textarea.scrollHeight, max)}px`;
     textarea.style.overflowY = textarea.scrollHeight > max ? 'auto' : 'hidden';
-    const empty = !textarea.value.trim();
+    const empty = !textarea.value.trim() && !attachments.length;
     send.disabled = empty;
     send.hidden = running && empty; // while Claude works, an empty box shows only the stop button
   };
@@ -66,15 +75,48 @@ export function createComposer(root, handlers) {
     onChange: autosize,
   });
 
-  // While a turn runs, the text is queued by the server and sent when the turn ends.
+  function drawAttachments() {
+    strip.hidden = !attachments.length;
+    strip.replaceChildren(...attachments.map(attachment => h('div', {
+      class: `attachment ${attachment.kind}`, title: attachment.size ? `${attachment.name} · ${formatSize(attachment.size)}` : attachment.name,
+    },
+      attachment.kind === 'image' ? h('img', { src: attachment.preview, alt: attachment.name })
+        : [icon('file'), h('span', { class: 'attachment-name', dir: 'auto' }, attachment.name)],
+      h('button', { type: 'button', class: 'attachment-remove', title: 'הסרה', 'aria-label': `הסרת ${attachment.name}`,
+        onClick: () => { attachments = attachments.filter(item => item !== attachment); drawAttachments(); textarea.focus(); } }, icon('x')))));
+    autosize();
+  }
+
+  /** Adds files of any type; each is read (images shrunk if needed) before it shows. */
+  async function attach(files) {
+    for (const file of [...(files || [])]) {
+      try {
+        const attachment = await prepareAttachment(file);
+        checkRoom(attachments, attachment);
+        attachments = [...attachments, attachment];
+        drawAttachments();
+      } catch (error) {
+        toast(error.message, 'error');
+      }
+    }
+    if (attachments.length) handlers.onTyping?.();
+  }
+
+  // While a turn runs, the message is queued by the server and sent when the turn ends.
   async function submit() {
     const text = textarea.value.trim();
-    if (!text) return;
+    if (!text && !attachments.length) return;
+    const sent = attachments;
     textarea.value = '';
-    autosize();
+    attachments = [];
+    drawAttachments();
     historyIndex = -1;
-    const accepted = await handlers.onSubmit(text);
-    if (!accepted && !textarea.value) { textarea.value = text; autosize(); }
+    const accepted = await handlers.onSubmit(text, sent);
+    if (!accepted) {
+      if (!textarea.value) textarea.value = text;
+      attachments = [...sent, ...attachments];
+      drawAttachments();
+    }
   }
 
   form.addEventListener('submit', event => {
@@ -82,6 +124,26 @@ export function createComposer(root, handlers) {
     submit();
   });
   stop.addEventListener('click', () => handlers.onStop());
+  picker.addEventListener('change', () => { attach(picker.files); picker.value = ''; });
+  // Files on the clipboard (a screenshot, "copy image", files copied in Explorer) are attached; pasted text still goes into the box.
+  textarea.addEventListener('paste', event => {
+    const files = [...(event.clipboardData?.files || [])];
+    if (!files.length) return;
+    if (!event.clipboardData.getData('text/plain')) event.preventDefault();
+    attach(files);
+  });
+  form.addEventListener('dragover', event => {
+    if (![...(event.dataTransfer?.types || [])].includes('Files')) return;
+    event.preventDefault();
+    form.classList.add('dropping');
+  });
+  form.addEventListener('dragleave', event => { if (!form.contains(event.relatedTarget)) form.classList.remove('dropping'); });
+  form.addEventListener('drop', event => {
+    if (!event.dataTransfer?.files.length) return;
+    event.preventDefault();
+    form.classList.remove('dropping');
+    attach(event.dataTransfer.files);
+  });
   textarea.addEventListener('input', () => {
     autosize();
     if (textarea.value.trim()) handlers.onTyping?.(); // lets the CLI start while the message is written
@@ -115,6 +177,8 @@ export function createComposer(root, handlers) {
   return {
     textarea,
     focus: () => textarea.focus(),
+    /** Opens the file picker (the + menu): files of any type. */
+    pickFiles: () => picker.click(),
     /** Puts text in the box (used by panels: "use this skill", "@agent"...). */
     insert(text, { replace = false } = {}) {
       textarea.value = replace ? text : `${textarea.value}${textarea.value && !textarea.value.endsWith(' ') ? ' ' : ''}${text}`;
@@ -123,9 +187,15 @@ export function createComposer(root, handlers) {
       autosize();
       menus.refresh();
     },
-    /** Puts messages back in the box (taken off the queue), before anything already typed. */
-    restore(texts) {
-      textarea.value = [...texts, textarea.value.trim()].filter(Boolean).join('\n\n');
+    /**
+     * Puts messages back in the box (taken off the queue), before anything already typed; their images come back
+     * as attachments that are sent again by reference.
+     * @param {{text:string, attachments:object[]}[]} entries attachments come from fromStored (attachments.js)
+     */
+    restore(entries) {
+      textarea.value = [...entries.map(entry => entry.text), textarea.value.trim()].filter(Boolean).join('\n\n');
+      attachments = [...entries.flatMap(entry => entry.attachments || []), ...attachments];
+      drawAttachments();
       textarea.focus();
       textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
       autosize();

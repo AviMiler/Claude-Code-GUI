@@ -1,4 +1,4 @@
-# Runtime data: sessions and per-session settings
+# Runtime data: sessions, per-session settings, attached images (images/) and files (uploads/)
 data/
 
 # Copy of the project prepared for the closed machine (not source)
