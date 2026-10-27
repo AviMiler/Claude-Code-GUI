@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 (background tasks)
+- Added: "משימות רקע" panel (`/tasks`, `/bashes`) with live status, progress, output tail and stop for the session's background tasks, plus a topbar chip "N ברקע" (lib/task-tracker.js, readTaskEvent in event-translator.js, session-runtime.js, session-service.js, catalog-service.js, public/js/panels/panel-tasks.js, chrome.js, events.js, actions.js, commands-data.js). Why: user request (feature 3 of 12)
+- Changed: idle shutdown no longer retires a CLI process while it has running background tasks (a long job would otherwise be killed after `idleMinutes`); when a CLI process ends, its running tasks are shown as "killed"
+- Changed: `/tasks` was terminal-only; it now opens the panel. The panels count is 17
+- Changed: the fake CLI starts a background task on the word "task", answers `stop_task` / `get_task_output`, answers an error when a control handler throws, and its "ask" keyword now matches the whole word only (dev/fake-claude.js)
+- Not tested: the real CLI (2.1.246 may lack the task events, `stop_task` or `get_task_output`; the real field name of the output response is unknown, the panel reads output/content/text/tail)
+- Debt: lib/session-service.js (283 lines) and lib/session-runtime.js (243) exceed the ~150-line budget
+
 ## 2026-10-27 (/btw side questions)
 - Added: `/btw <question>` asks Claude about the current conversation without interrupting the running turn and without adding to the thread; a "שאלת צד" card above the composer shows the Markdown answer, takes follow-ups (history kept only while the card is open) and closes with Esc (lib/side-questions.js, POST /api/sessions/:id/side-question, public/js/side-question.js, actions.js, command-runner.js, app.js, css/composer.css). Why: user request (feature 2 of 12); it costs tokens, so it is a separate route, not in the no-token /control whitelist
 - Changed: `btw` was terminal-only in the command list; it now runs in the GUI (commands-data.js)

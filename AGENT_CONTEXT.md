@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding /btw side questions (on top of notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding the background tasks panel (on top of /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -15,9 +15,10 @@ Built for a corporate Windows machine without another terminal.
   CLI warm-up while typing, model list from the model server, Claude's animated states, copy button per message,
   attachments of any type (+ menu, paste, drag): images to the model as images, other files by path,
   live model/mode switch, Shift+Tab mode cycling, `/` menu with the live CLI catalog, `@` files + agents,
-  16 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
-  settings files, status/doctor, appearance, help, notifications), light/dark theme, persistence to `data/sessions.json`,
-  user-chosen notifications (desktop, sound, tab title), `/btw` side questions (not in thread, not persisted)
+  17 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
+  settings files, status/doctor, appearance, help, notifications, background tasks), light/dark theme, persistence to `data/sessions.json`,
+  user-chosen notifications (desktop, sound, tab title), `/btw` side questions (not in thread, not persisted),
+  background tasks panel `/tasks` (live status, stop, output; topbar chip; in memory only)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -34,7 +35,10 @@ Built for a corporate Windows machine without another terminal.
   ANTHROPIC_BASE_URL answers `/v1/models`, whether qwen invokes a skill named mid-sentence, whether the local model
   accepts image blocks (vision) — without vision the turn fails with the model server's error;
   `/btw` with the real CLI: the response shape (`response`, `fallback_notice`) comes from reading the 2.1.311 binary,
-  and whether 2.1.246 supports `side_question` is unknown (the GUI then shows a neutral "not available" note)
+  and whether 2.1.246 supports `side_question` is unknown (the GUI then shows a neutral "not available" note);
+  background tasks with the real CLI: event shapes come from reading the 2.1.311 binary, 2.1.246 may lack the task events,
+  `stop_task` or `get_task_output` (neutral notes exist, untested), and the real field name of the `get_task_output`
+  response is unknown (the panel reads output/content/text/tail defensively)
 - ❌ Known limits: images of resumed CLI conversations are not shown (only "[תמונה]"); non-image files reach the model
   only as paths it must read; terminal-only commands (login, ide, remote-control, ...) are
   listed but only explained; partial streamed text of a stopped turn is not kept
@@ -50,6 +54,10 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Background tasks panel `/tasks` (feature 3 of 12): live list of the session's shell/subagent/Monitor tasks with stop and output,
+  topbar chip "N ברקע". lib/task-tracker.js (memory only), `readTaskEvent` in event-translator, hooks in session-runtime / session-service,
+  public/js/panels/panel-tasks.js. Idle shutdown now waits for running tasks; a closed CLI turns running tasks into "killed".
+  Verified in a browser against the fake CLI only (incl. crash, kill -9, idle shutdown, reload); real CLI untested (see Current State).
 - 2026-10-27 — `/btw` side questions (feature 2 of 12): card above the composer, answered by the CLI's `side_question` control request
   without touching the running turn or the thread: lib/side-questions.js, POST /api/sessions/:id/side-question, public/js/side-question.js.
   Fake CLI gained a `side_question` handler. Verified in a browser against the fake CLI only; real CLI untested (see Current State).
@@ -103,9 +111,14 @@ Built for a corporate Windows machine without another terminal.
       time, memory of the spare process) with Claude Code 2.1.246
 - [ ] On the corporate machine: send one image to check the local model's vision, and one file to check the Read path
 - [ ] On the corporate machine: try `/btw` (does 2.1.246 support `side_question`? real response shape)
-- [ ] Background tasks panel (`/tasks`) from `task_started` / `task_notification` events
+- [ ] On the corporate machine: try `/tasks` (does 2.1.246 emit task events and support `stop_task` / `get_task_output`? real output response field)
+- [ ] Split `lib/session-service.js` (283 lines) and `lib/session-runtime.js` (243) — over the ~150-line budget
 
 ## Gotchas / Watch Out
+- Background tasks: idle shutdown (`scheduleIdle` in session-runtime) is skipped while `runtime.runningTasks > 0` and re-armed when the last task
+  ends, so such a process outlives `idleMinutes` (100–300 MB) on purpose. Tasks are never persisted; when the CLI exits (crash, kill, idle,
+  between turns) running tasks become `killed`. A `task_started` always creates a fresh record because a restarted CLI may reuse ids.
+  `stop_task` / `get_task_output` are in the no-token `/control` whitelist (write / read). The fake CLI's "task" keyword runs `FAKE_TASK_MS` (8000)
 - `/btw`: `side_question` costs tokens, so it has its own route and is NOT in the generic `/control` whitelist (catalog-service
   `WRITE_SUBTYPES`, documented as no-token with short timeouts). The unsupported-CLI error must keep the text "not supported by this
   Claude Code version" so `isUnsupported` (panels/kit.js) matches it. The fake CLI now answers unknown control subtypes with

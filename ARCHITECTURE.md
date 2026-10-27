@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (side questions)_
+_Last updated: 2026-10-27 (background tasks)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -19,7 +19,8 @@ sessions are kept in memory and saved to `data/sessions.json`.
 4. Each stdout line: `control_response` settles a pending request; `control_request` `can_use_tool` becomes a
    permission prompt; everything else -> `event-translator` -> UI items / streaming deltas -> SSE (`/api/events`)
 5. Browser `events.js` updates state and views; a permission answer goes back as `control_response`
-6. `result` ends the turn; the process stays warm and closes itself after `idleMinutes`
+6. `result` ends the turn; the process stays warm and closes itself after `idleMinutes` — except while it has running
+   background tasks (see Background tasks); the timer is re-armed when the last one ends
 7. A message sent while a turn runs goes to `session.queue`; the end of the turn sends the next one (step 2).
    Stop empties the queue first and hands the texts back to the browser
 
@@ -36,6 +37,14 @@ sessions are kept in memory and saved to `data/sessions.json`.
   on the session's process (started if needed; 10 min timeout). The answer is `{ response, notice }`
 - It never becomes a thread item or a queue entry and is never saved; follow-up history lives only in the open card.
   A CLI without `side_question` -> HTTP 501 -> neutral "not available" note. It calls the model, so it costs tokens
+
+## Background tasks
+- `task_started` / `task_progress` / `task_notification` system events are normalized by `readTaskEvent` (event-translator);
+  `session-runtime` passes them to the `onTask` hook and keeps `runtime.runningTasks`; `lib/task-tracker.js` holds the tasks
+  per session in memory (never persisted, 50 per session); `session-service` broadcasts SSE `tasks` and puts them in the session meta
+- When the CLI process ends for any reason, its running tasks become `killed`. Idle shutdown is skipped while a task runs
+- The panel (`panel-tasks.js`) stops a task and reads its output with the no-token control requests `stop_task` / `get_task_output`
+  (`/control` whitelist); a CLI without them gives a neutral "not available" note
 
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
@@ -73,6 +82,7 @@ sessions are kept in memory and saved to `data/sessions.json`.
 | Files by path, images as content blocks | Read handles text, code, PDF and notebooks with any model; images are the one kind the model must receive itself |
 | Model list from the model server | The CLI's aliases all point to one local model behind a custom base URL; only real models are worth a menu |
 | `/btw` on its own route, not in the `/control` whitelist | `side_question` calls the model (tokens) and needs a long timeout; the generic control routes are documented as no-token with short timeouts. See DECISIONS.md |
+| Background tasks in memory, idle shutdown blocked while they run | Tasks live inside the CLI process, so persisting them would show ghosts; retiring the process would kill a long job after `idleMinutes` |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
@@ -126,7 +136,8 @@ the right to run commands as that user.
   stop ended the turn), error
 - Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`
 - User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`
-- SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved
+- SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks
+- `tasks` are in the session meta (`/api/state`, `session` events) but not in `data/sessions.json`
 - Claude's spark: `thread.js` sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
   done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)
 - Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the

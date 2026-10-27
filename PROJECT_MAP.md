@@ -1,5 +1,5 @@
 # Project Map
-_Last updated: 2026-10-27 (added lib/side-questions.js, public/js/side-question.js)_
+_Last updated: 2026-10-27 (added lib/task-tracker.js, public/js/panels/panel-tasks.js)_
 
 ## File Tree
 ```
@@ -11,7 +11,7 @@ _Last updated: 2026-10-27 (added lib/side-questions.js, public/js/side-question.
 ./lib/cli-args.js  ./lib/cli-capabilities.js  ./lib/cli-commands.js  ./lib/cli-process.js  ./lib/config.js
 ./lib/event-hub.js  ./lib/event-translator.js  ./lib/failure-messages.js  ./lib/http-utils.js  ./lib/model-list.js  ./lib/images.js  ./lib/uploads.js
 ./lib/session-runtime.js  ./lib/session-service.js  ./lib/session-store.js  ./lib/side-questions.js  ./lib/spawn-utils.js
-./lib/static-files.js  ./lib/transcripts.js  ./lib/workspace-info.js
+./lib/static-files.js  ./lib/task-tracker.js  ./lib/transcripts.js  ./lib/workspace-info.js
 ./public/index.html  ./public/icon.svg
 ./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css  ./public/css/animations.css
 ./public/js/app.js  ./public/js/events.js  ./public/js/notify.js  ./public/js/page-status.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
@@ -23,7 +23,7 @@ _Last updated: 2026-10-27 (added lib/side-questions.js, public/js/side-question.
 ./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
 ./public/js/panels/panel-workspace.js  ./public/js/panels/panel-skills.js  ./public/js/panels/panel-agents.js
 ./public/js/panels/panel-mcp.js  ./public/js/panels/panel-plugins.js  ./public/js/panels/panel-config.js
-./public/js/panels/panel-status.js  ./public/js/panels/panel-help.js  ./public/js/panels/panel-notifications.js
+./public/js/panels/panel-status.js  ./public/js/panels/panel-help.js  ./public/js/panels/panel-notifications.js  ./public/js/panels/panel-tasks.js
 ```
 Also at the root: `./spec.md` (permanent requirements).
 
@@ -32,7 +32,7 @@ Also at the root: `./spec.md` (permanent requirements).
 |---|---|
 | `server.js` | Entry point. HTTP server, request guard, routing to API or static files. |
 | `config.json` | Port, `claudePath`, `model`, default folder, `idleMinutes`, extra environment variables. |
-| `dev/fake-claude.js` | Fake CLI speaking stream-json + control protocol, for developing without an API key. `FAKE_CLAUDE_STARTUP_MS` simulates the real CLI's startup time; replies list the images it received; answers `side_question` (600 ms) and unknown control subtypes with "Unsupported control request subtype: X". |
+| `dev/fake-claude.js` | Fake CLI speaking stream-json + control protocol, for developing without an API key. `FAKE_CLAUDE_STARTUP_MS` simulates the real CLI's startup time; replies list the images it received; answers `side_question` (600 ms); the word "task" starts a background task (progress after 1.5 s, done after `FAKE_TASK_MS`, default 8000) and `stop_task` / `get_task_output` are answered; "ask" matches the whole word only; unknown control subtypes with "Unsupported control request subtype: X". |
 | `dev/fake-claude.cmd`, `dev/config.fake.json` | Shim and config to run the GUI against the fake CLI (port 3738). The shim is Windows-only. |
 | `lib/config.js` | Loads `config.json` (or `CLAUDE_GUI_CONFIG`) with defaults. |
 | `lib/http-utils.js` | JSON helpers, `httpError`, Host/Origin guard. |
@@ -43,12 +43,13 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/cli-capabilities.js` | Reads `claude --help/--version`: version, flags, permission modes. |
 | `lib/cli-args.js` | Flags for a session process, filtered by capabilities (always `--add-dir` for the uploads folder). |
 | `lib/cli-process.js` | One long-lived stream-json process and its control protocol. |
-| `lib/session-runtime.js` | Process per session: start, route events, permission prompts, interrupt, idle shutdown; warm-up while typing and the spare process for a new session. |
-| `lib/event-translator.js` | CLI `stream-json` events -> UI items and streaming deltas. |
+| `lib/session-runtime.js` | Process per session: start, route events, permission prompts, interrupt, idle shutdown (skipped while background tasks run); warm-up while typing and the spare process for a new session. |
+| `lib/event-translator.js` | CLI `stream-json` events -> UI items and streaming deltas; `readTaskEvent` normalizes `task_started` / `task_progress` / `task_notification`. |
+| `lib/task-tracker.js` | Background tasks of each session, in memory only (they die with the CLI process): apply/list/endAll/forget, 50 per session, a `started` event always starts a fresh record. |
 | `lib/failure-messages.js` | Hebrew explanation of a failed CLI process. |
-| `lib/session-service.js` | Glue: sessions, messages and their queue, stop, clear, fork, permissions, settings, warm-up. |
+| `lib/session-service.js` | Glue: sessions, messages and their queue, stop, clear, fork, permissions, settings, warm-up; broadcasts the `tasks` SSE event and marks running tasks "killed" when the CLI exits. |
 | `lib/side-questions.js` | `/btw`: validates and sends the CLI's `side_question` control request (10 min timeout, starts the CLI if needed); returns `{ response, notice }`; unsupported CLI -> 501. Costs tokens. |
-| `lib/catalog-service.js` | Commands/skills/agents/models catalog and whitelisted control requests (session, warm spare, or probe); `ifRunning` reads never start a process. |
+| `lib/catalog-service.js` | Commands/skills/agents/models catalog and whitelisted control requests (session, warm spare, or probe; incl. `get_task_output`, `stop_task`); `ifRunning` reads never start a process. |
 | `lib/images.js` | Images attached to messages: validation (type, magic bytes, 5 MB), storage in `data/images/`, image blocks for the CLI, serving, cleanup. |
 | `lib/uploads.js` | Other attached files: storage in `data/uploads/<id>/<name>`, the "[Attached files]" paths in the message, download serving, cleanup; the folder every session gets with `--add-dir`. |
 | `lib/model-list.js` | Models the user can switch between: model server (/v1/models) + config.json, or the CLI's list on Anthropic. |
@@ -65,9 +66,9 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards, the `/btw` side card. |
 | `public/css/panels.css` | Settings modal, panel building blocks, dialogs (incl. the folder browser), toasts. |
 | `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
-| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions); new permanent features are added here. |
+| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions, Background tasks); new permanent features are added here. |
 | `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, model menu; page status via `page-status.js`. |
-| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request). |
+| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request); handles the `tasks` event (also as window event `claude-gui:tasks`). |
 | `public/js/notify.js` | User-chosen notifications (desktop, sound, tab-title count) when a turn ends, waits for approval or fails; preferences in localStorage `claude-gui.notifications`. |
 | `public/js/page-status.js` | Page-wide status: the brand spark (busy / waiting) and the tab title with the count of sessions that need the user (waiting or finished-unread). |
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
@@ -83,7 +84,7 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/prompt-cards.js` | Permission, AskUserQuestion and plan-approval cards. |
 | `public/js/side-question.js` | `/btw` card above the composer: question, loader, Markdown answer, follow-ups with history, close/Esc; closes on session change. Nothing persisted. |
 | `public/js/sidebar.js` | Session list grouped by date, with search. |
-| `public/js/chrome.js` | Top bar and welcome page. |
+| `public/js/chrome.js` | Top bar (incl. the "N ברקע" chip that opens the tasks panel) and welcome page. |
 | `public/js/attachments.js` | Composer attachments: read files, shrink images, limits, conversion to what the server stores and back (queue restore). |
 | `public/js/folder-browser.js` | "Open folder" dialog (welcome page, /add-dir) over GET/POST /api/folders; falls back to the default/home folder, accepts Explorer's quoted paths. |
 | `public/js/ui.js` | Toasts, confirm/prompt dialogs, theme. |
@@ -99,4 +100,5 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/panels/kit.js` | Panel building blocks (sections, rows, badges, fields, loading). |
 | `public/js/panels/file-editor.js` | Inline editor for Claude's own files. |
 | `public/js/panels/panel-notifications.js` | Notifications panel: the user picks the channels (desktop, sound, tab title), the events, and when to be told; test button, permission state. |
+| `public/js/panels/panel-tasks.js` | Background tasks panel (`/tasks`): live list with status, usage, last tool, summary; stop and output tail; neutral note on CLIs without the requests. |
 | `public/js/panels/panel-*.js` | One panel each: model (system models, folder browser for /add-dir), permissions, usage, workspace (diff/resume), skills, agents, mcp, plugins, config (hooks/memory/settings), status (+appearance), help. |

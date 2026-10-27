@@ -1,10 +1,13 @@
 /**
  * Applies one server event (SSE) to the client state and the views. Every live update flows through here,
  * including the user's notifications (notify.js) for a finished, waiting or failed turn.
- * Event types come from lib/session-service.js: session, removed, item, status, delta, runtime, permission, permission-resolved.
+ * Event types come from lib/session-service.js: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks.
  */
 import { state, forgetCatalog } from './state.js';
 import { notify } from './notify.js';
+
+/** Window event fired when a session's background tasks change (panels/panel-tasks.js listens while open). */
+export const TASKS_EVENT = 'claude-gui:tasks';
 
 function mergeSession(update) {
   const existing = state.sessions.get(update.id);
@@ -74,6 +77,11 @@ export function handleEvent(event, view) {
       }
       session.pendingPermissions = [...(session.pendingPermissions || []).filter(p => p.requestId !== event.prompt.requestId), event.prompt];
       if (isActive) view.thread.setRunning(true, { startedAt: session.turnStartedAt, waiting: true });
+      break;
+    case 'tasks':
+      if (!session) return undefined;
+      session.tasks = event.tasks;
+      window.dispatchEvent(new CustomEvent(TASKS_EVENT, { detail: { sessionId: event.sessionId } })); // an open tasks panel redraws
       break;
     case 'permission-resolved':
       if (!session) return undefined;

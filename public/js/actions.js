@@ -164,7 +164,7 @@ export function createActions(view) {
   function panelContext() {
     const session = activeSession();
     return {
-      api: guardedApi, session, scope: currentScope(), folder: scopeFolder(), config: state.config, capabilities: state.capabilities,
+      api: guardedApi, session, liveSession: () => activeSession(), scope: currentScope(), folder: scopeFolder(), config: state.config, capabilities: state.capabilities,
       draft: state.draft, getCatalog: options => getCatalog(currentScope(), options), getCommands: () => getCommands(currentScope()),
       insert: (text, options) => view.insert(text, options), send: text => actions.send(text),
       updateSession: patch => actions.updateSettings(patch).catch(report), runCommand: name => actions[name]?.(),

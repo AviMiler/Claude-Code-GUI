@@ -1,7 +1,8 @@
 /**
  * Fake `claude` CLI for developing the GUI without an API key. Speaks the stream-json + control protocol.
- * Prompt keywords: "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
- * "slow" -> long streaming (to test stop), "fail" -> crash. Anything else -> streamed echo.
+ * Prompt keywords (whole words where they overlap): "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
+ * "slow" -> long streaming (to test stop), "fail" -> crash, "task" -> a background task that ends 8 s later
+ * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
  */
 const readline = require('readline');
@@ -42,6 +43,21 @@ const CATALOG = {
   output_style: 'default', available_output_styles: ['default', 'Explanatory', 'Learning'],
   claude_code_version: '2.1.308', current_permission_mode: mode, account: { apiProvider: 'firstParty' },
 };
+const tasks = new Map(); // task id -> timer of a running background task
+function endTask(id, status, summary) {
+  if (!tasks.has(id)) return false;
+  clearTimeout(tasks.get(id));
+  tasks.delete(id);
+  out({ type: 'system', subtype: 'task_notification', task_id: id, tool_use_id: `toolu_${id}`, status, summary, output_file: `/tmp/${id}.output`, usage: { total_tokens: 0, tool_uses: 1, duration_ms: 1000 }, session_id: sessionId });
+  return true;
+}
+function startTask() {
+  const id = `task_${++counter}`;
+  out({ type: 'system', subtype: 'task_started', task_id: id, tool_use_id: `toolu_${id}`, description: 'npm run build', task_type: 'local_bash', is_backgrounded: true, session_id: sessionId });
+  setTimeout(() => tasks.has(id) && out({ type: 'system', subtype: 'task_progress', task_id: id, tool_use_id: `toolu_${id}`, description: 'npm run build', usage: { total_tokens: 1200, tool_uses: 2, duration_ms: 1500 }, last_tool_name: 'Bash', session_id: sessionId }), 1500);
+  tasks.set(id, setTimeout(() => endTask(id, 'completed', 'Build finished'), Number(process.env.FAKE_TASK_MS || 8000)));
+}
+
 const CONTROL = {
   initialize: () => CATALOG,
   get_skills_dialog: () => ({ skills: [{ name: 'hello-skill', description: 'Says hello', source: 'project', tokens: 13, state: 'on' }] }),
@@ -54,6 +70,8 @@ const CONTROL = {
   get_memory_dialog: () => ({ files: [], folders: [], memories: [] }),
   get_settings: () => ({ effective: {}, sources: [] }),
   side_question: async request => { await sleep(600); return { response: `**תשובת צד מזויפת** ל: ${request.question} (היסטוריה: ${(request.history || []).length})`, synthetic: false }; },
+  stop_task: request => { if (!endTask(request.task_id, 'stopped', 'Stopped by the user')) throw new Error(`No running task ${request.task_id}`); return {}; },
+  get_task_output: request => ({ output: `> build\ncompiling ${request.task_id}...\ndone` }),
   set_model: () => ({}), interrupt: () => { interrupted = true; return {}; },
   set_permission_mode: request => { mode = request.mode; return { mode }; },
 };
@@ -94,8 +112,9 @@ async function turn(prompt) {
   } else {
     out({ type: 'assistant', message: { content: [{ type: 'thinking', thinking: `The user said: ${prompt}. I will answer.` }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/bash/.test(prompt)) await toolTurn('Bash', { command: 'npm test', description: 'Run tests' }, () => 'All 12 tests passed');
-    if (/ask/.test(prompt)) await toolTurn('AskUserQuestion', { questions: [{ question: 'איזה צבע?', header: 'צבע', multiSelect: false, options: [{ label: 'כתום', description: 'צבע Claude' }, { label: 'כחול', description: 'קלאסי' }] }] }, input => `answers: ${JSON.stringify(input.answers)}`);
+    if (/\bask/.test(prompt)) await toolTurn('AskUserQuestion', { questions: [{ question: 'איזה צבע?', header: 'צבע', multiSelect: false, options: [{ label: 'כתום', description: 'צבע Claude' }, { label: 'כחול', description: 'קלאסי' }] }] }, input => `answers: ${JSON.stringify(input.answers)}`);
     if (/plan/.test(prompt)) await toolTurn('ExitPlanMode', { plan: '## התוכנית\n1. לקרוא קבצים\n2. לערוך את `app.js`\n3. להריץ בדיקות' }, () => 'Plan approved');
+    if (/task/.test(prompt)) startTask();
     if (/edit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_edit', name: 'Edit', input: { file_path: 'C:\\repo\\app.js', old_string: 'const a = 1;\nconst b = 2;', new_string: 'const a = 1;\nconst b = 3;\nconst c = 4;' } }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/todo/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_todo', name: 'TodoWrite', input: { todos: [{ content: 'Read code', status: 'completed', activeForm: 'Reading' }, { content: 'Write fix', status: 'in_progress', activeForm: 'Writing fix' }, { content: 'Run tests', status: 'pending', activeForm: 'Running tests' }] } }] }, parent_tool_use_id: null, session_id: sessionId });
     await stream(`**תשובה מזויפת** ל: ${prompt}. זה טקסט שמוזרם מילה אחרי מילה כדי לבדוק את הממשק \`code\` וגם רשימה.`, /slow/.test(prompt) ? 400 : 25);
@@ -116,7 +135,9 @@ function handle(line) {
     const handler = CONTROL[message.request.subtype];
     if (!handler) return out({ type: 'control_response', response: { subtype: 'error', request_id: message.request_id, error: `Unsupported control request subtype: ${message.request.subtype}` } });
     // Answered in the background, so a slow request (side_question) never holds up the turn.
-    return Promise.resolve(handler(message.request)).then(response => out({ type: 'control_response', response: { subtype: 'success', request_id: message.request_id, response } }));
+    return Promise.resolve().then(() => handler(message.request))
+      .then(response => out({ type: 'control_response', response: { subtype: 'success', request_id: message.request_id, response } }))
+      .catch(error => out({ type: 'control_response', response: { subtype: 'error', request_id: message.request_id, error: error.message } }));
   }
   if (message.type === 'user') {
     const content = message.message.content;

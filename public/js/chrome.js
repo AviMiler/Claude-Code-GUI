@@ -43,6 +43,9 @@ export function renderTopbar(bar, session, handlers) {
     onClick: async () => { await copyText(session.cwd); toast('הנתיב הועתק'); } }, icon('folder'), h('span', { class: 'label' }, folderName(session.cwd)));
   const extra = (session.addDirs || []).length ? h('span', { class: 'chip', title: session.addDirs.join('\n') }, `+${session.addDirs.length} תיקיות`) : null;
   const agent = session.agent ? h('span', { class: 'chip', title: 'הסוכן הראשי של הסשן' }, icon('bot'), session.agent) : null;
+  const runningTasks = (session.tasks || []).filter(task => task.status === 'running').length;
+  const tasks = runningTasks ? h('button', { type: 'button', class: 'chip tasks-chip', title: 'משימות רקע (/tasks)',
+    onClick: () => handlers.onOpenPanel('tasks') }, icon('loader', 'spinning'), `${runningTasks} ברקע`) : null;
   const more = h('button', { type: 'button', class: 'icon-button', title: 'עוד' }, icon('more'));
   more.addEventListener('click', () => showDropdown(more, [
     { icon: 'pencil', title: 'שינוי שם', hint: '/rename', onSelect: () => handlers.onRename() },
@@ -53,7 +56,7 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'history', title: 'שיחות קודמות', hint: '/resume', onSelect: () => handlers.onOpenPanel('resume') },
     { icon: 'trash', title: 'מחיקת הסשן', onSelect: handlers.onDelete },
   ], { placement: 'bottom' }));
-  bar.replaceChildren(...[toggle, title, folder, extra, agent, h('span', { class: 'spacer' }),
+  bar.replaceChildren(...[toggle, title, folder, extra, agent, tasks, h('span', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-button', title: 'שינויים ב-git (/diff)', onClick: () => handlers.onOpenPanel('diff') }, icon('diff')),
     h('button', { type: 'button', class: 'icon-button', title: 'הקשר ושימוש (/context)', onClick: () => handlers.onOpenPanel('usage') }, icon('gauge')),
     h('button', { type: 'button', class: 'icon-button', title: 'הגדרות (Ctrl+,)', onClick: () => handlers.onOpenPanel('model') }, icon('settings')),

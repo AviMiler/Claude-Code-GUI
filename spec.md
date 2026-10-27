@@ -26,3 +26,13 @@ The user can ask Claude a quick question about the current conversation without 
 - Server: `POST /api/sessions/:id/side-question` `{ question, history }` -> CLI control request `side_question` (starts the session's CLI if needed, 10 minute timeout because the local model can be slow). Limits: question not empty and up to 4000 characters, history up to 20 entries. Kept out of the generic no-token `/control` whitelist on purpose.
 - A Claude Code version without `side_question` (2.1.246 is untested) shows a neutral "not available in this version" note (HTTP 501), not an error.
 - Code: `lib/side-questions.js`, `public/js/side-question.js`; wiring in `lib/api-routes.js`, `public/js/actions.js`, `command-runner.js`, `commands-data.js`, `app.js`.
+
+## Background tasks (confirmed permanent, 2026-10-27)
+The user sees and controls what Claude runs in the background (shell commands, subagents, Monitor) in the session, like Claude Code's `/tasks`.
+- Panel "משימות רקע" (settings modal, group session) lists the session's tasks: description, type, status badge (running, completed, failed, stopped, killed), duration, tokens, tool uses, last tool, summary. It updates live. Actions: stop (a running task) and show output (tail of a shell/Monitor task's output). `/tasks` and `/bashes` open it.
+- A topbar chip "N ברקע" shows while tasks run and opens the panel. The existing thread notices for task start and finish stay.
+- Tasks are kept in memory only, per session, and are never persisted: they live inside the CLI process. When that process ends (crash, kill, idle shutdown, server restart) its running tasks become "killed" with the summary "התהליך של Claude Code נסגר". At most 50 tasks per session (finished ones are dropped first).
+- A CLI process is NOT retired by the idle timeout (`idleMinutes`) while it has running background tasks; the timer is re-armed when the last one ends.
+- Stop and output use the CLI's `stop_task` / `get_task_output` control requests (no model turn, no tokens), in the generic `/control` whitelist (stop as a write, output as a read).
+- A Claude Code version without these events or requests (2.1.246 is untested) shows a neutral "not available in this version" note, not an error.
+- Server: SSE `{type:'tasks', sessionId, tasks}`; tasks are also in the session meta. Code: `lib/task-tracker.js`, `readTaskEvent` in `lib/event-translator.js`, hooks in `lib/session-runtime.js` and `lib/session-service.js`, `public/js/panels/panel-tasks.js`, chip in `public/js/chrome.js`, `events.js`.
