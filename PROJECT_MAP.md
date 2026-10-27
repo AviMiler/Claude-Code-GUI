@@ -1,5 +1,5 @@
 # Project Map
-_Last updated: 2026-10-27 (added public/js/session-groups.js; earlier: session-search.js, search-hits.js, chip-menus.js)_
+_Last updated: 2026-10-27 (added lib/templates.js, public/js/templates.js, panels/panel-templates.js; earlier: session-groups.js, session-search.js, search-hits.js, chip-menus.js)_
 
 ## File Tree
 ```
@@ -11,19 +11,19 @@ _Last updated: 2026-10-27 (added public/js/session-groups.js; earlier: session-s
 ./lib/cli-args.js  ./lib/cli-capabilities.js  ./lib/cli-commands.js  ./lib/cli-process.js  ./lib/config.js
 ./lib/event-hub.js  ./lib/event-translator.js  ./lib/failure-messages.js  ./lib/http-utils.js  ./lib/model-list.js  ./lib/images.js  ./lib/uploads.js
 ./lib/session-runtime.js  ./lib/session-service.js  ./lib/session-store.js  ./lib/side-questions.js  ./lib/spawn-utils.js
-./lib/static-files.js  ./lib/task-tracker.js  ./lib/transcripts.js  ./lib/workspace-info.js
+./lib/static-files.js  ./lib/task-tracker.js  ./lib/templates.js  ./lib/transcripts.js  ./lib/workspace-info.js
 ./public/index.html  ./public/icon.svg
 ./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css  ./public/css/animations.css
 ./public/js/app.js  ./public/js/events.js  ./public/js/notify.js  ./public/js/page-status.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
 ./public/js/thread.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
-./public/js/sidebar.js  ./public/js/session-groups.js  ./public/js/session-search.js  ./public/js/search-hits.js  ./public/js/chip-menus.js  ./public/js/side-question.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
+./public/js/sidebar.js  ./public/js/session-groups.js  ./public/js/session-search.js  ./public/js/search-hits.js  ./public/js/chip-menus.js  ./public/js/side-question.js  ./public/js/templates.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
 ./public/js/commands-data.js  ./public/js/command-catalog.js  ./public/js/command-runner.js
 ./public/js/panels/registry.js  ./public/js/panels/panel-host.js  ./public/js/panels/kit.js  ./public/js/panels/file-editor.js
 ./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
 ./public/js/panels/panel-workspace.js  ./public/js/panels/panel-skills.js  ./public/js/panels/panel-agents.js
 ./public/js/panels/panel-mcp.js  ./public/js/panels/panel-plugins.js  ./public/js/panels/panel-config.js
-./public/js/panels/panel-status.js  ./public/js/panels/panel-help.js  ./public/js/panels/panel-notifications.js  ./public/js/panels/panel-tasks.js
+./public/js/panels/panel-status.js  ./public/js/panels/panel-help.js  ./public/js/panels/panel-notifications.js  ./public/js/panels/panel-tasks.js  ./public/js/panels/panel-templates.js
 ```
 Also at the root: `./spec.md` (permanent requirements).
 
@@ -58,25 +58,27 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/transcripts.js` | Past CLI conversations of a folder (/resume) and their import (images marked as "[תמונה]"). |
 | `lib/workspace-info.js` | Folder browser listing/creation, file search for @-mentions, git status/diff. |
 | `lib/api-routes.js` | Route table and session routes (messages with attachments, queue, stop, warm, side-question, permissions...); serves `/api/images` and `/api/uploads` as raw bytes. |
-| `lib/api-routes-tools.js` | Routes behind the panels (catalog, control, models, cli, files, transcripts, git, folders). |
+| `lib/templates.js` | Prompt templates the user saves and reuses, in `data/templates.json` next to `sessions.json`: list (newest first), save (create or update; name 80, text 20000, 200 max; temp file + rename), remove (404 when missing). |
+| `lib/api-routes-tools.js` | Routes behind the panels (catalog, control, models, cli, files, transcripts, git, folders, templates). |
 | `public/index.html` | Page shell (RTL, Hebrew): sidebar, top bar, thread, composer area. The brand spark is inline SVG (same rays as `icons.js`). |
 | `public/css/tokens.css` | Colors (light/dark), fonts, base elements. |
 | `public/css/layout.css` | Sidebar (incl. search snippets, grouping switch, pin button), top bar, search-matches bar and hit outlines in the thread, welcome page, buttons. |
 | `public/css/messages.css` | Messages and their copy buttons, thinking, tool rows, diffs, todos, results, working line. |
 | `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards, the `/btw` side card. |
-| `public/css/panels.css` | Settings modal, panel building blocks, dialogs (incl. the folder browser), toasts. |
+| `public/css/panels.css` | Settings modal, panel building blocks, dialogs (incl. the folder browser), toasts, template editor, variable fill dialog and the "+" menu template search. |
 | `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
-| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions, Background tasks, Full-text session search, Sidebar pinning and grouping); new permanent features are added here. |
+| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications, /btw side questions, Background tasks, Full-text session search, Sidebar pinning and grouping, Prompt templates); new permanent features are added here. |
 | `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, sidebar search (150 ms debounce, Enter opens the first result, `openFromSidebar`); page status via `page-status.js`; chip dropdowns via `chip-menus.js`. Still over the size budget (175 lines). |
-| `public/js/chip-menus.js` | Dropdowns of the composer's chips: permission mode, model + effort, and the "+" menu (moved from app.js). |
+| `public/js/chip-menus.js` | Dropdowns of the composer's chips: permission mode, model + effort, and the "+" menu (moved from app.js; has the "תבניות פרומפטים" item: searchable template list + "ניהול תבניות…"). |
+| `public/js/templates.js` | Using prompt templates in the composer: the "+" menu's searchable list, `{{variable}}` parsing (any-script names, unique, order of first appearance), and the fill form. The filled text is inserted into the composer (replaces an empty one, appended to a draft), never sent by itself. |
 | `public/js/session-search.js` | Full-text search over every session's messages (user, Claude's text incl. subagents, shell commands): case-insensitive, ignores niqqud, newest 3000 items per session, count capped at 99; returns hits with snippets. Pure, no DOM. |
 | `public/js/search-hits.js` | Search matches inside the open conversation: sticky bar "k מתוך N" with ▲ ▼ and close (Enter / Shift+Enter / Esc), outlines the matching messages, scrolls to the current one; cleared on session change. |
 | `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request); handles the `tasks` event (also as window event `claude-gui:tasks`); passes the item index for live items (`data-item-index`). |
 | `public/js/notify.js` | User-chosen notifications (desktop, sound, tab-title count) when a turn ends, waits for approval or fails; preferences in localStorage `claude-gui.notifications`. |
 | `public/js/page-status.js` | Page-wide status: the brand spark (busy / waiting) and the tab title with the count of sessions that need the user (waiting or finished-unread). |
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
-| `public/js/api.js` | Fetch wrappers (incl. `sideQuestion`) and SSE subscription. |
-| `public/js/actions.js` | Session actions (incl. `sideQuestion`, `setPinned`) and the context given to panels. |
+| `public/js/api.js` | Fetch wrappers (incl. `sideQuestion`, `templates` / `saveTemplate` / `deleteTemplate`) and SSE subscription. |
+| `public/js/actions.js` | Session actions (incl. `sideQuestion`, `setPinned`) and the context given to panels (incl. `composerText()`). |
 | `public/js/thread.js` | Conversation view: items, live streaming, working line with Claude's state (starting, thinking, writing, tool, waiting, done/error/stopped), message copy; every item node carries `data-item-index` (index in `session.items`) so search hits can find it. |
 | `public/js/render-items.js` | Items -> DOM (user messages with image thumbnails and file chips, copy buttons); Markdown export. |
 | `public/js/render-tools.js` | Tool rows: terminal, diffs, todos, results; `toolMeta` (verb/target of a tool, also used by the working line). |
@@ -105,4 +107,5 @@ Also at the root: `./spec.md` (permanent requirements).
 | `public/js/panels/file-editor.js` | Inline editor for Claude's own files. |
 | `public/js/panels/panel-notifications.js` | Notifications panel: the user picks the channels (desktop, sound, tab title), the events, and when to be told; test button, permission state. |
 | `public/js/panels/panel-tasks.js` | Background tasks panel (`/tasks`): live list with status, usage, last tool, summary; stop and output tail; neutral note on CLIs without the requests. |
+| `public/js/panels/panel-templates.js` | Prompt templates panel (id `templates`, group session): create, edit, duplicate, delete and use saved prompts with `{{variables}}`; "שמירת ההודעה הנוכחית כתבנית" when the composer has text. |
 | `public/js/panels/panel-*.js` | One panel each: model (system models, folder browser for /add-dir), permissions, usage, workspace (diff/resume), skills, agents, mcp, plugins, config (hooks/memory/settings), status (+appearance), help. |

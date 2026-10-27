@@ -1,11 +1,11 @@
 # Architecture
-_Last updated: 2026-10-27 (pinned sessions, grouping)_
+_Last updated: 2026-10-27 (prompt templates; earlier: pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
 The server speaks Claude Code's control protocol (the one the Agent SDK uses) over the process's stdin/stdout:
 user turns, permission prompts, interrupt, model/mode switches, and read-only catalog queries. No database;
-sessions are kept in memory and saved to `data/sessions.json`.
+sessions are kept in memory and saved to `data/sessions.json`; prompt templates are saved to `data/templates.json`.
 
 ## Data Flow
 0. While the user types, `POST /api/warm` starts the CLI ahead of time: the session's own process, or (on the welcome
@@ -46,6 +46,13 @@ sessions are kept in memory and saved to `data/sessions.json`.
 - The panel (`panel-tasks.js`) stops a task and reads its output with the no-token control requests `stop_task` / `get_task_output`
   (`/control` whitelist); a CLI without them gives a neutral "not available" note
 
+## Prompt templates
+- `lib/templates.js` keeps the user's saved prompts in `data/templates.json` (next to `sessions.json`, `CLAUDE_GUI_DATA`; temp file + rename). Routes in
+  `lib/api-routes-tools.js`: `GET /api/templates` (newest first), `PUT /api/templates/:id` (upsert; id from the browser, `/^[\w-]{1,64}$/`), `DELETE` (404 if missing).
+  Limits: name 80, text 20000, 200 templates (409). Writes pass the Origin check; no model call
+- The browser (`public/js/templates.js`) parses `{{name}}` variables, shows the fill form and inserts the result into the composer (never sends); the
+  "+" menu (`chip-menus.js`) and the panel (`panel-templates.js`) both use it
+
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
   `GET /v1/models` (Ollama: `/api/tags` as fallback) plus the names in `config.json` (`model`, `ANTHROPIC_*_MODEL`);
@@ -84,6 +91,7 @@ sessions are kept in memory and saved to `data/sessions.json`.
 | `/btw` on its own route, not in the `/control` whitelist | `side_question` calls the model (tokens) and needs a long timeout; the generic control routes are documented as no-token with short timeouts. See DECISIONS.md |
 | Background tasks in memory, idle shutdown blocked while they run | Tasks live inside the CLI process, so persisting them would show ghosts; retiring the process would kill a long job after `idleMinutes` |
 | Session search in the browser, no server index | The browser already holds every item (`/api/state` + SSE); no route or index to keep in sync. See DECISIONS.md |
+| Prompt templates on the server (`data/templates.json`), not localStorage | User content must survive a browser reset and be shared by every tab; preferences stay per browser. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |

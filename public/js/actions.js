@@ -11,7 +11,8 @@ import { guardedApi, confirmMode, confirmOutwardCommand, isCancelled, CANCELLED_
 
 /**
  * @param {{refresh:()=>void, selectSession:(id:string|null)=>void, insert:(text:string, options?:object)=>void,
- *   restore:(entries:{text:string, attachments:object[]}[])=>void, askSide:(sessionId:string, question:string)=>void}} view
+ *   restore:(entries:{text:string, attachments:object[]}[])=>void, askSide:(sessionId:string, question:string)=>void,
+ *   composerText:()=>string}} view
  *   restore puts messages back into the composer (from the queue); askSide opens the /btw card.
  */
 export function createActions(view) {
@@ -170,7 +171,7 @@ export function createActions(view) {
     return {
       api: guardedApi, session, liveSession: () => activeSession(), scope: currentScope(), folder: scopeFolder(), config: state.config, capabilities: state.capabilities,
       draft: state.draft, getCatalog: options => getCatalog(currentScope(), options), getCommands: () => getCommands(currentScope()),
-      insert: (text, options) => view.insert(text, options), send: text => actions.send(text),
+      insert: (text, options) => view.insert(text, options), send: text => actions.send(text), composerText: () => view.composerText(),
       updateSession: patch => actions.updateSettings(patch).catch(report), runCommand: name => actions[name]?.(),
       selectSession: created => { state.sessions.set(created.id, created); view.selectSession(created.id); },
       openSessionIds: () => new Set([...state.sessions.values()].map(item => item.claudeSessionId).filter(Boolean)),

@@ -12,6 +12,7 @@ import { renderStatusPanel, renderAppearancePanel } from './panel-status.js';
 import { renderHelpPanel } from './panel-help.js';
 import { renderNotificationsPanel } from './panel-notifications.js';
 import { renderTasksPanel } from './panel-tasks.js';
+import { renderTemplatesPanel } from './panel-templates.js';
 
 export const PANELS = [
   { id: 'model', group: 'session', title: 'מודל וסשן', icon: 'cpu', render: renderModelPanel },
@@ -20,6 +21,7 @@ export const PANELS = [
   { id: 'diff', group: 'session', title: 'שינויים (git)', icon: 'diff', render: renderDiffPanel },
   { id: 'tasks', group: 'session', title: 'משימות רקע', icon: 'list', render: renderTasksPanel },
   { id: 'resume', group: 'session', title: 'שיחות קודמות', icon: 'history', render: renderResumePanel },
+  { id: 'templates', group: 'session', title: 'תבניות פרומפטים', icon: 'file', render: renderTemplatesPanel },
   { id: 'skills', group: 'extend', title: 'Skills', icon: 'sparkles', render: renderSkillsPanel },
   { id: 'agents', group: 'extend', title: 'סוכנים', icon: 'bot', render: renderAgentsPanel },
   { id: 'mcp', group: 'extend', title: 'שרתי MCP', icon: 'plug', render: renderMcpPanel },

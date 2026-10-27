@@ -134,3 +134,11 @@ details.advanced summary { color: var(--muted); font-size: 13px; cursor: pointer
 .check-note { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 14px 10px 42px; padding-inline: 42px 14px; color: var(--muted); font-size: 13px; }
 .check-note input[type="range"] { width: 160px; accent-color: var(--accent); }
 .check-note input:disabled { opacity: .45; }
+
+/* Prompt templates (panel-templates.js, templates.js) */
+.template-editor { display: grid; gap: 8px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); }
+.template-editor textarea.code { min-height: 140px; }
+dialog.template-fill { width: min(520px, 92vw); }
+dialog.template-fill .field { margin-bottom: 8px; }
+dialog.template-fill textarea { min-height: 36px; height: 36px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; resize: vertical; }
+.popover .menu-search { width: calc(100% - 12px); margin: 2px 6px 6px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13.5px; }

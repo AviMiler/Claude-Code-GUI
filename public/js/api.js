@@ -31,6 +31,10 @@ export const api = {
   resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
   clear: id => request('POST', `/api/sessions/${id}/clear`),
   fork: id => request('POST', `/api/sessions/${id}/fork`),
+  /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */
+  templates: () => request('GET', '/api/templates'),
+  saveTemplate: (id, template) => request('PUT', `/api/templates/${id}`, template),
+  deleteTemplate: id => request('DELETE', `/api/templates/${id}`),
   sideQuestion: (id, question, history) => request('POST', `/api/sessions/${id}/side-question`, { question, history }),
   answerPermission: (id, requestId, answer) => request('POST', `/api/sessions/${id}/permissions/${requestId}`, answer),
 

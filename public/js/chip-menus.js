@@ -4,6 +4,7 @@ import { state, activeSession, getModels, peekModels } from './state.js';
 import { showDropdown } from './popover.js';
 import { availableModes, EFFORT_LEVELS } from './modes.js';
 import { ask } from './ui.js';
+import { showTemplateMenu } from './templates.js';
 
 /**
  * @param {{actions:object, getComposer:()=>object}} deps actions from actions.js; the composer (created after the menus)
@@ -44,6 +45,8 @@ export function createChipMenus({ actions, getComposer }) {
         { icon: 'at', title: 'הפניה לקובץ או תיקייה מהפרויקט', hint: '@', onSelect: () => composer.insert('@') },
         { icon: 'bot', title: 'הזמנת סוכן', hint: '@agent-', onSelect: () => composer.insert('@agent-') },
         { icon: 'slash', title: 'פקודות', hint: '/', onSelect: () => composer.insert('/', { replace: !composer.textarea.value }) },
+        { icon: 'file', title: 'תבניות פרומפטים', desc: 'הודעות שמורות עם {{משתנים}}', onSelect: () => showTemplateMenu(anchor, {
+          insert: text => composer.insert(text, { replace: !composer.textarea.value.trim() }), openPanel: () => actions.openPanel('templates') }) },
         { icon: 'sparkles', title: 'Skills', hint: '/skills', onSelect: () => actions.openPanel('skills') },
         { icon: 'plug', title: 'שרתי MCP', hint: '/mcp', onSelect: () => actions.openPanel('mcp') },
         { icon: 'folder', title: 'תיקיית עבודה נוספת', hint: '/add-dir', onSelect: () => actions.openPanel('model') },

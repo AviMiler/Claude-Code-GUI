@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding pinned sessions and grouping by project (on top of full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding prompt templates (on top of pinned sessions and grouping by project, full-text session search, the background tasks panel, /btw side questions, notifications, images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -15,8 +15,9 @@ Built for a corporate Windows machine without another terminal.
   CLI warm-up while typing, model list from the model server, Claude's animated states, copy button per message,
   attachments of any type (+ menu, paste, drag): images to the model as images, other files by path,
   live model/mode switch, Shift+Tab mode cycling, `/` menu with the live CLI catalog, `@` files + agents,
-  17 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
-  settings files, status/doctor, appearance, help, notifications, background tasks), light/dark theme, persistence to `data/sessions.json`,
+  18 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
+  settings files, status/doctor, appearance, help, notifications, background tasks, prompt templates), light/dark theme, persistence to `data/sessions.json`,
+  prompt templates with `{{variables}}` ("+" menu, panel; stored in `data/templates.json`),
   user-chosen notifications (desktop, sound, tab title), `/btw` side questions (not in thread, not persisted),
   background tasks panel `/tasks` (live status, stop, output; topbar chip; in memory only),
   full-text search across all sessions in the sidebar (snippets, match bar in the thread)
@@ -55,6 +56,10 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Prompt templates (feature 6 of 12): saved prompts with `{{variables}}` in `data/templates.json` (server, so they survive a browser reset),
+  GET/PUT/DELETE /api/templates (browser-generated id, PUT upserts), "+" menu list and panel "תבניות פרומפטים". The filled text is inserted into the
+  composer (empty composer replaced, draft appended), never sent. New lib/templates.js, public/js/templates.js, panels/panel-templates.js. Verified in a
+  browser against the fake CLI (dark theme; light not checked visually). Stage 3's first pass found the panel replacing a draft; fixed to the append rule.
 - 2026-10-27 — Pinned sessions and grouping by project (feature 5 of 12): `pinned` boolean via PATCH (no CLI restart, not inherited by forks),
   "מוצמדים" group first (only there), "לפי תאריך / לפי פרויקט" switch (localStorage `claude-gui.sidebar-grouping`), pin button on rows and in the
   topbar "עוד" menu. New public/js/session-groups.js; sidebar.js, actions.js, chrome.js, app.js, icons.js, layout.css. Verified in a browser against the fake CLI.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 (prompt templates)
+- Added: prompt templates library — saved prompts with `{{variables}}` (Hebrew or English names), picked from a searchable list in the "+" menu or managed in the new panel "תבניות פרומפטים" (create, edit, duplicate, delete, use, "save the current message as a template"). A template with variables opens a fill form; the text is inserted into the composer (replaces an empty one, appended to a draft) and never sent automatically. Why: user request (feature 6 of 12). Files: lib/templates.js (new), lib/api-routes-tools.js (GET/PUT/DELETE /api/templates), public/js/templates.js (new), public/js/panels/panel-templates.js (new), registry.js, chip-menus.js, api.js, actions.js, app.js, css/panels.css
+- Changed: stored on the server in `data/templates.json` (survives a browser reset, shared by all tabs), not in localStorage; limits name 80, text 20000, 200 templates; the browser generates the id. The panels count is 18
+- Not checked: light theme visually (dark theme and behavior verified in a browser against the fake CLI)
+
 ## 2026-10-27 (pinned sessions, grouping by project)
 - Added: pin a session (row button, or topbar "עוד" menu) so it shows first under "מוצמדים"; a "לפי תאריך / לפי פרויקט" switch groups the sidebar by date or by folder (collision titles "parent/name", full path as tooltip); search works in both. Why: user request (feature 5 of 12). Files: public/js/session-groups.js (new), sidebar.js, actions.js, chrome.js, app.js, icons.js, css/layout.css, `updateSession` in lib/session-service.js (accepts boolean `pinned`; no CLI restart)
 - Changed: date grouping logic moved from sidebar.js to session-groups.js; a fork does not inherit `pinned`; grouping choice is per browser (localStorage `claude-gui.sidebar-grouping`)
