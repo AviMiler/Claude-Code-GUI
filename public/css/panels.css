@@ -124,3 +124,13 @@ dialog.folder-browser { width: min(640px, 94vw); }
 .folder-browser .card-actions { flex-wrap: nowrap; justify-content: flex-start; }
 details.advanced { margin-top: 10px; }
 details.advanced summary { color: var(--muted); font-size: 13px; cursor: pointer; }
+
+/* Checkbox rows (notifications panel) */
+.check-list { display: grid; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.check-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 14px; border-top: 1px solid var(--border); cursor: pointer; }
+.check-list > :first-child { border-top: 0; }
+.check-row input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--accent); }
+.check-row b { display: block; font-size: 14px; } .check-row small { color: var(--muted); font-size: 13px; }
+.check-note { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 14px 10px 42px; padding-inline: 42px 14px; color: var(--muted); font-size: 13px; }
+.check-note input[type="range"] { width: 160px; accent-color: var(--accent); }
+.check-note input:disabled { opacity: .45; }

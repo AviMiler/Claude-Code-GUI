@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 (notifications)
+- Added: user-chosen notifications — desktop, sound (WebAudio) and tab-title count; events turn finished / waiting for approval / error; "only when away" or always; settings panel "התראות" with test button (public/js/notify.js, panels/panel-notifications.js, events.js triggers)
+- Changed: the tab title "(N)" now counts sessions waiting for approval plus finished-unread (was waiting only) and can be turned off; page status moved out of app.js to public/js/page-status.js
+- Added: spec.md (first spec, from what shipped) with the Notifications requirement
+
 ## 2026-10-27 (documentation)
 - Documented: the folder browser fixes and the "restart the server after an update" rule (AGENT_CONTEXT.md entry points, gotchas, last changes; ARCHITECTURE.md patterns; PROJECT_MAP.md)
 

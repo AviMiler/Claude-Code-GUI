@@ -1,5 +1,5 @@
 # Agent Context
-_Last updated: 2026-10-27 — after adding images and file attachments (on top of the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
+_Last updated: 2026-10-27 — after adding notifications (on top of images and file attachments, the the queue, folder browser, inline skills, warm-up, system models, animations, copy buttons)_
 
 ## What This Project Is
 A local web GUI for the Claude Code CLI that looks and works like the Claude desktop app (Code tab), in Hebrew/RTL.
@@ -15,8 +15,9 @@ Built for a corporate Windows machine without another terminal.
   CLI warm-up while typing, model list from the model server, Claude's animated states, copy button per message,
   attachments of any type (+ menu, paste, drag): images to the model as images, other files by path,
   live model/mode switch, Shift+Tab mode cycling, `/` menu with the live CLI catalog, `@` files + agents,
-  15 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
-  settings files, status/doctor, appearance, help), light/dark theme, persistence to `data/sessions.json`
+  16 settings panels (model, permissions, context/usage, git diff, resume, skills, agents, MCP, plugins, hooks, memory,
+  settings files, status/doctor, appearance, help, notifications), light/dark theme, persistence to `data/sessions.json`,
+  user-chosen notifications (desktop, sound, tab title)
 - ✅ Tested: end-to-end against `dev/fake-claude.js` (message flow, permissions, questions, plan, stop, /cost, fork,
   clear, failures) in a real browser; catalog and control requests against the real Claude Code 2.1.308 binary
 - ✅ Tested with real model turns on Claude Code 2.1.308, 2.1.310 and **2.1.246 (the closed machine's version)**:
@@ -47,6 +48,9 @@ Built for a corporate Windows machine without another terminal.
   `Sec-Fetch-Site: cross-site`, and make the process-starting endpoints POST.
 
 ## Last Changes
+- 2026-10-27 — Notifications (desktop / sound / tab title; done, waiting, error; away or always) chosen in the "התראות" panel:
+  public/js/notify.js, page-status.js, panels/panel-notifications.js. Tab-title "(N)" now = waiting + finished-unread, can be turned off.
+  First spec.md created; requirements live there from now on. Not re-checked in browser: title preference off.
 - 2026-10-27 — Images and files attached to messages (lib/images.js, lib/uploads.js, public/js/attachments.js);
   every session gets `--add-dir data/uploads`; body limit 90 MB.
 - 2026-10-27 — Folder browser: a missing start folder opens the default/home folder, Explorer's quoted paths work,
@@ -97,6 +101,10 @@ Built for a corporate Windows machine without another terminal.
 - [ ] Background tasks panel (`/tasks`) from `task_started` / `task_notification` events
 
 ## Gotchas / Watch Out
+- Notifications: preferences in localStorage `claude-gui.notifications`; triggers are in `events.js` (`status: idle` -> done/error from the items
+  after the last user item, a stopped turn notifies nothing; `permission` with a new requestId -> waiting). Browsers need a click before the
+  Notification permission prompt and before WebAudio plays (panel buttons give it; audio unlocks on the first click/key). Corporate browser
+  policy may block notifications — the panel shows the permission state. The tab title is built only in `page-status.js`
 - Stale server: `public/` changes take effect on reload, `lib/` changes only after restarting `node server.js`.
   An unknown /api route answers "נתיב API לא קיים: … צריך להפעיל מחדש את השרת" — keep that message when touching routing
 - Warm-up: typing calls POST /api/warm. A spare process (id `spare-…`) is used by `createSession` only if cwd, mode,

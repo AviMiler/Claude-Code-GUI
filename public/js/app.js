@@ -14,6 +14,7 @@ import { showDropdown } from './popover.js';
 import { availableModes, EFFORT_LEVELS } from './modes.js';
 import { applyTheme, ask } from './ui.js';
 import { handleEvent } from './events.js';
+import { renderPageStatus, watchPageVisibility } from './page-status.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -132,11 +133,9 @@ function refresh() {
   const cardsBefore = els.cards.childElementCount;
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
-  const waiting = [...state.sessions.values()].filter(item => item.pendingPermissions?.length).length;
-  els.brand.classList.toggle('waiting', waiting > 0);
-  els.brand.classList.toggle('busy', !waiting && [...state.sessions.values()].some(item => item.status === 'running'));
-  document.title = `${waiting ? `(${waiting}) ` : ''}${session ? `${session.name} – ` : ''}Claude Code`;
+  renderPageStatus(els.brand);
 }
+watchPageVisibility(refresh);
 
 const ACTIVE_KEY = 'claude-gui.active-session';
 

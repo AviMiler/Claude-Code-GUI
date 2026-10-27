@@ -1,12 +1,27 @@
 /**
- * Applies one server event (SSE) to the client state and the views. Every live update flows through here.
+ * Applies one server event (SSE) to the client state and the views. Every live update flows through here,
+ * including the user's notifications (notify.js) for a finished, waiting or failed turn.
  * Event types come from lib/session-service.js: session, removed, item, status, delta, runtime, permission, permission-resolved.
  */
 import { state, forgetCatalog } from './state.js';
+import { notify } from './notify.js';
 
 function mergeSession(update) {
   const existing = state.sessions.get(update.id);
   state.sessions.set(update.id, { items: [], ...existing, ...update });
+}
+
+/**
+ * How the turn that just ended went, from the items after the last user message.
+ * @returns {'done'|'error'|null} null when the user stopped it (nothing to tell them)
+ */
+function turnOutcome(session) {
+  const items = session.items;
+  let start = items.length;
+  while (start > 0 && items[start - 1].kind !== 'user') start -= 1;
+  const turn = items.slice(start);
+  if (turn.some(item => item.kind === 'notice' && item.stopped)) return null;
+  return turn.some(item => item.kind === 'error' || (item.kind === 'result' && item.isError)) ? 'error' : 'done';
 }
 
 /**
@@ -44,6 +59,8 @@ export function handleEvent(event, view) {
       if (event.status === 'idle') {
         if (!isActive || document.hidden) state.unread.add(event.sessionId);
         view.fetchContext(event.sessionId);
+        const outcome = turnOutcome(session);
+        if (outcome) notify(outcome, session, { activeId: state.activeId, onOpen: view.selectSession });
       }
       break;
     case 'runtime':
@@ -52,6 +69,9 @@ export function handleEvent(event, view) {
       break;
     case 'permission':
       if (!session) return undefined;
+      if (!(session.pendingPermissions || []).some(p => p.requestId === event.prompt.requestId)) {
+        notify('waiting', session, { activeId: state.activeId, onOpen: view.selectSession });
+      }
       session.pendingPermissions = [...(session.pendingPermissions || []).filter(p => p.requestId !== event.prompt.requestId), event.prompt];
       if (isActive) view.thread.setRunning(true, { startedAt: session.turnStartedAt, waiting: true });
       break;

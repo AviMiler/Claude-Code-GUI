@@ -119,4 +119,6 @@ the right to run commands as that user.
 - SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved
 - Claude's spark: `thread.js` sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
   done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)
+- Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the
+  per-browser preferences (localStorage) and fires desktop / sound; `page-status.js` owns the tab title count and brand state. Frontend only
 - Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`

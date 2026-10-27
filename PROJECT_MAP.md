@@ -14,7 +14,7 @@ _Last updated: 2026-10-27_
 ./lib/static-files.js  ./lib/transcripts.js  ./lib/workspace-info.js
 ./public/index.html  ./public/icon.svg
 ./public/css/tokens.css  ./public/css/layout.css  ./public/css/messages.css  ./public/css/composer.css  ./public/css/panels.css  ./public/css/animations.css
-./public/js/app.js  ./public/js/events.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
+./public/js/app.js  ./public/js/events.js  ./public/js/notify.js  ./public/js/page-status.js  ./public/js/state.js  ./public/js/api.js  ./public/js/actions.js
 ./public/js/thread.js  ./public/js/render-items.js  ./public/js/render-tools.js  ./public/js/markdown.js
 ./public/js/composer.js  ./public/js/composer-menus.js  ./public/js/popover.js  ./public/js/prompt-cards.js
 ./public/js/sidebar.js  ./public/js/chrome.js  ./public/js/folder-browser.js  ./public/js/attachments.js  ./public/js/ui.js  ./public/js/risk.js  ./public/js/dom.js  ./public/js/icons.js  ./public/js/modes.js
@@ -23,8 +23,9 @@ _Last updated: 2026-10-27_
 ./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
 ./public/js/panels/panel-workspace.js  ./public/js/panels/panel-skills.js  ./public/js/panels/panel-agents.js
 ./public/js/panels/panel-mcp.js  ./public/js/panels/panel-plugins.js  ./public/js/panels/panel-config.js
-./public/js/panels/panel-status.js  ./public/js/panels/panel-help.js
+./public/js/panels/panel-status.js  ./public/js/panels/panel-help.js  ./public/js/panels/panel-notifications.js
 ```
+Also at the root: `./spec.md` (permanent requirements).
 
 ## File Descriptions
 | File | Description |
@@ -63,8 +64,11 @@ _Last updated: 2026-10-27_
 | `public/css/composer.css` | Composer, chips, queue strip, popover menus, permission/question/plan cards. |
 | `public/css/panels.css` | Settings modal, panel building blocks, dialogs (incl. the folder browser), toasts. |
 | `public/css/animations.css` | Claude's spark in each state (starting, thinking, writing, tool, waiting, done/error/stopped), welcome, sidebar. |
-| `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, model menu. |
-| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state). |
+| `spec.md` | Permanent requirements confirmed by the user (platform constraints, Notifications); new permanent features are added here. |
+| `public/js/app.js` | Frontend entry: wiring, refresh, keyboard shortcuts, warm-up while typing, catalog prefetch, model menu; page status via `page-status.js`. |
+| `public/js/events.js` | Applies SSE events to state and views (`runtime` ends the working line's "starting" state); triggers notifications (turn end, new permission request). |
+| `public/js/notify.js` | User-chosen notifications (desktop, sound, tab-title count) when a turn ends, waits for approval or fails; preferences in localStorage `claude-gui.notifications`. |
+| `public/js/page-status.js` | Page-wide status: the brand spark (busy / waiting) and the tab title with the count of sessions that need the user (waiting or finished-unread). |
 | `public/js/state.js` | Client state, cached catalog (`getCatalog` / non-waiting `peekCatalog`), system models (`getModels`/`peekModels`), recent folders. |
 | `public/js/api.js` | Fetch wrappers and SSE subscription. |
 | `public/js/actions.js` | Session actions and the context given to panels. |
@@ -83,7 +87,7 @@ _Last updated: 2026-10-27_
 | `public/js/ui.js` | Toasts, confirm/prompt dialogs, theme. |
 | `public/js/risk.js` | Confirmations before significant actions (`guardedApi`, risky modes, account/cloud commands). |
 | `public/js/dom.js` | `h()` element helper and small utilities. |
-| `public/js/icons.js` | Inline SVG icons; `spark` is Claude's mark with one path per ray (`--i`) for animations.css. |
+| `public/js/icons.js` | Inline SVG icons (incl. `bell`); `spark` is Claude's mark with one path per ray (`--i`) for animations.css. |
 | `public/js/modes.js` | Permission modes and effort levels. |
 | `public/js/commands-data.js` | Built-in slash commands of 2.1.308, Hebrew text, where each runs. |
 | `public/js/command-catalog.js` | Merge with the live CLI catalog, grouping, filtering, parsing. |
@@ -92,4 +96,5 @@ _Last updated: 2026-10-27_
 | `public/js/panels/panel-host.js` | Settings-style modal with side navigation. |
 | `public/js/panels/kit.js` | Panel building blocks (sections, rows, badges, fields, loading). |
 | `public/js/panels/file-editor.js` | Inline editor for Claude's own files. |
+| `public/js/panels/panel-notifications.js` | Notifications panel: the user picks the channels (desktop, sound, tab title), the events, and when to be told; test button, permission state. |
 | `public/js/panels/panel-*.js` | One panel each: model (system models, folder browser for /add-dir), permissions, usage, workspace (diff/resume), skills, agents, mcp, plugins, config (hooks/memory/settings), status (+appearance), help. |

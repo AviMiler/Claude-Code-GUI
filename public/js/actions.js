@@ -162,7 +162,8 @@ export function createActions(view) {
       updateSession: patch => actions.updateSettings(patch).catch(report), runCommand: name => actions[name]?.(),
       selectSession: created => { state.sessions.set(created.id, created); view.selectSession(created.id); },
       openSessionIds: () => new Set([...state.sessions.values()].map(item => item.claudeSessionId).filter(Boolean)),
-      runtimeInfo: id => state.runtime.get(id) || null, focusView: () => state.focusView, toggleFocus: () => actions.toggleFocus(),
+      runtimeInfo: id => state.runtime.get(id) || null, refreshView: () => view.refresh(),
+      focusView: () => state.focusView, toggleFocus: () => actions.toggleFocus(),
       // A "no" to a risk warning arrives as an error; show it as a plain note, not a red error.
       toast: (message, type) => toast(message, message === CANCELLED_MESSAGE ? 'info' : type), ask,
     };

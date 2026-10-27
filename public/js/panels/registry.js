@@ -10,6 +10,7 @@ import { renderPluginsPanel } from './panel-plugins.js';
 import { renderHooksPanel, renderMemoryPanel, renderSettingsPanel } from './panel-config.js';
 import { renderStatusPanel, renderAppearancePanel } from './panel-status.js';
 import { renderHelpPanel } from './panel-help.js';
+import { renderNotificationsPanel } from './panel-notifications.js';
 
 export const PANELS = [
   { id: 'model', group: 'session', title: 'מודל וסשן', icon: 'cpu', render: renderModelPanel },
@@ -25,6 +26,7 @@ export const PANELS = [
   { id: 'memory', group: 'setup', title: 'זיכרון (CLAUDE.md)', icon: 'book', render: renderMemoryPanel },
   { id: 'settings', group: 'setup', title: 'קובצי הגדרות', icon: 'settings', render: renderSettingsPanel },
   { id: 'status', group: 'setup', title: 'סטטוס ואבחון', icon: 'activity', render: renderStatusPanel },
+  { id: 'notifications', group: 'setup', title: 'התראות', icon: 'bell', render: renderNotificationsPanel },
   { id: 'appearance', group: 'setup', title: 'מראה', icon: 'sun', render: renderAppearancePanel },
   { id: 'help', group: 'setup', title: 'עזרה ופקודות', icon: 'help', render: renderHelpPanel },
 ];
