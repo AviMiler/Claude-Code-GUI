@@ -26,6 +26,9 @@ export const api = {
   deleteSession: (id, { removeWorktree = false } = {}) => request('DELETE', `/api/sessions/${id}${removeWorktree ? '?worktree=remove' : ''}`),
   /** @returns {Promise<{isRepo:boolean, hasCommits?:boolean, branch?:string}>} can this folder get a worktree */
   probeWorktree: cwd => request('POST', '/api/worktree/probe', { cwd }),
+  /** @returns {Promise<{worktreeRemoved:boolean, worktreeError?:string}>} archiving also removes a clean worktree */
+  archive: id => request('POST', `/api/sessions/${id}/archive`),
+  unarchive: id => request('POST', `/api/sessions/${id}/unarchive`),
   /** @returns {Promise<{ok:boolean, queued:boolean}>} queued: the session was busy, the message waits in its queue. */
   /** images / files: [{ data, mediaType?, name }] or [{ ref, name }] (see attachments.js forServer). */
   sendMessage: (id, text, images, files) => request('POST', `/api/sessions/${id}/messages`,

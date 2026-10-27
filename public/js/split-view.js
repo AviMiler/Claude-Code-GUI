@@ -45,7 +45,8 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     h('div', { class: 'split-composer-area' }, cards, h('div', { class: 'split-composer' }, input, stop, send)));
   enableFileLinks(messages, () => shownId);
 
-  const session = () => (sessionId && sessionId !== state.activeId ? state.sessions.get(sessionId) || null : null);
+  // An archived session is not offered and leaves the pane empty (restore it, or open it in the main pane).
+  const session = () => (sessionId && sessionId !== state.activeId && !state.sessions.get(sessionId)?.archived ? state.sessions.get(sessionId) || null : null);
 
   function choose(id) {
     sessionId = id;
@@ -56,7 +57,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
   }
 
   function pick() {
-    const others = [...state.sessions.values()].filter(item => item.id !== state.activeId)
+    const others = [...state.sessions.values()].filter(item => item.id !== state.activeId && !item.archived)
       .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
     showDropdown(title, others.length ? others.map(item => ({ icon: 'message', title: item.name, desc: item.cwd,
       checked: item.id === sessionId, onSelect: () => choose(item.id) }))

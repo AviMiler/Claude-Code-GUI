@@ -11,7 +11,7 @@ let prefetchTimer = null;
 /** Starting Claude Code takes seconds; it starts while the first words are typed, so Enter does not wait for it. */
 export function warmUp() {
   const session = activeSession();
-  if (session?.status === 'running') return;
+  if (session?.status === 'running' || session?.archived) return; // an archived one may have lost its worktree folder
   // A new session in its own worktree runs in a folder that does not exist yet: a process warmed here would go unused.
   if (!session && worktreeLikely(state.draft.cwd || state.config.defaultCwd)) return;
   const { draft } = state;

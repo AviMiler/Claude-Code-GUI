@@ -7,7 +7,7 @@ import { notifyPreferences } from './notify.js';
  * @param {HTMLElement} brand the sidebar's brand element (classes `waiting`, `busy` drive animations.css)
  */
 export function renderPageStatus(brand) {
-  const sessions = [...state.sessions.values()];
+  const sessions = [...state.sessions.values()].filter(item => !item.archived); // archived ones never need the user
   const waiting = sessions.filter(item => item.pendingPermissions?.length).length;
   brand.classList.toggle('waiting', waiting > 0);
   brand.classList.toggle('busy', !waiting && sessions.some(item => item.status === 'running'));

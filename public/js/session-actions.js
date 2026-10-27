@@ -1,4 +1,4 @@
-/** Actions on a whole session: create it from the draft, clear, fork, rename, pin, delete, export, copy, add a folder. */
+/** Actions on a whole session: create it from the draft, clear, fork, rename, pin, archive, delete, export, copy, add a folder. */
 import { api } from './api.js';
 import { copyText, downloadText, folderName } from './dom.js';
 import { state, activeSession, rememberFolder } from './state.js';
@@ -42,7 +42,8 @@ export function createSessionActions(view, report) {
     async fork() {
       const session = activeSession();
       if (!session) return;
-      const fork = await api.fork(session.id);
+      const fork = await api.fork(session.id).catch(report);
+      if (!fork) return;
       state.sessions.set(fork.id, fork);
       view.selectSession(fork.id);
       toast('נוצר ענף חדש של השיחה');
@@ -64,6 +65,22 @@ export function createSessionActions(view, report) {
       const removeWorktree = await confirmWorktreeRemoval(session);
       const result = await api.deleteSession(session.id, { removeWorktree }).catch(report);
       if (removeWorktree && result) reportWorktreeRemoval(session, result);
+    },
+    /** Archives a session (the open one by default); asks first only when it would stop running background tasks. */
+    async archive(id = state.activeId) {
+      const session = state.sessions.get(id);
+      if (!session || session.archived) return;
+      const tasks = (session.tasks || []).filter(task => task.status === 'running').length;
+      if (tasks && !await ask({ title: `להעביר את "${session.name}" לארכיון?`, text: `${tasks} משימות רקע רצות בסשן, והן ייעצרו.`, confirmLabel: 'העברה לארכיון', danger: true })) return;
+      const result = await api.archive(id).catch(report);
+      if (!result) return;
+      if (id === state.activeId) view.selectSession(null);
+      state.unread.delete(id);
+      toast(result.worktreeError ? `הסשן הועבר לארכיון. ה-worktree נשאר: ${result.worktreeError}` : 'הסשן הועבר לארכיון');
+    },
+    /** Brings an archived session back to the list (its worktree is checked out again). */
+    async unarchive(id = state.activeId) {
+      if (id && await api.unarchive(id).catch(report)) toast('הסשן הוחזר מהארכיון');
     },
     exportChat(name) {
       const session = activeSession();

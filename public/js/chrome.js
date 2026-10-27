@@ -31,7 +31,7 @@ function greeting() {
  * @param {HTMLElement} bar
  * @param {object|null} session
  * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onToggleDetails,
- *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, viewMode:()=>string, onViewMode, onNewSession}}
+ *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, viewMode:()=>string, onViewMode, onArchive, onUnarchive, onNewSession}}
  *   handlers detailsOpen / changesOpen: that pane is open (its toggle shows pressed); viewMode: the transcript's current mode
  */
 export function renderTopbar(bar, session, handlers) {
@@ -51,6 +51,9 @@ export function renderTopbar(bar, session, handlers) {
   // A session in its own worktree (worktree/): its branch beside the project folder, like Desktop.
   const tree = session.worktree;
   const branch = tree ? copyChip('branch', tree.branch, tree.path, `ענף ${tree.branch}\nworktree: ${tree.path}`) : null;
+  // An archived session opens as usual (archive/); sending a message also brings it back.
+  const archived = session.archived ? h('button', { type: 'button', class: 'chip archived-chip', title: 'הסשן בארכיון. שליחת הודעה תחזיר אותו לרשימה.',
+    onClick: handlers.onUnarchive }, icon('archive'), 'בארכיון · שחזור') : null;
   const extra = (session.addDirs || []).length ? h('span', { class: 'chip', title: session.addDirs.join('\n') }, `+${session.addDirs.length} תיקיות`) : null;
   const agent = session.agent ? h('span', { class: 'chip', title: 'הסוכן הראשי של הסשן' }, icon('bot'), session.agent) : null;
   const runningTasks = (session.tasks || []).filter(task => task.status === 'running').length;
@@ -61,7 +64,9 @@ export function renderTopbar(bar, session, handlers) {
     ...viewModeEntries(session, handlers.viewMode(), handlers.onViewMode),
     { section: 'סשן' },
     { icon: 'pencil', title: 'שינוי שם', hint: '/rename', onSelect: () => handlers.onRename() },
-    { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', onSelect: handlers.onPin },
+    { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', disabled: Boolean(session.archived), onSelect: handlers.onPin },
+    session.archived ? { icon: 'history', title: 'שחזור מהארכיון', onSelect: handlers.onUnarchive }
+      : { icon: 'archive', title: 'העברה לארכיון', onSelect: handlers.onArchive },
     { icon: 'panel-right', title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onSelect: handlers.onToggleDetails },
     { icon: 'branch', title: 'ענף חדש מהשיחה', hint: '/fork', onSelect: handlers.onFork },
     { icon: 'refresh', title: 'שיחה חדשה (ניקוי הקשר)', hint: '/clear', onSelect: handlers.onClear },
@@ -71,7 +76,7 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'help', title: 'קיצורי מקלדת', hint: 'Ctrl+/', onSelect: toggleShortcutsDialog },
     { icon: 'trash', title: 'מחיקת הסשן', onSelect: handlers.onDelete },
   ], { placement: 'bottom' }));
-  bar.replaceChildren(...[toggle, title, folder, branch, extra, agent, tasks, h('span', { class: 'spacer' }),
+  bar.replaceChildren(...[toggle, title, folder, branch, archived, extra, agent, tasks, h('span', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
     h('button', { type: 'button', class: `icon-button${handlers.changesOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.changesOpen),
       title: 'שינויים (Ctrl+Shift+D)', onClick: handlers.onToggleChanges }, icon('diff')),

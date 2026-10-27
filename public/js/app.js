@@ -1,6 +1,6 @@
 /** Frontend entry point: receives live events, keeps the views in sync, and wires the composer and menus. */
 import { api, subscribe } from './api.js';
-import { state, activeSession, getCommands, getModels, peekModels } from './state.js';
+import { state, activeSession, getCommands, getModels, peekModels, modelLabel } from './state.js';
 import { createThread } from './thread.js';
 import { createMainComposer } from './main-composer.js';
 import { renderSidebar } from './sidebar.js';
@@ -43,15 +43,10 @@ const runCommand = createCommandRunner(actions);
 
 const composer = createMainComposer(els.composerArea, { actions, runCommand });
 
-function modelLabel(settings) {
-  const value = settings.model || state.config.model || peekModels()?.current || state.runtime.get(settings.id)?.model || '';
-  return value || 'ברירת מחדל';
-}
-
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {
   const session = activeSession();
-  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar, onPin: (id, pinned) => actions.setPinned(id, pinned), onRegroup: refresh });
+  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar, actions, onRegroup: refresh });
   // Never rebuild a bar or page the user is typing in (title, folder); it would lose the edit. A focused button is no edit.
   const typing = document.activeElement?.matches('input, textarea, select, [contenteditable="true"]');
   const editing = node => typing && node.contains(document.activeElement) && node.dataset.sessionId === String(session?.id ?? '');
@@ -59,6 +54,7 @@ function refresh() {
     onToggleSidebar: toggleSidebar, onRename: name => actions.rename(name), onOpenPanel: id => actions.openPanel(id),
     onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
     onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onSplit: () => split.toggle(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
+    onArchive: () => actions.archive(), onUnarchive: () => actions.unarchive(),
     onToggleDetails: () => panes.toggle('details'), detailsOpen: panes.isOpen('details'),
     onToggleChanges: () => panes.toggle('changes'), changesOpen: panes.isOpen('changes'),
     viewMode: () => thread.view.mode(), onViewMode: mode => thread.view.setMode(mode),

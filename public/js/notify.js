@@ -111,6 +111,7 @@ function isAway(onScreen) {
  *   the split pane; onOpen runs when a desktop notification is clicked
  */
 export function notify(kind, session, { onScreen, onOpen }) {
+  if (session.archived) return; // the user put it away (archive/)
   const preferences = notifyPreferences();
   if (!preferences[PREFERENCE_BY_KIND[kind]]) return;
   if (preferences.when === 'away' && !isAway(onScreen)) return;

@@ -71,6 +71,12 @@ export async function getModels(scope = currentScope()) {
 /** The last model list without waiting (null before the first answer). */
 export const peekModels = () => modelsSnapshot;
 
+/** The model a session (or the draft) uses, as the composer chip and the session details show it. */
+export function modelLabel(settings) {
+  const value = settings.model || state.config.model || peekModels()?.current || state.runtime.get(settings.id)?.model || '';
+  return value || 'ברירת מחדל';
+}
+
 export function forgetCatalog(scope = currentScope()) {
   catalogs.delete(scopeKey(scope));
 }

@@ -65,7 +65,7 @@ export function handleEvent(event, view) {
       if (event.status === 'running') session.turnStartedAt = Date.now();
       threads.forEach(thread => thread.setRunning(event.status === 'running', { startedAt: session.turnStartedAt }));
       if (event.status === 'idle') {
-        if (!onScreen || document.hidden) state.unread.add(event.sessionId);
+        if ((!onScreen || document.hidden) && !session.archived) state.unread.add(event.sessionId); // an archived turn was stopped
         view.fetchContext(event.sessionId);
         const outcome = turnOutcome(session);
         if (outcome) notify(outcome, session, { onScreen, onOpen: view.selectSession });

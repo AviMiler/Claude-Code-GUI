@@ -23,6 +23,10 @@ function card({ title, iconName, value, onClick, tooltip }, ...content) {
   return h('div', { class: 'detail-card' }, head, ...content);
 }
 
+/** No git view: a plain folder, or an archived session's worktree that archiving removed (back on restore). */
+export const notRepoText = data => (!data.folderMissing ? 'התיקייה אינה מאגר git.'
+  : data.archived ? 'תיקיית הסשן לא קיימת כרגע: ה-worktree הוסר בהעברה לארכיון ויחזור בשחזור.' : 'תיקיית הסשן לא קיימת.');
+
 const branchName = branch => String(branch || '').split('...')[0].replace(/^No commits yet on /, '');
 
 function environmentCard(session, summary, modelLabel) {
@@ -42,7 +46,7 @@ function environmentCard(session, summary, modelLabel) {
 function changesCard(summary, openPane, onRefresh) {
   const refresh = h('button', { type: 'button', class: 'icon-button detail-refresh', title: 'רענון', onClick: onRefresh }, icon('refresh'));
   if (!summary) return card({ title: 'שינויים', iconName: 'diff', value: '…' });
-  if (!summary.isRepo) return card({ title: 'שינויים', iconName: 'diff', value: '' }, h('p', { class: 'detail-muted' }, 'התיקייה אינה מאגר git.'), refresh);
+  if (!summary.isRepo) return card({ title: 'שינויים', iconName: 'diff', value: '' }, h('p', { class: 'detail-muted' }, notRepoText(summary)), refresh);
   const value = h('span', { class: 'detail-counts', dir: 'ltr' }, h('span', { class: 'added' }, `+${summary.added}`), h('span', { class: 'removed' }, `−${summary.removed}`));
   const files = summary.files ? `${summary.files} קבצים${summary.untracked ? ` · ${summary.untracked} חדשים` : ''}` : 'אין שינויים שלא נשמרו';
   return card({ title: 'שינויים', iconName: 'diff', value, onClick: () => openPane('changes'),

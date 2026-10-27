@@ -9,6 +9,7 @@ import { renderDiffFile, renderUnplacedComments } from './diff-view.js';
 import { changesToolbar, changesNotes, changesFooter } from './changes-chrome.js';
 import { commentsOf, addComment, removeComment, clearComments, composeMessage } from './diff-comments.js';
 import { createSessionFetch } from './session-fetch.js';
+import { notRepoText } from './pane-details.js';
 
 /**
  * @param {{send:(text:string)=>Promise<boolean>, rerender:()=>void}} deps send: the normal send path (queues while
@@ -86,7 +87,7 @@ export function createChangesPane({ send, rerender }) {
     const message = text => body.replaceChildren(h('p', { class: 'detail-muted' }, text));
     if (!data) return message('טוען…');
     if (data.error) return body.replaceChildren(h('div', { class: 'error-box' }, data.error));
-    if (!data.isRepo) return message('התיקייה של הסשן אינה מאגר git.');
+    if (!data.isRepo) return message(notRepoText(data));
     frame = { toolbar: h('div'), unplaced: h('div'), footer: h('div') };
     const files = data.files.map(file => { const node = fileNode(file); fileNodes.set(file.path, node); return node; });
     body.replaceChildren(frame.toolbar, ...changesNotes(data), frame.unplaced,
