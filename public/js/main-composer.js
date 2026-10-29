@@ -4,17 +4,22 @@ import { activeSession, getCommands } from './state.js';
 import { findCommand, parseSlash } from './command-catalog.js';
 import { createChipMenus } from './chip-menus.js';
 import { warmUp } from './warm-up.js';
+import { toast } from './ui.js';
+import { bangCommand, runBang } from './terminal/shell-command.js';
+import { createShellNote } from './terminal/shell-note.js';
 
 /**
  * @param {HTMLElement} area the composer's container
  * @param {{actions:object, runCommand:Function}} deps actions.js and command-runner.js
- * @returns {ReturnType<typeof createComposer>}
+ * @returns {ReturnType<typeof createComposer>} the composer, whose update also redraws the line about `!` commands
  */
 export function createMainComposer(area, { actions, runCommand }) {
   const composer = createComposer(area, {
     // delivery: while Claude works, Enter corrects the running turn and Alt+Enter queues (composer.js).
     async onSubmit(text, attachments = [], { delivery } = {}) {
       if (attachments.length) return actions.send(text, attachments, delivery); // with attachments it is a message to Claude, never a GUI command
+      const bang = bangCommand(text); // "!ls": a shell command in the session's folder, run at once even while Claude works
+      if (bang !== null) return runBang(bang, { report: error => toast(error.message, 'error'), say: toast });
       const slash = parseSlash(text);
       const command = slash && findCommand(await getCommands(), slash.name);
       if (command && command.run !== 'send') { await runCommand(command, slash.args); return true; }
@@ -31,5 +36,9 @@ export function createMainComposer(area, { actions, runCommand }) {
     onTyping: () => warmUp(),
     ...createChipMenus({ actions, getComposer: () => composer }),
   });
-  return composer;
+  const note = createShellNote();
+  area.prepend(note.node);
+  const showNote = () => note.update(activeSession(), composer.textarea.value);
+  composer.textarea.addEventListener('input', showNote);
+  return { ...composer, update(args) { composer.update(args); showNote(); } };
 }

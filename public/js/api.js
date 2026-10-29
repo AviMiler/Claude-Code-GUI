@@ -40,6 +40,9 @@ export const api = {
   stop: id => request('POST', `/api/sessions/${id}/stop`),
   removeQueued: (id, queueId) => request('DELETE', `/api/sessions/${id}/queue/${queueId}`),
   resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
+  /** Runs a shell command in the session's folder (output arrives as `shell` events): source 'terminal' (the pane) or 'bang' (a `!` line). */
+  runShell: (id, command, source, shell) => request('POST', `/api/sessions/${id}/shell`, { command, source, ...(shell && { shell }) }),
+  stopShell: id => request('POST', `/api/sessions/${id}/shell/stop`),
   clear: id => request('POST', `/api/sessions/${id}/clear`),
   fork: id => request('POST', `/api/sessions/${id}/fork`),
   /** Branch and uncommitted line counts of the session's folder: { isRepo, branch, files, untracked, added, removed }. */

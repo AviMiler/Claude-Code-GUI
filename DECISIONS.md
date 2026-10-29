@@ -1,5 +1,30 @@
 # Decisions
 
+## [2026-10-27] Shell commands run as a fresh shell per command, not a persistent shell
+**Decision:** The Terminal pane and `!` commands spawn one shell per command (`lib/terminal/shell-run.js`), stdin closed, output streamed over SSE. `cd`, environment and shell state do not carry between commands.
+**Alternatives considered:** (1) A persistent shell over pipes, with a sentinel to find the end of each command. (2) node-pty (a dependency, native build). (3) PowerShell only, or cmd only.
+**Why:** No new npm dependencies is a platform rule, so no PTY. cmd.exe and PowerShell over plain pipes show no prompt and give no reliable end-of-command signal, interactive programs hang, and exit codes and output of consecutive commands get mixed. A spawn per command gives an exact exit code, a clean kill of the process tree and output tied to one command, which `!` needs for Claude's context. The cost, accepted and told to the user: no persistent `cd` or variables, no interactive programs, no colours (ANSI stripped), no TUI. Windows behaviour (cmd with `chcp 65001`, PowerShell `-EncodedCommand`, `taskkill /T /F`, UTF-8 output) was written but never run on Windows.
+
+## [2026-10-27] The shell is an enum chosen by the user (cmd default on Windows); the request never names a program
+**Decision:** `shell` is `cmd` | `powershell` on Windows (default cmd, a selector in the pane, per browser, also used by `!`) and `sh` elsewhere. The command string is the only free input; the folder is the session's `cwd` from the server.
+**Alternatives considered:** (1) A configurable executable in `config.json`. (2) PowerShell as the default.
+**Why:** Decided in Stage 1 without asking the user. The request is the attack surface of a route that runs commands, so a fixed enum keeps it from choosing a program. cmd is always present and starts fast; the user named "cmd/PowerShell", so both are offered. Hebrew output needs UTF-8 on both (`chcp 65001`, `[Console]::OutputEncoding`), untested on Windows.
+
+## [2026-10-27] `!` output reaches Claude as a prefix of the next message; the pane's commands do not
+**Decision:** A finished `!` run is stored as a thread item and in the persisted `session.shellContext`; the next message that reaches the CLI (new turn, queued message, correction) gets a prefix (`Caveat:` line, `<bash-input>`, `<bash-stdout>`, `<bash-stderr>`; output cut at 30000 characters) and the context is cleared. If the message does not reach the CLI the context is restored; a slash-command message keeps it. Commands run in the Terminal pane are not added to the context and are not in the thread.
+**Alternatives considered:** (1) Send each `!` result to the CLI as its own message (a model turn by itself, which the request forbids). (2) Keep the context in browser memory. (3) Add the pane's commands to the context too.
+**Why:** Claude Code's bash mode puts the command and output into the conversation without a model call; a prefix on the next real message does the same here. It is server-side and persisted so a reload or another tab does not silently drop it, and a note above the composer says how many commands will be attached. The prefix format was written from memory of the CLI's own and is NOT checked against 2.1.246. That the pane stays out of Claude's context is a decision NOT confirmed against the Desktop docs page. The cost: the user bubble does not show the prefix, so the thread and what Claude read differ (the shell items and the note explain it).
+
+## [2026-10-27] Shell routes are POST-only and refuse archived sessions without restoring them
+**Decision:** `POST /api/sessions/:id/shell` and `.../shell/stop` go through the Host / Origin guard; an archived session and a session whose folder is gone answer 409; a shell command never restores a session. One run per session, no timeout, 64 KB per stream; runs die on stop, session delete, archive and server exit (including SIGINT, SIGTERM, SIGHUP).
+**Alternatives considered:** (1) Restore the archived session like a message does. (2) A confirmation before each `!`. (3) A timeout. (4) A GET route for output.
+**Why:** The user asked that nothing runs for an archived session or a missing folder; "send restores" (D6) is a rule for messages, and running a command in a re-created worktree by accident is worse than a message. A confirmation would make bash mode useless (the terminal has none), and the Origin check is the project's convention for anything that acts. No timeout because the user can stop it and a build may take long. Output over SSE avoids a new GET. This widens the accepted "no authentication" issue: a local program can now run a command in a session folder without bypass mode (ARCHITECTURE.md -> Security). The verify-agent found orphaned commands on SIGINT/SIGTERM and a lost `!` context when the correction fell back; both fixed.
+
+## [2026-10-27] Ctrl+` toggles the Terminal pane, Desktop parity unverified
+**Decision:** The shortcut table has a page-wide Ctrl+` row (`code` Backquote) for the Terminal pane and a documentation-only `!` row (21 rows).
+**Alternatives considered:** No shortcut.
+**Why:** I believed Desktop uses Ctrl+`; the main agent did not check the Desktop page, so it is a recorded guess, matching the batch rule only if true. It is one table row to change or remove.
+
 ## [2026-10-27] Enter while Claude works is a mid-turn correction; the GUI queue moved to Alt+Enter (user decision)
 **Decision:** While a turn runs, Enter (main and split composers) writes the message straight to the live CLI as a correction (`{type:'user', message, uuid}`), which the CLI drains into the running turn at its next step; Alt+Enter keeps the old GUI queue (sent at the end of the turn). The GUI queue's edit, remove and "שליחת הבאה" are unchanged; there is no "send now" control, so nothing else injects.
 **Alternatives considered:** (1) Keep Enter = queue and give corrections another key. (2) Make the GUI queue itself inject ("send now"). (3) Corrections for every sender.
