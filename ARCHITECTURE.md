@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-27 (D9: mid-turn corrections, `lib/session-runtime.js` split into four runtime modules; earlier D7: context menus for sessions and file paths, `public/js/context-menu/`, `root` in the `/diff` answer; earlier D6: archived sessions, `lib/session-archive.js`, archive removes a clean worktree and restore checks it out again; earlier D5: a git worktree per session, the first git writes, `lib/session-service.js` split into four modules; earlier D4: one shortcut table in `public/js/shortcuts/` feeds the handler, the Ctrl+/ dialog and the help panel; dropdown placement in `popover.js`; earlier D3: transcript view layer between thread.js and the DOM, a page-wide key listener; earlier D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
+_Last updated: 2026-10-29 (documentation audit: Claude's crab replaces the spark in Patterns, the 501 rule for unsupported control requests and the from-disk fallbacks of 2.1.246, all of git's safety flags; earlier 2026-10-27 the crab mascot; earlier D9: mid-turn corrections, `lib/session-runtime.js` split into four runtime modules; earlier D7: context menus for sessions and file paths, `public/js/context-menu/`, `root` in the `/diff` answer; earlier D6: archived sessions, `lib/session-archive.js`, archive removes a clean worktree and restore checks it out again; earlier D5: a git worktree per session, the first git writes, `lib/session-service.js` split into four modules; earlier D4: one shortcut table in `public/js/shortcuts/` feeds the handler, the Ctrl+/ dialog and the help panel; dropdown placement in `popover.js`; earlier D3: transcript view layer between thread.js and the DOM, a page-wide key listener; earlier D2: Changes pane with line comments, `GET /api/sessions/:id/diff`; earlier D1: workspace panes + session details rail, git moved to lib/git/; earlier: split view; file viewer, images in resumed conversations, per-turn stats, health dot; per-turn changed-files card, working-line.js, prompt templates, pinned sessions, grouping)_
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -44,7 +44,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 
 ## Background tasks
 - `task_started` / `task_progress` / `task_notification` system events are normalized by `readTaskEvent` (event-translator);
-  `session-runtime` passes them to the `onTask` hook and keeps `runtime.runningTasks`; `lib/task-tracker.js` holds the tasks
+  `runtime-events.js` (`handleMessage`, part of `session-runtime`) passes them to the `onTask` hook and keeps `runtime.runningTasks`; `lib/task-tracker.js` holds the tasks
   per session in memory (never persisted, 50 per session); `session-events` broadcasts SSE `tasks` and `session-common` puts them in the session meta
 - When the CLI process ends for any reason, its running tasks become `killed`. Idle shutdown is skipped while a task runs
 - The panel (`panel-tasks.js`) stops a task and reads its output with the no-token control requests `stop_task` / `get_task_output`
@@ -144,6 +144,12 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
   commands only, and the pick stays in the text (the model then invokes the skill itself)
 - Panels use control requests (`mcp_status`, `get_context_usage`, `list_permission_rules`, ...) and whitelisted
   `claude mcp|plugin|doctor|auth` subcommands
+- A control request the installed CLI does not know (2.1.246: `list_permission_rules`, `get_hooks_listing`, `get_memory_dialog`,
+  `get_skills_dialog`, `get_status`; maybe `side_question`, `stop_task`, `get_task_output`) answers HTTP 501 with the CLI's text
+  (`noAnswerError` in `catalog-service.js`, `UNSUPPORTED_REQUEST` in `session-common.js`); `server.js` does not log a 501, and the
+  browser's `isUnsupported` (`panels/kit.js`) shows a neutral "not available in this version" note. Where the data also lives on
+  disk the GUI reads it there instead: permission rules and hooks from the settings files (`panel-permissions.js`, `panel-config.js`),
+  skills from the skills folders (`skillsFromDisk`), the auto memory folder (`autoMemory` in `claude-files.js`)
 
 ## Key Decisions
 | Decision | Why |
@@ -194,7 +200,7 @@ the right to run commands as that user.
   (roots from the server, real paths, separator boundary, case-insensitive on win32/darwin, read from the resolved path, so `..`, symlinks and sibling prefix folders
   cannot escape; `data/sessions.json` -> 403); `cwd` ignored; read-only, 2 MB cap, binary refused; no CORS headers, so other sites cannot read the response; shown as text, never HTML
 - `claude` subcommands: whitelist of commands *and* options (`lib/cli-commands.js`); `mcp add` passes through only after `--`
-- git runs with repository-configured programs disabled (fsmonitor, external diff, textconv); every git command goes through `lib/git/run.js`. The views are read-only; the one exception is the worktree write (next bullets), where the repository's own hooks and filters DO run
+- git runs with repository-configured programs disabled (`core.fsmonitor=false`, `core.untrackedCache=false`, `diff.external=`, `--no-ext-diff`, `--no-textconv`, `--no-pager`; `GIT_OPTIONAL_LOCKS=0`, `GIT_TERMINAL_PROMPT=0`, stdin closed); every git command goes through `lib/git/run.js`. The views are read-only; the one exception is the worktree write (next bullets), where the repository's own hooks and filters DO run
 - `GET /api/sessions/:id/git-summary` (the session details rail): read-only, the folder is the session's own (taken from the server; there is no `cwd` parameter, so it does not widen the accepted cross-site-GET issue that `/api/git?cwd=` already has), unknown session 404, same git flags
 - `GET /api/sessions/:id/diff` (the Changes pane): read-only, the folder is the session's own (from the server; no `cwd` parameter), unknown session 404, same git flags. It returns TEXT OF FILES like `/api/file-view`, but with a wider reach: the whole repository from its top level (a session in a subfolder sees the files outside that folder),
   and the content of untracked files (`.gitignore` honored; paths come from `git ls-files`, so they cannot leave the repository; `lstat` skips symlinks; max 100 files, 512 KB each, 2 MB per request; binary not returned). It does not apply `/api/file-view`'s session-folder and `addDirs` roots, on purpose: the pane shows the repository's changes
@@ -250,8 +256,13 @@ the right to run commands as that user.
   Bash-made changes are invisible to it (the Changes pane and the git panel cover those); its "כל השינויים" button opens the Changes pane
 - Per-turn stats: `turn-stats.js` builds the result meta line and tooltip from the result item; `thread.js` passes `{ toolCalls }` (`countToolCalls`, counted back to the last
   user item) to `appendItem` for result items. Tool calls are never stored; missing API time or cache fields fall back (speed from total time, cache 0). Frontend plus three fields in `translateResult`
-- Claude's spark: `working-line.js` (used by `thread.js`) sets `data-state` on the working line (starting -> thinking/writing/tool/waiting ->
-  done/error/stopped); all motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion)
+- Claude's crab (`public/js/crab.js`, it replaced the sun-shaped spark on 2026-10-27): `working-line.js` (used by `thread.js`) sets `data-state` on the
+  working line and, with `setCrabState`, on its crab (starting -> thinking/writing/tool/waiting -> done/error/stopped); `data-b` 1..3 is a random behavior of
+  that state, re-rolled on every change and every 5 s while the state loops; every change adds `.swap` (a squash-and-pop). The sidebar crab follows all
+  sessions (`page-status.js`: waiting / writing / idle), the welcome page has a large one (`chrome.js`), `public/icon.svg` is a separate copy for the tab.
+  All motion is CSS in `public/css/animations.css` (off with prefers-reduced-motion). `thread.js` moves the working line back to the end after each live
+  item, which restarts its animation (the crab branch's "insert new items above it" was lost in the merge)
+- Unsupported control requests: HTTP 501, never logged (see Slash commands)
 - Notifications: `events.js` calls `notify.js` on turn end (SSE `status: idle`) and on a new `permission` request; `notify.js` reads the
   per-browser preferences (localStorage) and fires desktop / sound; `page-status.js` owns the tab title count and brand state. An archived session is skipped by `notify.js`, by the unread mark in `events.js` and by the count and brand in `page-status.js`. Frontend only
 - Panels: `public/js/panels/registry.js` lists them; each exports `render(body, context)`; the context comes from `actions.js`. Not to be confused with panes (`public/js/panes/`): panels are the settings modal's pages, panes are the side area beside the chat

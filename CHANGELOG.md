@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (documentation audit)
+- Docs only, no code change: every source file was read and the docs compared with it
+- spec.md: new "as built" sections for what shipped before the spec existed (sessions, welcome page and topbar; the Claude Code process; the thread and streaming; Claude's crab; permission, question and plan cards; permission modes; the composer; the message queue; attachments; slash commands and the catalog; the settings panels; model, effort and folders; warm-up; past conversations; the folder browser; server safety) and the configuration; fixed the sidebar date-group labels and the file viewer's Read marks
+- PROJECT_MAP.md, ARCHITECTURE.md, AGENT_CONTEXT.md: the crab replaces the removed spark everywhere (its docs were lost in the merge), the 501 and read-from-disk fallbacks for 2.1.246, git's full safety flags, DECISIONS.md and .gitignore in the file tree, `app.js` is 150 lines
+- Correction to "livelier crab" below: "new items now go above it (js/thread.js)" is not in the code. That change was lost when the crab was applied again on the merged branch, so `thread.js` still moves the working line after every live item and the crab's animation restarts. The 2.2 s end-of-turn moment now lives in js/working-line.js
+
 ## 2026-10-29 (skills and auto memory from disk)
 - Fixed: on Claude Code 2.1.246 (no `get_skills_dialog` / `get_memory_dialog`) the skills panel and command catalog lost their skills and the memory panel showed nothing; skills now fall back to the skills folders on disk (`skillsFromDisk` in lib/catalog-service.js, `listNamed` exported from lib/claude-files.js; the panel says the source was read from disk, no token counts) and the memory panel shows the auto memory folder and its file count from disk (`autoMemory` in lib/claude-files.js, `fetchMemoryDialog` in public/js/panels/panel-config.js; status "לא ידוע")
 - Verified by static review only (no Node on this machine); re-check on the target machine with the real CLI. Known: a transient skills timeout in the probe path also shows the "read from disk" note
