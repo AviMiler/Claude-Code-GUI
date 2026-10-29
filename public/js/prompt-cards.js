@@ -1,11 +1,12 @@
 /**
- * Cards above the composer for requests that wait on the user: tool permissions, AskUserQuestion, plan approval.
- * Each answer goes back to the CLI as the reply to its can_use_tool control request.
+ * Cards above the composer for requests that wait on the user: tool permissions, AskUserQuestion, plan approval and
+ * MCP elicitations. Each answer goes back to the CLI as the reply to its control request.
  */
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { renderMarkdown } from './markdown.js';
 import { diffLines, renderDiff } from './render-tools.js';
+import { elicitationCard } from './elicitation/elicitation-card.js';
 
 function describeRule(suggestions) {
   const rules = suggestions.flatMap(suggestion => suggestion.rules || [])
@@ -89,7 +90,7 @@ export function renderPromptCards(container, prompts, onAnswer) {
   for (const prompt of prompts) {
     if (existing.has(prompt.requestId)) continue; // keep typed feedback and selections
     const answer = response => onAnswer(prompt, response);
-    const card = prompt.toolName === 'AskUserQuestion' ? questionCard(prompt, answer)
+    const card = prompt.kind === 'elicitation' ? elicitationCard(prompt, answer) : prompt.toolName === 'AskUserQuestion' ? questionCard(prompt, answer)
       : prompt.toolName === 'ExitPlanMode' ? planCard(prompt, answer) : permissionCard(prompt, answer);
     card.dataset.requestId = prompt.requestId;
     container.append(card);

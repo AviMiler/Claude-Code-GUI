@@ -10,7 +10,7 @@ const PREFERENCES_KEY = 'claude-gui.notifications';
  * @property {boolean} title    count of sessions that need attention in the tab title
  * @property {number} volume    0..100
  * @property {boolean} onDone   a turn finished
- * @property {boolean} onWaiting  a permission, question or plan card waits for the user
+ * @property {boolean} onWaiting  a permission, question, plan or MCP elicitation card waits for the user
  * @property {boolean} onError  a turn failed or the CLI crashed
  * @property {'away'|'always'} when  away: only when the tab is hidden or the session is not the one on screen
  */

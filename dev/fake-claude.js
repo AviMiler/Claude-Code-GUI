@@ -1,7 +1,7 @@
 /**
  * Fake `claude` CLI for developing the GUI without an API key. Speaks the stream-json + control protocol.
  * Prompt keywords (whole words where they overlap): "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
- * "slow" -> long streaming (to test stop), "fail" -> crash, "task" -> a background task that ends 8 s later
+ * "slow" -> long streaming (to test stop), "fail" -> crash, "task" -> a background task that ends 8 s later, "elicit" / "elicit-url" -> an MCP elicitation
  * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
  * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
@@ -12,6 +12,7 @@ const out = message => process.stdout.write(`${JSON.stringify(message)}\n`);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const { createCorrections } = require('./fake-corrections');
 const { fakeCatalog } = require('./fake-catalog');
+const { elicit } = require('./fake-elicitation');
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
@@ -107,6 +108,7 @@ async function turn(prompt) {
     if (/bash/.test(prompt)) await toolTurn('Bash', { command: 'npm test', description: 'Run tests' }, () => 'All 12 tests passed');
     if (/\bask/.test(prompt)) await toolTurn('AskUserQuestion', { questions: [{ question: 'איזה צבע?', header: 'צבע', multiSelect: false, options: [{ label: 'כתום', description: 'צבע Claude' }, { label: 'כחול', description: 'קלאסי' }] }] }, input => `answers: ${JSON.stringify(input.answers)}`);
     if (/plan/.test(prompt)) await toolTurn('ExitPlanMode', { plan: '## התוכנית\n1. לקרוא קבצים\n2. לערוך את `app.js`\n3. להריץ בדיקות' }, () => 'Plan approved');
+    if (/elicit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'text', text: `תשובת ה-GUI לבקשת MCP: ${JSON.stringify(await elicit(out, waiting, `elic-${++counter}`, /elicit-url/.test(prompt) ? 'url' : 'form'))}` }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/task/.test(prompt)) startTask();
     if (/edit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_edit', name: 'Edit', input: { file_path: 'C:\\repo\\app.js', old_string: 'const a = 1;\nconst b = 2;', new_string: 'const a = 1;\nconst b = 3;\nconst c = 4;' } }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/todo/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_todo', name: 'TodoWrite', input: { todos: [{ content: 'Read code', status: 'completed', activeForm: 'Reading' }, { content: 'Write fix', status: 'in_progress', activeForm: 'Writing fix' }, { content: 'Run tests', status: 'pending', activeForm: 'Running tests' }] } }] }, parent_tool_use_id: null, session_id: sessionId });

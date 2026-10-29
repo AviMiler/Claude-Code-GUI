@@ -1,5 +1,25 @@
 # Decisions
 
+## [2026-10-29] Elicitation reuses the permission pipeline and answer route
+**Decision:** An `elicitation` control request is stored in the same `runtime.pending` map as permission prompts, with `kind: 'elicitation'`, sent over the same `permission` / `permission-resolved` events, and answered through `POST /api/sessions/:id/permissions/:rid` with `{ action, content }`. `runtime-permissions.js` branches on `prompt.kind`.
+**Alternatives considered:** (1) A separate map, event type, route and service function. (2) Resolving elicitations at turn end.
+**Why:** The shared map gives the idle-timer clearing, reload survival, "waiting" notification, sidebar state, split pane, `control_cancel_request` and exit cleanup with no change to `session-service.js` or `app.js` (both at the size limit). The cost: one route carries two body shapes, so cross-kind bodies are rejected with 400 (and a behavior-less body for a permission prompt is now 400 instead of a silent deny). A turn ending does not resolve an elicitation, because an MCP server may ask between turns; only the CLI's cancel, a stop and an exit do.
+
+## [2026-10-29] The interrupt loop moved into `permissions.cancelAll`
+**Decision:** `session-runtime.js` `interrupt()` calls `permissions.cancelAll(runtime)` instead of looping over `pending` itself. It replies `{ action: 'cancel' }` to elicitations and the old deny with `interrupt: true` to permissions.
+**Alternatives considered:** Leaving the loop, which would send a permission-style deny to an elicitation (the wrong reply shape).
+**Why:** The loop had to know the prompt kind; putting it next to the prompts shrank `session-runtime.js` from 147 to 144 lines instead of growing it.
+
+## [2026-10-29] The server normalizes and validates elicitation schemas and answers
+**Decision:** The server turns the untrusted JSON schema into a flat, clamped field list (unsupported types become a `json` text field) and validates the answer against it (only schema keys, own properties, types, ranges, 64 KB cap). The browser draws only from the field list.
+**Alternatives considered:** Passing the raw schema to the browser and trusting its answer; a general JSON-schema validator (needs a dependency).
+**Why:** The schema is attacker-controlled data from an MCP server. A small supported subset is enough for the cards, needs no dependency, and a bad answer is a 400 with the request still pending. Stage 3 found the first version read inherited properties (a required field named `__proto__` counted as filled); now `Object.hasOwn` and `Object.create(null)`. Supported: string, number, integer, boolean, enum, multi-select; everything else is JSON text.
+
+## [2026-10-29] URL-mode elicitation: show the URL, open on click, finish by hand
+**Decision:** The card shows the full URL as text and an open button for http / https only; the user clicks "סיימתי" (accept with no content) when done. No completion event is handled.
+**Alternatives considered:** Opening the link automatically; waiting for a CLI completion event.
+**Why:** Never act on an MCP server's URL without a click, and show the real host. The completion event's name and existence in 2.1.246 are unverified. Desktop parity of the wording is unconfirmed.
+
 ## [2026-10-29] The Plan pane reads the session's items, not `get_plan`
 **Decision:** The plan is the latest top-level `ExitPlanMode` item's `input.plan` (a pending approval card's plan wins) and the todos are the latest top-level `TodoWrite`; both come from `session.items` and `pendingPermissions` in the browser. No route, no control request.
 **Alternatives considered:** (1) The CLI's `get_plan` control request (it is in the `/control` whitelist). (2) A new server route that scans the transcript.
