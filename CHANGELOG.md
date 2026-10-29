@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 (principle: the CLI is the source of truth)
+- Docs only, no code change: DECISIONS.md, spec.md (Platform constraints), AGENT_CONTEXT.md (Gotchas, Next Steps) now state that the CLI owns the conversation and the GUI is a display; departures from the CLI must be flagged to the developer
+- Recorded as a known deviation: the GUI still keeps its own copy of the history (`session.items` in `data/sessions.json`), so its session list does not match the CLI's `/resume`; moving to the CLI transcript is a planned task, not started
+
 ## 2026-10-29 (documentation audit)
 - Docs only, no code change: every source file was read and the docs compared with it
 - spec.md: new "as built" sections for what shipped before the spec existed (sessions, welcome page and topbar; the Claude Code process; the thread and streaming; Claude's crab; permission, question and plan cards; permission modes; the composer; the message queue; attachments; slash commands and the catalog; the settings panels; model, effort and folders; warm-up; past conversations; the folder browser; server safety) and the configuration; fixed the sidebar date-group labels and the file viewer's Read marks
