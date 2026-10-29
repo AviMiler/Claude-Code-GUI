@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (workflow pass on the history move)
+- Subagents' inner steps are shown again after the history is rebuilt: read from the CLI's subagent files and placed inside their tool row
+- A fork keeps its "(ענף)" name while it has not answered yet (it took the source conversation's name)
+- Attachments are swept at startup only after every session's history is built, so images shown from the CLI's files are not removed first
+- spec.md: the four requirements of the history move were confirmed by the developer; passages that still described the old behaviour were fixed (initial name, import, images, corrections, rewind points and failure, known limits)
+
 ## 2026-10-29 (the conversation comes from the CLI)
 - What a session shows is built from the CLI's own conversation file; `data/sessions.json` no longer stores the conversation, only settings and the GUI's own items (turn results, notices, dividers, `!` output), placed after the CLI's lines
 - Changes made in a terminal (`claude --resume`: messages, rename, `/rewind`, `/compact`) show in an open page within about a second, without a reload; the next GUI message continues the conversation as the CLI has it

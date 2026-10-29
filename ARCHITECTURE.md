@@ -65,10 +65,19 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   Fork copies `conversations`, `extras`, `sent` and `anchors` (the CLI's `--fork-session` keeps the line uuids, checked
   on 2.1.312) and adds the divider "ענף חדש מכאן". `/clear` moves the conversation into `conversations`. Import creates
   a session on the conversation and adds the divider "השיחה נטענה – אפשר להמשיך מכאן" after its last line.
+- Subagents (the Agent tool): the CLI keeps each in `<conversation>/subagents/agent-<id>.jsonl` with a `.meta.json`
+  whose `toolUseId` is the tool call that started it (checked on 2.1.312). `transcripts.readSubagents` reads them,
+  `history-build.withSubagents` puts their items (`parent` = that id, nested ones too) right after the tool item, as
+  they arrive live. `conversationStamp` includes those files, so a background subagent's progress is read too.
 - Images in a CLI line are stored under an id from their bytes (`images.saveImages(..., { stable: true })`), so a
-  build does not add files; the startup sweep may remove them, the first build writes them again.
-- Not covered: subagent side chains (their inner tool calls show live, not after a build); a terminal rewind shows
-  only once a message follows it (the CLI writes nothing before that); every build reads the whole file.
+  build does not add files. The startup sweep (`session-service.js` `sweepAttachments`) runs from `server.js` after
+  `cliSync.start` built every session, so those images count as used.
+- A fork not answered yet shows the source conversation but does not take its name (`namePatch` is skipped while
+  `forkPending`).
+- Not covered: a terminal rewind shows only once a message follows it (the CLI writes nothing before that); a turn run
+  in a terminal has no result item (no stats line, no changed-files card); every build reads the whole file; sessions
+  saved before 2026-10-29 lose their stored items (not migrated, by the developer's decision); if the CLI deletes an
+  old conversation file (`cleanupPeriodDays`, default not checked) the session shows only its GUI-only items.
 - Checked on 2.1.312: `claude -p` in stream-json mode writes the `.jsonl`; a uuid the GUI sends with a message becomes
   its line's uuid; a correction during a tool call is a `queued_command` attachment; one sent before the turn starts is
   joined into the first message (under the second uuid).
