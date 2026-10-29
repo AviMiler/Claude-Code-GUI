@@ -99,7 +99,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | Cost (`costUsd`, `session-events.js`) | Adds each result's `total_cost_usd` | `/cost`; if `total_cost_usd` is cumulative per process the sum over-counts (UNVERIFIED) |
 | Composer ↑ / ↓ history (`composer-history.js`) | The session's own items | The CLI's prompt history (UNVERIFIED location) |
 | Full-text search (`session-search.js`) | Scans `session.items` (built from the CLI's files) | Conversations that are not a GUI session are not searched |
-| Session settings: mode, model, effort, agent, folders, output style, fallback model | Stored per session and passed as flags on every restart; output style through a GUI-written `--settings` file (`cli-args.js`) | The CLI's own settings files and its live state; a CLI change is copied back (`onModeChange`) but the GUI wins on restart |
+| Session settings: mode, model, effort, agent, folders, output style, fallback model | Stored per session and passed as flags on every restart; output style through a GUI-written `--settings` file (`cli-args.js`) | The CLI's own settings files and its live state; a CLI change is copied back (`onModeChange`) but the GUI wins on restart. Accepted: run settings, per platform (DECISIONS.md) |
 
 ### The GUI reimplements a CLI feature
 | Feature | What the GUI does | Note |
