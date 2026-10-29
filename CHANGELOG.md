@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29 (quiet unsupported control requests)
+- Fixed: on Claude Code 2.1.246 control requests the CLI does not know (list_permission_rules, get_hooks_listing, get_memory_dialog, get_status) answered HTTP 502 and flooded the server console; they now answer 501 with the same message, so the panels' "not available" fallback is unchanged (lib/catalog-service.js `noAnswerError`, used by `sessionControl` and `folderControl`)
+- Changed: `server.js` no longer logs a failed request with status 501 (it means the CLI lacks the feature, not a failure); other errors are still logged
+- Changed: `UNSUPPORTED_REQUEST` moved from lib/side-questions.js to lib/session-common.js and shared (not yet run on a real 2.1.246: read-only verification only)
+
 ## 2026-10-27 (livelier crab)
 - Changed: bigger, smoother crab motion: hops with squash and stretch and a ground shadow, sideways walks and dashes, claws that rotate, wave and pinch, rising thought bubbles, twinkling sparks, a dripping sweat drop (css/animations.css, js/crab.js)
 - Added: every state or behavior change plays a short squash-and-pop, the working line's crab slides in, and its text slides in on every state change (css/animations.css, js/crab.js, js/thread.js)
