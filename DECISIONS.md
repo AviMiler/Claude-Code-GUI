@@ -1,5 +1,30 @@
 # Decisions
 
+## [2026-10-27] The Files pane edits in a plain textarea, one file at a time
+**Decision:** The editor is a textarea with a status bar (encoding, line ending, caret position). No syntax highlighting, no line-number gutter, no tabs, Tab moves focus, no create / rename / delete.
+**Alternatives considered:** (1) CodeMirror or Monaco. (2) A contenteditable editor with our own highlighting. (3) Tab inserts indentation. (4) Tabs for several open files.
+**Why:** Zero npm dependencies is a platform rule, and a corporate offline machine cannot fetch an editor library. A contenteditable editor is a large amount of code for a worse result than the native textarea (undo, IME, selection). Tab moving focus avoids a keyboard trap; the cost (poor for code) is accepted and told to the user. A narrow pane is one column, so it shows the tree or the editor, not both. Desktop parity of all of this is unconfirmed.
+
+## [2026-10-27] A save is checked by content hash and written in place
+**Decision:** Opening returns a sha256 of the raw bytes; `PUT` sends it back as `baseHash`; a mismatch is HTTP 412 and only `overwrite === true` forces. The file is written in place, in one synchronous block with the re-read and the compare.
+**Alternatives considered:** (1) Compare modification time. (2) Write a temp file and rename it over the original. (3) Lock the file.
+**Why:** Modification time is unreliable on Windows and network drives and changes without a content change. Temp-plus-rename is atomic but fails on Windows when another program holds the file, drops the file's mode and breaks hard links; VS Code writes in place by default. A synchronous block leaves no race inside the server. The cost, accepted: a crash mid-write can truncate the file, and a hard link planted in the folder is written through. Two Stage 3 fixes: `overwrite` must be exactly `true`, and the answer's hash belongs to the text that was sent, not a draft typed afterwards.
+
+## [2026-10-27] The tool-row buttons still open the read-only viewer; the pane is reached by an explicit "edit"
+**Decision:** The open buttons of tool rows and changed-files cards keep opening the viewer dialog. The dialog's "עריכה" button and the file menu's "עריכה בחלונית הקבצים" open the Files pane, only when it is available (main session, room, file inside `cwd` or `addDirs`).
+**Alternatives considered:** Redirect every open action to the pane when it is available (the main agent's first idea).
+**Why:** A redirect would replace the File viewer requirement ("read-only viewer") and lose the line marks that show what a tool read or wrote; the pane is also unavailable without room and for the split pane. Decided in Stage 1 without asking the user; switching the default click is a one-place change (and a spec change). Desktop parity unconfirmed.
+
+## [2026-10-27] Claude is not told about the user's edits in the Files pane
+**Decision:** A save sends nothing to Claude. It refreshes the Changes pane and the rail.
+**Alternatives considered:** (1) A note attached to the next message, like the `!` prefix. (2) An immediate message.
+**Why:** The Changes pane already shows the edit and can send it as comments. A prefix per save would add tokens and noise on every small edit; an immediate message would be a model call the user did not ask for. From memory of the CLI (not verified for 2.1.246): its Edit tool errors when a file changed since Claude last read it, so a stale read does not silently overwrite the user's edit.
+
+## [2026-10-27] Writes refuse `.git`, the GUI's own data and config; mixed line endings and non-UTF-8 files are not edited
+**Decision:** The save route refuses any `.git` segment, the server's `data/` folder (`DATA_DIR`), `config.json` (`CONFIG_PATH`), uploads, `..`, NUL, non-regular files and, on win32, a `:` in the name. Those files open read-only. A file with mixed or lone-CR line endings opens read-only; a file that is not valid UTF-8 or has a UTF-16 BOM, or is over 1 MB, is refused.
+**Alternatives considered:** (1) Allow everything the viewer can read. (2) Normalize mixed endings to the dominant one on save. (3) Decode other encodings.
+**Why:** A file in `.git/hooks` is code that runs on the next git command, and `data/` or `config.json` would let a page overwrite the GUI's own state and token settings. Normalizing mixed endings would rewrite every line (a huge diff in the Changes pane) without telling the user; refusing to save is safe. Re-encoding could corrupt the file. Known gap: a hard link inside the folder to a protected file bypasses the check.
+
 ## [2026-10-27] Shell commands run as a fresh shell per command, not a persistent shell
 **Decision:** The Terminal pane and `!` commands spawn one shell per command (`lib/terminal/shell-run.js`), stdin closed, output streamed over SSE. `cd`, environment and shell state do not carry between commands.
 **Alternatives considered:** (1) A persistent shell over pipes, with a sentinel to find the end of each command. (2) node-pty (a dependency, native build). (3) PowerShell only, or cmd only.

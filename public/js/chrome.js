@@ -31,7 +31,7 @@ function greeting() {
  * @param {HTMLElement} bar
  * @param {object|null} session
  * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onToggleDetails,
- *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, onToggleTerminal, terminalOpen:boolean, viewMode:()=>string, onViewMode, onArchive, onUnarchive, onNewSession}}
+ *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, onToggleTerminal, terminalOpen:boolean, onToggleFiles, filesOpen:boolean, viewMode:()=>string, onViewMode, onArchive, onUnarchive, onNewSession}}
  *   handlers detailsOpen / changesOpen: that pane is open (its toggle shows pressed); viewMode: the transcript's current mode
  */
 export function renderTopbar(bar, session, handlers) {
@@ -67,6 +67,7 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', disabled: Boolean(session.archived), onSelect: handlers.onPin },
     session.archived ? { icon: 'history', title: 'שחזור מהארכיון', onSelect: handlers.onUnarchive }
       : { icon: 'archive', title: 'העברה לארכיון', onSelect: handlers.onArchive },
+    { icon: 'folder', title: handlers.filesOpen ? 'הסתרת חלונית הקבצים' : 'הצגת חלונית הקבצים', onSelect: handlers.onToggleFiles },
     { icon: 'terminal', title: handlers.terminalOpen ? 'הסתרת הטרמינל' : 'הצגת הטרמינל', hint: 'Ctrl+`', onSelect: handlers.onToggleTerminal },
     { icon: 'panel-right', title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onSelect: handlers.onToggleDetails },
     { icon: 'branch', title: 'ענף חדש מהשיחה', hint: '/fork', onSelect: handlers.onFork },
@@ -81,6 +82,8 @@ export function renderTopbar(bar, session, handlers) {
     h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
     h('button', { type: 'button', class: `icon-button${handlers.changesOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.changesOpen),
       title: 'שינויים (Ctrl+Shift+D)', onClick: handlers.onToggleChanges }, icon('diff')),
+    h('button', { type: 'button', class: `icon-button${handlers.filesOpen ? ' on' : ''}`, 'aria-pressed': String(Boolean(handlers.filesOpen)),
+      title: 'קבצים', onClick: handlers.onToggleFiles }, icon('folder')),
     h('button', { type: 'button', class: `icon-button${handlers.terminalOpen ? ' on' : ''}`, 'aria-pressed': String(Boolean(handlers.terminalOpen)),
       title: 'טרמינל (Ctrl+`)', onClick: handlers.onToggleTerminal }, icon('terminal')),
     h('button', { type: 'button', class: 'icon-button', title: 'הקשר ושימוש (/context)', onClick: () => handlers.onOpenPanel('usage') }, icon('gauge')),

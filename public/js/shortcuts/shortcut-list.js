@@ -27,6 +27,7 @@ export const SHORTCUTS = [
   { keys: 'Ctrl+`', label: 'חלונית הטרמינל', group: 'panes', action: 'toggleTerminal', code: 'Backquote' },
   { keys: 'Ctrl+\\', label: 'סגירת החלונית הממוקדת', group: 'panes', action: 'closePane', code: 'Backslash' },
   { keys: 'Ctrl+Shift+\\', label: 'פיצול תצוגה: סשן נוסף לצד זה', group: 'panes', action: 'toggleSplit', code: 'Backslash', shift: true },
+  { keys: 'Ctrl+S', label: 'שמירת הקובץ (בעורך של חלונית הקבצים)', group: 'panes' },
   { keys: 'Ctrl+Enter', label: 'שליחת ההערות על השינויים (בחלונית השינויים)', group: 'panes' },
   { keys: 'Enter', label: 'שליחה (בזמן ש-Claude עובד: תיקון שנכנס לתור הנוכחי)', group: 'composer' },
   { keys: 'Alt+Enter', label: 'בזמן ש-Claude עובד: לתור, תישלח כשיסיים', group: 'composer' },

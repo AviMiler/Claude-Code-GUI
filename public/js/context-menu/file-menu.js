@@ -6,6 +6,7 @@ import { copyText } from '../dom.js';
 import { toast } from '../ui.js';
 import { state } from '../state.js';
 import { openFileViewer } from '../file-viewer.js';
+import { canOpenInFiles, openInFiles } from '../files/open-in-files.js';
 import { openContextMenu, hasSelection } from './menu.js';
 import { relativePath } from './paths.js';
 
@@ -31,6 +32,7 @@ export function enableFileMenus({ insert }) {
     const copy = async text => { await copyText(text); toast('הנתיב הועתק'); };
     openContextMenu(event, [
       { icon: 'eye', title: 'פתיחה בצופה', onSelect: () => openFileViewer(session.id, path, null) },
+      canOpenInFiles(session.id) && !element.closest('[data-split-session]') && { icon: 'pencil', title: 'עריכה בחלונית הקבצים', onSelect: () => openInFiles(session.id, path) },
       { icon: 'copy', title: 'העתקת הנתיב המלא', onSelect: () => copy(path) },
       { icon: 'copy', title: 'העתקת הנתיב היחסי', disabled: !relative, desc: relative ? null : 'מחוץ לתיקיית הסשן', onSelect: () => copy(relative) },
       inMain && { icon: 'at', title: 'הוספה לתיבת הכתיבה (@)', onSelect: () => insert(reference(relative || path)) },

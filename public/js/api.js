@@ -6,7 +6,7 @@ async function request(method, url, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `שגיאה ${response.status}`);
+  if (!response.ok) throw Object.assign(new Error(data.error || `שגיאה ${response.status}`), { status: response.status });
   return data;
 }
 
@@ -51,6 +51,12 @@ export const api = {
   sessionDiff: sessionId => request('GET', `/api/sessions/${sessionId}/diff`),
   /** Text of a file in the session's folders: { path, content, totalLines, truncated, size }. */
   viewFile: (sessionId, path) => request('GET', `/api/file-view?${query({ sessionId, path })}`),
+  /** One folder level of the session folder (dir relative to it): { dir, entries: [{ name, type: 'dir'|'file', blocked? }], truncated }. */
+  treeDir: (sessionId, dir, hidden) => request('GET', `/api/sessions/${sessionId}/tree?${query({ dir, hidden: hidden ? '1' : '' })}`),
+  /** A file for the editor: { path, rel, content (LF), eol, bom, hash, size, mtimeMs, writable, readOnlyReason }. */
+  openFile: (sessionId, path) => request('GET', `/api/sessions/${sessionId}/file?${query({ path })}`),
+  /** Saves an edit; status 412 (error.status) when the file changed on disk since it was opened. @returns {Promise<{hash, size, mtimeMs}>} */
+  saveFile: (sessionId, edit) => request('PUT', `/api/sessions/${sessionId}/file`, edit),
   /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */
   templates: () => request('GET', '/api/templates'),
   saveTemplate: (id, template) => request('PUT', `/api/templates/${id}`, template),

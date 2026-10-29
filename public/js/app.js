@@ -61,7 +61,7 @@ function refresh() {
     onArchive: () => actions.archive(), onUnarchive: () => actions.unarchive(),
     onToggleDetails: () => panes.toggle('details'), detailsOpen: panes.isOpen('details'),
     onToggleChanges: () => panes.toggle('changes'), changesOpen: panes.isOpen('changes'),
-    onToggleTerminal: () => panes.toggle('terminal'), terminalOpen: panes.isOpen('terminal'),
+    onToggleTerminal: () => panes.toggle('terminal'), terminalOpen: panes.isOpen('terminal'), onToggleFiles: () => panes.toggle('files'), filesOpen: panes.isOpen('files'),
     viewMode: () => thread.view.mode(), onViewMode: mode => thread.view.setMode(mode),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');
