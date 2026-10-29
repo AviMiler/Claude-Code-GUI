@@ -122,6 +122,16 @@ Permission prompts (`can_use_tool`), elicitation, `/btw` (`side_question`), live
 `set_permission_mode`), the settings, hooks, memory and permissions panels (they write the CLI's own files,
 `lib/claude-files.js`), skills and memory read from the CLI's folders, mid-turn corrections, background tasks.
 
+### Status of each departure (developer's decisions, 2026-10-29, DECISIONS.md)
+- Accepted, stays as is: session settings (per platform), `!` output kept by the GUI, composer ↑ / ↓ history,
+  `/color`, `/clear` (one GUI session over several CLI conversations), `/export` / `/copy`, the Plan pane.
+- To change: cost is taken from the CLI instead of the GUI's sum; prompt templates are stored as CLI custom commands
+  (`~/.claude/commands`, the form and insert-without-send stay GUI additions); the session list shows every CLI
+  conversation, like `claude --resume --all` (a terminal conversation is a light row, built only when opened), with a
+  choice between search modes and an explanation of each.
+- To check against the CLI first: `--worktree` in `-p` mode without a terminal (move to it if it works), and that
+  picking a model really switches the CLI's model (`set_model`, `--model`).
+
 ### GUI-only on purpose (no CLI equivalent)
 Pins, archive, split view, notifications, the message queue, transcript view modes, focus, theme, the crab, the
 Changes pane comments, the Files editor, and storing attachments (`data/images/`, `data/uploads/`) as transport.
