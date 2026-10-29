@@ -1,0 +1,15 @@
+/* Plan pane (plan/plan-pane.js) and Background tasks pane (tasks/tasks-pane.js). */
+.plan-text, .plan-todos { margin-top: 10px; }
+.plan-text h4, .plan-todos h4 { display: flex; gap: 6px; align-items: center; margin: 0 0 6px; font-size: 13px; }
+.plan-text h4 .icon, .plan-todos h4 .icon { width: 14px; height: 14px; color: var(--muted); }
+.plan-text .markdown { font-size: 13px; }
+.plan-todos .todo { display: flex; gap: 6px; align-items: flex-start; padding: 2px 0; font-size: 12.5px; }
+.plan-todos .todo .icon { flex: none; width: 13px; height: 13px; margin-top: 3px; color: var(--muted); }
+.plan-todos .todo.completed { color: var(--muted); text-decoration: line-through; }
+.plan-todos .todo.in_progress .icon { color: var(--accent); }
+.task-card { display: grid; gap: 4px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.task-head { display: flex; flex-wrap: wrap; gap: 4px; }
+.task-title { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.task-facts, .task-summary { color: var(--muted); font-size: 12px; }
+.task-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.task-card .output-pre { max-height: 240px; font-size: 11.5px; }

@@ -1,0 +1,23 @@
+/* Terminal pane (terminal/terminal-pane.js) and `!` commands in the conversation (terminal/shell-item.js, shell-live.js). */
+.pane[data-pane="terminal"] .pane-body { display: flex; flex-direction: column; padding: 0; }
+.shell-pane { display: flex; flex: 1; flex-direction: column; min-height: 240px; }
+.shell-log { flex: 1; display: grid; align-content: start; gap: 8px; padding: 8px; overflow-y: auto; outline: 0; }
+.shell-empty { margin: 0; font-size: 12.5px; }
+.shell-bar { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-top: 1px solid var(--border); background: var(--bg-sidebar); }
+.shell-input { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: 12.5px var(--font-mono); }
+.shell-select { padding: 4px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 12px; }
+.shell-prompt { flex: none; color: var(--accent); font: 12.5px var(--font-mono); user-select: none; }
+.shell-run { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--code-block); }
+.shell-head, .shell-bar { direction: ltr; }
+.shell-head { display: flex; gap: 6px; align-items: baseline; padding: 5px 8px; background: var(--surface-2); font: 12.5px var(--font-mono); }
+.shell-command { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.shell-out, .shell-err { margin: 0; padding: 6px 8px; overflow-x: auto; font: 12px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.shell-err { color: var(--danger); }
+.shell-foot { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 3px 8px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+.shell-run[data-tone="ok"] .shell-status { color: var(--success); }
+.shell-run[data-tone="error"] .shell-status { color: var(--danger); }
+.shell-run[data-tone="running"] .shell-status { color: var(--info); }
+.shell-item, .shell-live { max-width: var(--column); margin: 10px auto; }
+.shell-item .head { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+.shell-item .head .icon { width: 13px; height: 13px; }
+.shell-note { max-width: var(--column); margin: 0 auto 6px; padding: 4px 10px; border-radius: var(--radius-sm); background: var(--info-soft); color: var(--info); font-size: 12px; }

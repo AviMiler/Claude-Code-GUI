@@ -1,0 +1,13 @@
+/* MCP elicitation card (elicitation/elicitation-card.js): a form drawn from the server's schema, or a link. */
+.elicitation .el-message { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.el-form { display: grid; gap: 10px; margin-bottom: 10px; }
+.el-field { display: grid; gap: 3px; font-size: 13px; }
+.el-title b { color: var(--danger); }
+.el-desc { color: var(--muted); font-size: 12px; }
+.el-field input:not([type="checkbox"]), .el-field select, .el-field textarea { padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; }
+.el-field textarea { font: 12.5px var(--font-mono); resize: vertical; }
+.el-check { display: flex; gap: 6px; align-items: center; }
+.el-multi { display: grid; gap: 2px; }
+.el-url { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.el-url code { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+.el-error { margin-bottom: 8px; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger); font-size: 12.5px; }

@@ -16,7 +16,8 @@ const server = http.createServer(async (request, response) => {
     if (request.url.startsWith('/api/')) return await handleApi(request, response, config);
     serveStatic(request, response);
   } catch (error) {
-    console.error('[server] request failed:', request.method, request.url, error);
+    // 501 = this Claude Code version lacks the feature; the browser shows a neutral note, so it is not a failure to log.
+    if (error.status !== 501) console.error('[server] request failed:', request.method, request.url, error);
     if (!response.headersSent) sendJson(response, error.status || 500, { error: error.message });
   }
 });

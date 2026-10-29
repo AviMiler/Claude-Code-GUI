@@ -1,74 +1,236 @@
 /*
- * Claude's spark (.claude-mark) in each state. Every ray is its own path with --i = 0..7 clockwise from the top
- * (icons.js), so a state can move single rays, not only the whole mark.
- * Working line (thread.js, data-state): starting · thinking · writing · tool · waiting, then done / error / stopped.
- * Elsewhere: the welcome page (idle), the sidebar brand (busy / waiting), fresh results and errors.
+ * Claude's crab (.crab, js/crab.js). data-state = what Claude is doing (thread.js working line, sidebar brand, welcome page),
+ * data-b = which of three behaviors plays, picked at random. Parts: .c-shadow (ground shadow), .c-all (crab + legs) >
+ * .c-body (torso, .c-arm, .c-eyes), .c-leg; speech marks .c-dots .c-bang .c-q .c-sparks .c-sweat are hidden unless a
+ * behavior shows them. Units inside the SVG are its own pixels (viewBox 18 x 12), so motion scales with the crab's size.
+ * States: idle · starting · thinking · writing · tool · waiting · done / error / stopped (play once, then the line fades).
+ * .swap (set by crab.js on every change) squashes and pops the whole crab so a switch reads as a move, not a cut.
  */
-.claude-mark svg { overflow: visible; }
-.claude-mark .ray { transform-box: view-box; transform-origin: 12px 12px; }
-.working .claude-mark { transition: color .3s; }
+.crab { display: inline-block; color: var(--accent); aspect-ratio: 3 / 2; cursor: default; }
+.crab svg { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: 50% 100%; }
+.crab rect, .crab g { transform-box: fill-box; transform-origin: center; }
+.crab .c-all, .crab .c-body { transform-origin: 50% 100%; }
+.crab .c-arm-l { --dir: 1; transform-origin: 100% 50%; }
+.crab .c-arm-r { --dir: -1; transform-origin: 0 50%; }
+.crab .c-leg { transform-origin: 50% 0; }
+.crab .c-shadow { opacity: .16; }
+.crab .c-x { opacity: 0; transition: opacity .25s ease; }
+.crab .c-dots, .crab .c-sparks { fill: var(--warning); }
+.crab .c-bang, .crab .c-q { fill: var(--accent-strong); }
+.crab .c-sweat { fill: #8ecae6; }
+.crab .c-all { animation: k-bob 2.4s ease-in-out infinite; }
+.crab .c-eyes { animation: k-blink 4.6s infinite; }
+.crab.swap svg { animation: k-swap .42s cubic-bezier(.3, 1.5, .5, 1); }
 
-/* starting: the CLI is starting up — the rays light up one after another */
-.working[data-state="starting"] { color: var(--muted); }
-.working[data-state="starting"] .claude-mark { color: var(--accent); }
-.working[data-state="starting"] .ray { animation: ray-boot 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * .2s); }
+.brand .icon.crab { width: 30px; height: 20px; }
+.working .icon.crab { width: 30px; height: 20px; margin-inline: 4px; animation: k-enter .6s cubic-bezier(.2, .9, .3, 1.2); }
+.welcome .icon.crab { width: 96px; height: 64px; margin-bottom: 6px; cursor: pointer; }
+.welcome .crab[data-state]:hover .c-all { animation: k-hop .55s ease-out 1; }
 
-/* thinking: a slow turn while the rays breathe in a wave */
-.working[data-state="thinking"] .claude-mark { animation: spin 7s linear infinite; }
-.working[data-state="thinking"] .ray { animation: ray-breathe 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * -.225s); }
-
-/* writing: a quick beat, like typing */
-.working[data-state="writing"] .claude-mark { animation: bob .45s ease-in-out infinite alternate; }
-.working[data-state="writing"] .ray { animation: ray-beat .45s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -.056s); }
-
-/* tool: ticking like a gear while a tool runs */
-.working[data-state="tool"] .claude-mark { animation: spin 2.4s steps(16) infinite; }
-.working[data-state="tool"] .ray:nth-child(odd) { animation: ray-beat .6s ease-in-out infinite alternate; }
-
-/* waiting: hops and wiggles to ask for attention */
+/* the working line's text takes the state's color and slides in on every change; the crab itself stays orange */
+.working { transition: color .3s ease; }
+.working .verb { display: inline-block; }
+.working .verb.swap { animation: verb-in .35s ease-out; }
+.working[data-state="starting"], .working[data-state="stopped"] { color: var(--muted); }
 .working[data-state="waiting"] { color: var(--warning); }
-.working[data-state="waiting"] .claude-mark { animation: hop 1.6s ease-in-out infinite; }
-
-/* end of the turn: a burst when done, a shake on error, a quiet fold when stopped; then the line fades */
-.working.ending { animation: fade-out .9s ease-in forwards; }
-.working[data-state="done"] .ray { animation: ray-burst .7s cubic-bezier(.2, .9, .3, 1.4) both; animation-delay: calc(var(--i) * .03s); }
 .working[data-state="error"] { color: var(--danger); }
-.working[data-state="error"] .claude-mark { animation: shake .45s ease-in-out; }
-.working[data-state="stopped"] { color: var(--muted); }
-.working[data-state="stopped"] .ray { animation: ray-fold .5s ease-in forwards; }
 
-/* welcome page: floats and twinkles; a hover makes it spin */
-.welcome .claude-mark { animation: float 4.5s ease-in-out infinite; cursor: default; }
-.welcome .claude-mark .ray { animation: twinkle 3.4s ease-in-out infinite; animation-delay: calc(var(--i) * -.68s); }
-.welcome .claude-mark:hover svg { animation: spin .9s cubic-bezier(.3, 1.3, .5, 1); }
+/* --- idle ---------------------------------------------------------------------------------------------------------- */
+.crab[data-state="idle"][data-b="1"] .c-all { animation: k-breathe 2.6s ease-in-out infinite; }
+.crab[data-state="idle"][data-b="1"] .c-arm-l { animation: k-pinch 2.6s ease-in-out infinite; }
+.crab[data-state="idle"][data-b="1"] .c-arm-r { animation: k-pinch 2.6s ease-in-out -1.3s infinite; }
+.crab[data-state="idle"][data-b="2"] .c-eyes { animation: k-look 3s ease-in-out infinite; }
+.crab[data-state="idle"][data-b="2"] .c-arm-l { animation: k-wave 1.2s ease-in-out infinite; }
+.crab[data-state="idle"][data-b="2"] .c-all { animation: k-sway 3s ease-in-out infinite; }
+.crab[data-state="idle"][data-b="3"] .c-all, .crab[data-state="idle"][data-b="3"] .c-shadow { animation: k-walk 3.2s ease-in-out infinite; }
+.crab[data-state="idle"][data-b="3"] .c-leg-a { animation: k-step .4s ease-in-out infinite; }
+.crab[data-state="idle"][data-b="3"] .c-leg-b { animation: k-step .4s ease-in-out -.2s infinite; }
 
-/* sidebar brand: turns while any session works, hops when one waits for approval */
-.brand.busy .claude-mark { animation: spin 7s linear infinite; }
-.brand.busy .claude-mark .ray { animation: ray-breathe 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * -.225s); }
-.brand.waiting .claude-mark { color: var(--warning); animation: hop 1.6s ease-in-out infinite; }
+/* --- starting: the CLI is starting up ------------------------------------------------------------------------------ */
+.crab[data-state="starting"][data-b="1"] .c-eyes { animation: k-wake 2.4s ease-in-out infinite; }
+.crab[data-state="starting"][data-b="1"] .c-all { animation: k-stretch 2.4s ease-in-out infinite; }
+.crab[data-state="starting"][data-b="2"] .c-leg { animation: k-boot 1.6s ease-in-out infinite; }
+.crab[data-state="starting"][data-b="2"] .c-leg:nth-of-type(2) { animation-delay: .2s; }
+.crab[data-state="starting"][data-b="2"] .c-leg:nth-of-type(3) { animation-delay: .4s; }
+.crab[data-state="starting"][data-b="2"] .c-leg:nth-of-type(4) { animation-delay: .6s; }
+.crab[data-state="starting"][data-b="2"] .c-body { animation: k-pulse 1.6s ease-in-out infinite; }
+.crab[data-state="starting"][data-b="3"] .c-arm { animation: k-arm-up .9s ease-in-out infinite alternate; }
+.crab[data-state="starting"][data-b="3"] .c-all { animation: k-stretch 1.8s ease-in-out infinite; }
+
+/* --- thinking: thought bubbles rise ------------------------------------------------------------------------------- */
+.crab[data-state="thinking"] .c-dots { opacity: 1; }
+.crab[data-state="thinking"] .c-dots rect { animation: k-rise 1.8s ease-out infinite both; }
+.crab[data-state="thinking"] .c-dots rect:nth-child(2) { animation-delay: .35s; }
+.crab[data-state="thinking"] .c-dots rect:nth-child(3) { animation-delay: .7s; }
+.crab[data-state="thinking"][data-b="1"] .c-arm-l { animation: k-chin 1.4s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="1"] .c-eyes { animation: k-look-up 3s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="1"] .c-all { animation: k-tilt 3s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="2"] .c-all, .crab[data-state="thinking"][data-b="2"] .c-shadow { animation: k-pace 4s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="2"] .c-leg-a { animation: k-step .5s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="2"] .c-leg-b { animation: k-step .5s ease-in-out -.25s infinite; }
+.crab[data-state="thinking"][data-b="2"] .c-eyes { animation: k-look 2s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="3"] .c-eyes { animation: k-squint 2.8s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="3"] .c-arm-l { animation: k-arm 1.4s ease-in-out infinite; }
+.crab[data-state="thinking"][data-b="3"] .c-arm-r { animation: k-arm 1.4s ease-in-out -.7s infinite; }
+.crab[data-state="thinking"][data-b="3"] .c-all { animation: k-sway 2.8s ease-in-out infinite; }
+
+/* --- writing ------------------------------------------------------------------------------------------------------- */
+.crab[data-state="writing"][data-b="1"] .c-eyes { animation: k-read 1.1s steps(4) infinite; }
+.crab[data-state="writing"][data-b="1"] .c-arm-l { animation: k-type .26s ease-in-out infinite; }
+.crab[data-state="writing"][data-b="1"] .c-arm-r { animation: k-type .26s ease-in-out -.13s infinite; }
+.crab[data-state="writing"][data-b="1"] .c-all { animation: k-bob .52s ease-in-out infinite; }
+.crab[data-state="writing"][data-b="2"] .c-all, .crab[data-state="writing"][data-b="2"] .c-shadow { animation: k-walk 1.6s ease-in-out infinite; }
+.crab[data-state="writing"][data-b="2"] .c-leg-a { animation: k-step .2s ease-in-out infinite; }
+.crab[data-state="writing"][data-b="2"] .c-leg-b { animation: k-step .2s ease-in-out -.1s infinite; }
+.crab[data-state="writing"][data-b="2"] .c-arm { animation: k-pinch .4s ease-in-out infinite; }
+.crab[data-state="writing"][data-b="3"] .c-eyes { animation: k-look 1.2s ease-in-out infinite; }
+.crab[data-state="writing"][data-b="3"] .c-arm-l { animation: k-scribble .36s ease-in-out infinite; }
+.crab[data-state="writing"][data-b="3"] .c-arm-r { animation: k-scribble .36s ease-in-out -.18s infinite; }
+.crab[data-state="writing"][data-b="3"] .c-all { animation: k-tilt 1.8s ease-in-out infinite; }
+
+/* --- tool: a tool is running --------------------------------------------------------------------------------------- */
+.crab[data-state="tool"][data-b="1"] .c-arm-r { animation: k-hammer .5s cubic-bezier(.5, 0, .9, .5) infinite; }
+.crab[data-state="tool"][data-b="1"] .c-all { animation: k-recoil .5s ease-out infinite; }
+.crab[data-state="tool"][data-b="1"] .c-sparks { opacity: 1; }
+.crab[data-state="tool"][data-b="1"] .c-sparks rect { animation: k-twinkle .5s ease-out infinite both; }
+.crab[data-state="tool"][data-b="2"] .c-body { animation: k-pulse .6s ease-in-out infinite; }
+.crab[data-state="tool"][data-b="2"] .c-arm-l { animation: k-arm .3s ease-in-out infinite; }
+.crab[data-state="tool"][data-b="2"] .c-arm-r { animation: k-arm .3s ease-in-out -.15s infinite; }
+.crab[data-state="tool"][data-b="2"] .c-eyes { animation: k-squint 1.2s ease-in-out infinite; }
+.crab[data-state="tool"][data-b="3"] .c-all, .crab[data-state="tool"][data-b="3"] .c-shadow { animation: k-dash 1s ease-in-out infinite; }
+.crab[data-state="tool"][data-b="3"] .c-leg-a { animation: k-step .16s ease-in-out infinite; }
+.crab[data-state="tool"][data-b="3"] .c-leg-b { animation: k-step .16s ease-in-out -.08s infinite; }
+.crab[data-state="tool"][data-b="3"] .c-sparks { opacity: 1; }
+.crab[data-state="tool"][data-b="3"] .c-sparks rect { animation: k-twinkle .6s ease-out infinite both; }
+.crab[data-state="tool"][data-b="3"] .c-sparks rect:nth-child(2) { animation-delay: .2s; }
+.crab[data-state="tool"][data-b="3"] .c-sparks rect:nth-child(3) { animation-delay: .4s; }
+
+/* --- waiting: asks for the user's approval ------------------------------------------------------------------------- */
+.crab[data-state="waiting"][data-b="1"] .c-bang, .crab[data-state="waiting"][data-b="3"] .c-bang, .crab[data-state="waiting"][data-b="2"] .c-q { opacity: 1; animation: k-attn .9s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="1"] .c-arm { animation: k-arm-up .35s ease-in-out infinite alternate; }
+.crab[data-state="waiting"][data-b="1"] .c-all { animation: k-hop 1.1s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="1"] .c-shadow { animation: k-shadow-hop 1.1s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="2"] .c-leg:nth-of-type(4) { animation: k-tap .36s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="2"] .c-eyes { animation: k-look-hold 3s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="2"] .c-all { animation: k-tilt 3s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="2"] .c-arm-l { animation: k-wave .8s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="3"] .c-all { animation: k-hop .7s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="3"] .c-shadow { animation: k-shadow-hop .7s ease-in-out infinite; }
+.crab[data-state="waiting"][data-b="3"] .c-arm { animation: k-jack .7s ease-in-out infinite; }
+
+/* --- end of the turn: plays once, the line then fades (thread.js endMoment) ---------------------------------------- */
+.working.ending { animation: fade-out 2.2s ease-in forwards; }
+.crab[data-state="done"] .c-sparks { opacity: 1; }
+.crab[data-state="done"] .c-sparks rect { animation: k-twinkle .55s ease-out 3 both; }
+.crab[data-state="done"] .c-sparks rect:nth-child(2) { animation-delay: .15s; }
+.crab[data-state="done"] .c-sparks rect:nth-child(3) { animation-delay: .3s; }
+.crab[data-state="done"][data-b="1"] .c-all { animation: k-hop .6s ease-out 2; }
+.crab[data-state="done"][data-b="1"] .c-shadow { animation: k-shadow-hop .6s ease-out 2; }
+.crab[data-state="done"][data-b="1"] .c-arm { animation: k-arm-up .3s ease-in-out 4 alternate; }
+.crab[data-state="done"][data-b="2"] .c-all { animation: k-twirl 1s ease-in-out 1; }
+.crab[data-state="done"][data-b="2"] .c-shadow { animation: k-shadow-hop 1s ease-in-out 1; }
+.crab[data-state="done"][data-b="3"] .c-all { animation: k-bow 1.2s ease-in-out 1; }
+.crab[data-state="done"][data-b="3"] .c-arm { animation: k-arm-up .3s ease-in-out .6s 2 alternate; }
+.crab[data-state="done"][data-b="3"] .c-eyes { animation: k-squint-keep 1s ease-in-out both; }
+
+.crab[data-state="error"][data-b="1"] .c-bang, .crab[data-state="error"][data-b="3"] .c-bang { opacity: 1; animation: k-attn .3s ease-in-out 4; }
+.crab[data-state="error"][data-b="2"] .c-sweat, .crab[data-state="error"][data-b="3"] .c-sweat { opacity: 1; animation: k-drip 1s ease-in 2 both; }
+.crab[data-state="error"][data-b="1"] .c-all { animation: k-shake .12s linear 6; }
+.crab[data-state="error"][data-b="1"] .c-eyes { animation: k-wide .3s ease-out both; }
+.crab[data-state="error"][data-b="2"] .c-all { animation: k-slump .7s cubic-bezier(.5, 0, .7, 1.4) both; }
+.crab[data-state="error"][data-b="2"] .c-arm { animation: k-limp .7s ease-in both; }
+.crab[data-state="error"][data-b="2"] .c-eyes { animation: k-squint-keep .7s ease-in both; }
+.crab[data-state="error"][data-b="3"] .c-all { animation: k-jump-scare .9s ease-out 1 both; }
+.crab[data-state="error"][data-b="3"] .c-arm { animation: k-arm-up .12s ease-in-out 8 alternate; }
+
+.crab[data-state="stopped"][data-b="1"] .c-body { animation: k-slump .5s ease-in both; }
+.crab[data-state="stopped"][data-b="1"] .c-leg { animation: k-tuck .5s ease-in both; }
+.crab[data-state="stopped"][data-b="2"] .c-all { animation: k-slump .8s ease-in both; }
+.crab[data-state="stopped"][data-b="2"] .c-eyes { animation: k-squint-keep .8s ease-in both; }
+.crab[data-state="stopped"][data-b="3"] .c-arm { animation: k-shrug .8s ease-in-out 2; }
+.crab[data-state="stopped"][data-b="3"] .c-all { animation: k-shrug-body .8s ease-in-out 2; }
+.crab[data-state="stopped"][data-b="3"] .c-eyes { animation: k-look-hold 1.6s ease-in-out 1; }
 
 /* items that arrive live (thread.js adds .fresh) */
 .turn-meta.fresh .icon { animation: pop .45s cubic-bezier(.2, .9, .3, 1.6); }
 .error-card.fresh { animation: shake .45s ease-in-out; }
 
-@keyframes ray-boot { 0%, 100% { opacity: .15; } 30% { opacity: 1; } }
-@keyframes ray-breathe { 0%, 100% { transform: scale(.55); opacity: .55; } 50% { transform: scale(1); opacity: 1; } }
-@keyframes ray-beat { from { transform: scale(.78); } to { transform: scale(1.08); } }
-@keyframes ray-burst { 0% { transform: scale(1); } 45% { transform: scale(1.45); opacity: 1; } 100% { transform: scale(1); } }
-@keyframes ray-fold { to { transform: scale(.35); opacity: .4; } }
-@keyframes twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.72); } }
-@keyframes bob { to { transform: translateY(-2px); } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@keyframes hop {
-  0%, 55%, 100% { transform: translateY(0) rotate(0); }
-  12% { transform: translateY(-5px) rotate(-14deg); }
-  26% { transform: translateY(0) rotate(10deg); }
-  40% { transform: translateY(-2px) rotate(-5deg); }
+/* whole crab */
+@keyframes k-swap { 0% { transform: scale(1); } 30% { transform: scale(1.18, .8); } 60% { transform: scale(.92, 1.1) translateY(-2px); } 100% { transform: scale(1); } }
+@keyframes k-enter { from { transform: translateX(14px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes k-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+@keyframes k-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05, .95); } }
+@keyframes k-stretch { 0%, 100% { transform: scale(1); } 40% { transform: scale(.9, 1.15) translateY(-1px); } 60% { transform: scale(1.08, .92); } }
+@keyframes k-hop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  15% { transform: translateY(0) scale(1.15, .82); }
+  45% { transform: translateY(-4.5px) scale(.92, 1.1); }
+  72% { transform: translateY(0) scale(1.12, .86); }
+  86% { transform: translateY(0) scale(.97, 1.03); }
 }
-@keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+@keyframes k-shadow-hop { 0%, 15%, 72%, 100% { transform: scaleX(1); opacity: .16; } 45% { transform: scaleX(.55); opacity: .06; } }
+@keyframes k-sway { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+@keyframes k-tilt { 0%, 100% { transform: rotate(0); } 30%, 55% { transform: rotate(-9deg); } }
+@keyframes k-walk { 0%, 100% { transform: translateX(-4px); } 50% { transform: translateX(4px); } }
+@keyframes k-pace { 0%, 100% { transform: translateX(-5px) rotate(-3deg); } 45%, 50% { transform: translateX(5px) rotate(3deg); } 95% { transform: translateX(-5px) rotate(-3deg); } }
+@keyframes k-dash { 0%, 100% { transform: translateX(-6px) skewX(8deg); } 50% { transform: translateX(6px) skewX(-8deg); } }
+@keyframes k-recoil { 0%, 100% { transform: translateY(0); } 55% { transform: translateY(.8px) scale(1.04, .94); } }
+@keyframes k-twirl {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  25% { transform: translateY(-3px) scaleX(0); }
+  50% { transform: translateY(-4.5px) scaleX(-1); }
+  75% { transform: translateY(-3px) scaleX(0); }
+}
+@keyframes k-bow { 0%, 100% { transform: translateY(0) scaleY(1) rotate(0); } 45%, 60% { transform: translateY(1px) scaleY(.72) rotate(-8deg); } }
+@keyframes k-shake { 0%, 100% { transform: translateX(0) rotate(0); } 25% { transform: translateX(-1.6px) rotate(-4deg); } 75% { transform: translateX(1.6px) rotate(4deg); } }
+@keyframes k-jump-scare { 0% { transform: translateY(0) scale(1); } 20% { transform: translateY(-5px) scale(.9, 1.2); } 45% { transform: translateY(0) scale(1.2, .8); } 60%, 100% { transform: translateY(0) scale(1); } }
+@keyframes k-slump { to { transform: translateY(1.5px) scaleY(.78) rotate(-5deg); } }
+@keyframes k-shrug-body { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px) rotate(3deg); } }
+@keyframes k-pulse { 50% { transform: scale(1.12, .9); } }
+
+/* claws (--dir: 1 on the left claw, -1 on the right, so one rotation lifts both outward) */
+@keyframes k-arm { 50% { transform: translateY(-1.8px) rotate(calc(var(--dir) * 18deg)); } }
+@keyframes k-arm-up { to { transform: translateY(-3px) rotate(calc(var(--dir) * 35deg)); } }
+@keyframes k-wave { 0%, 100% { transform: translateY(-2.5px) rotate(20deg); } 50% { transform: translateY(-3px) rotate(55deg); } }
+@keyframes k-chin { 0%, 100% { transform: translate(1.5px, -1.6px) rotate(40deg); } 50% { transform: translate(1.5px, -2.2px) rotate(50deg); } }
+@keyframes k-pinch { 0%, 70%, 100% { transform: scale(1); } 80% { transform: scale(1.25, .55); } 90% { transform: scale(1); } }
+@keyframes k-type { 50% { transform: translateY(1.2px) scaleY(.8); } }
+@keyframes k-jack { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-3px) rotate(calc(var(--dir) * 40deg)); } }
+@keyframes k-limp { to { transform: translateY(2px) rotate(calc(var(--dir) * -25deg)); } }
+@keyframes k-shrug { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px) rotate(calc(var(--dir) * 30deg)); } }
+@keyframes k-scribble { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(1px, -.6px); } 75% { transform: translate(-.6px, .4px); } }
+@keyframes k-hammer { 0%, 100% { transform: rotate(-55deg) translateY(-1.5px); } 55% { transform: rotate(25deg) translateY(.5px); } 65% { transform: rotate(15deg); } }
+
+/* legs */
+@keyframes k-step { 50% { transform: translateY(-1.2px) scaleY(.65); } }
+@keyframes k-tap { 50% { transform: translateY(-1.8px) scaleY(.7); } }
+@keyframes k-tuck { to { transform: scaleY(.35); } }
+@keyframes k-boot { 0%, 100% { opacity: .15; } 30% { opacity: 1; } }
+
+/* eyes */
+@keyframes k-blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes k-wake { 0%, 35% { transform: scaleY(.1); } 45% { transform: scaleY(1); } 50% { transform: scaleY(.1); } 58%, 100% { transform: scaleY(1); } }
+@keyframes k-squint { 0%, 100% { transform: scaleY(1); } 30%, 70% { transform: scaleY(.45); } }
+@keyframes k-squint-keep { to { transform: scaleY(.3); } }
+@keyframes k-wide { to { transform: scale(1.25, 1.7); } }
+@keyframes k-look { 0%, 100% { transform: translateX(-1px); } 50% { transform: translateX(1px); } }
+@keyframes k-look-up { 0%, 100% { transform: translate(-.6px, 0); } 40%, 70% { transform: translate(.8px, -.6px); } }
+@keyframes k-look-hold { 0%, 20% { transform: translateX(-1px); } 50%, 70% { transform: translateX(1px); } 100% { transform: translateX(-1px); } }
+@keyframes k-read { 0% { transform: translateX(-1px); } 100% { transform: translateX(1.2px); } }
+
+/* speech marks */
+@keyframes k-rise { 0% { opacity: 0; transform: translateY(1.5px) scale(.4); } 30% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-2.5px) scale(.8); } }
+@keyframes k-twinkle { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0); } 40% { opacity: 1; transform: scale(1.7) rotate(45deg); } }
+@keyframes k-attn { 0%, 100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-1.5px) scale(1.2); } 60% { transform: translateY(0) scale(.95); } }
+@keyframes k-drip { 0% { opacity: 0; transform: translateY(-1px); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(3.5px); } }
+
+/* page items */
+@keyframes verb-in { from { opacity: 0; transform: translateY(5px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
-@keyframes fade-out { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+@keyframes fade-out { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .claude-mark, .claude-mark svg, .claude-mark .ray, .working.ending, .turn-meta.fresh .icon, .error-card.fresh { animation: none !important; }
+  .crab svg, .crab .c-all, .crab .c-body, .crab .c-eyes, .crab .c-arm, .crab .c-leg, .crab .c-shadow, .crab .c-x, .crab .c-x rect,
+  .working .crab, .working .verb, .working.ending, .turn-meta.fresh .icon, .error-card.fresh { animation: none !important; }
 }

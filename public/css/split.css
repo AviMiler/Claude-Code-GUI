@@ -1,0 +1,26 @@
+/* Split view (split-view.js): a second session in a pane beside the main thread. */
+.app.split { grid-template-columns: var(--sidebar-width) minmax(0, 1fr) minmax(0, 1fr); }
+.app.split.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr) minmax(0, 1fr); }
+.split-pane { display: flex; flex-direction: column; min-width: 0; height: 100vh; border-inline-start: 1px solid var(--border); background: var(--bg); }
+.split-pane[hidden] { display: none; }
+.split-head { display: flex; gap: 6px; align-items: center; min-height: 52px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.split-head .spacer { flex: 1; }
+.split-title { display: flex; gap: 6px; align-items: center; min-width: 0; max-width: 70%; padding: 4px 8px; border: 0; border-radius: var(--radius-sm); background: none;
+  color: var(--text); font: 600 15px var(--font-serif); }
+.split-title:hover { background: var(--surface-3); }
+.split-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split-title .icon { flex: none; width: 15px; height: 15px; color: var(--muted); }
+.split-empty { display: grid; flex: 1; place-items: center; padding: 24px; color: var(--muted); font-size: 14px; text-align: center; }
+.split-empty[hidden] { display: none; }
+.split-pane .thread[hidden] { display: none; }
+.split-pane .thread-column { width: 100%; padding: 14px 18px 18px; }
+.split-composer-area { padding: 0 14px 12px; }
+.split-composer { display: flex; gap: 6px; align-items: flex-end; padding: 6px 6px 6px 10px; padding-inline: 10px 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
+  background: var(--surface); box-shadow: var(--shadow-md, none); }
+.split-composer:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--border-strong)); }
+.split-composer textarea { flex: 1; min-height: 34px; max-height: 160px; padding: 7px 2px; border: 0; background: none; color: var(--text); font: inherit; resize: vertical; outline: none; }
+.split-composer button { display: grid; flex: none; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 10px; }
+.split-composer .send-button { background: var(--accent); color: var(--on-accent); }
+.split-composer .stop-button { background: var(--surface-3); color: var(--text); }
+.split-composer button[hidden] { display: none; }
+.split-composer textarea:disabled { opacity: .5; }

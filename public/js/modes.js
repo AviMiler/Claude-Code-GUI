@@ -14,6 +14,9 @@ export const MODES = [
     description: 'אין בדיקות הרשאה בכלל, כולל הרצת פקודות. רק בתיקייה שאתה סומך עליה.' },
 ];
 
+/** Modes safe mode forbids (lib/session-safe-mode.js). */
+const SAFE_FORBIDDEN = ['bypassPermissions', 'auto'];
+
 /** Shift+Tab cycles through these, like in the terminal. */
 export const MODE_CYCLE = ['default', 'acceptEdits', 'plan'];
 
@@ -24,11 +27,12 @@ export const EFFORT_LEVELS = [
 
 /**
  * Modes the installed CLI accepts (2.1.x lists "manual" for "default").
- * @param {string[]} cliModes From capabilities.permissionModes.
+ * @param {string[]} cliModes From capabilities.permissionModes. @param {boolean} safe the session is in safe mode
  */
-export function availableModes(cliModes = []) {
-  if (!cliModes.length) return MODES;
-  return MODES.filter(mode => cliModes.includes(mode.value) || (mode.value === 'default' && cliModes.includes('manual')));
+export function availableModes(cliModes = [], safe = false) {
+  const offered = safe ? MODES.filter(mode => !SAFE_FORBIDDEN.includes(mode.value)) : MODES; // safe mode: no mode that approves by itself
+  if (!cliModes.length) return offered;
+  return offered.filter(mode => cliModes.includes(mode.value) || (mode.value === 'default' && cliModes.includes('manual')));
 }
 
 export const modeInfo = value => MODES.find(mode => mode.value === value) || MODES[0];

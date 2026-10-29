@@ -1,0 +1,41 @@
+/* Changes pane (panes/pane-changes.js, diff-view.js): the session's diff file by file, with line comments. */
+.changes-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; align-items: center; padding: 4px 2px 8px; background: var(--bg-sidebar); font-size: 12.5px; color: var(--muted); }
+.changes-toolbar .spacer { flex: 1; }
+.changes-hint { color: var(--faint); font-size: 12px; }
+.diff-counts { display: inline-flex; gap: 6px; font: 12px var(--font-mono); }
+.diff-counts .added { color: var(--success); } .diff-counts .removed { color: var(--danger); }
+.diff-files { display: grid; gap: 8px; }
+.diff-file { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.diff-file-head { display: flex; gap: 8px; align-items: center; width: 100%; padding: 7px 10px; border: 0; background: var(--surface-2); color: var(--text); text-align: start; }
+.diff-file-head .icon { flex: none; width: 13px; height: 13px; color: var(--muted); transition: transform .12s; }
+.diff-file-head .icon.collapsed { transform: rotate(90deg); }
+[dir="rtl"] .diff-file-head .icon.collapsed { transform: rotate(-90deg); }
+.diff-path { flex: 1; min-width: 0; overflow: hidden; font: 12px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.diff-status { flex: none; padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 11px; line-height: 18px; }
+.diff-status.added { background: var(--success-soft); color: var(--success); } .diff-status.deleted { background: var(--danger-soft); color: var(--danger); }
+.diff-table { width: 100%; border-collapse: collapse; font: 12px/1.5 var(--font-mono); direction: ltr; }
+.diff-table td { padding: 0 6px; vertical-align: top; }
+.diff-table td.no { position: relative; width: 1%; color: var(--faint); text-align: right; white-space: nowrap; user-select: none; }
+.diff-table td.code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.diff-table .sign { display: inline-block; width: 12px; color: var(--faint); user-select: none; }
+.diff-row.add { background: color-mix(in srgb, var(--success) 12%, transparent); }
+.diff-row.del { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.diff-hunk td { padding: 2px 8px; background: var(--surface-2); color: var(--muted); }
+.diff-add-comment { position: absolute; inset-block-start: 1px; left: -2px; display: none; place-items: center; width: 16px; height: 16px; padding: 0;
+  border: 0; border-radius: 4px; background: var(--accent); color: var(--on-accent); }
+.diff-add-comment .icon { width: 11px; height: 11px; }
+.diff-row:hover .diff-add-comment, .diff-add-comment:focus-visible { display: grid; }
+.diff-comment-row td { padding: 4px 8px 6px; direction: rtl; font-family: var(--font-ui); }
+.diff-comment { display: flex; gap: 6px; align-items: flex-start; padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border)); border-radius: var(--radius-sm); background: var(--bg); font-size: 12.5px; white-space: pre-wrap; }
+.diff-comment > span { flex: 1; }
+.diff-comment .icon { flex: none; width: 14px; height: 14px; color: var(--accent); }
+.diff-comment .icon-button { width: 20px; height: 20px; }
+.diff-comment-box { display: grid; gap: 6px; }
+.diff-comment-box textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: 13px var(--font-ui); resize: vertical; }
+.diff-comment-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.diff-outdated { display: grid; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--warning-soft); font-size: 12px; }
+.diff-outdated > div { display: flex; gap: 6px; align-items: center; justify-content: space-between; }
+.changes-footer { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: center; margin-top: 8px; padding: 8px 4px; border-top: 1px solid var(--border); background: var(--bg-sidebar); font-size: 13px; }
+.changes-footer .spacer { flex: 1; }
+.pane-body:focus { outline: none; }
+.pane-body:has(> .changes-footer:not([hidden])) { padding-bottom: 0; } /* the sticky footer sits on the pane's edge */

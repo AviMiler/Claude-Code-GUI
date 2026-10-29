@@ -110,3 +110,14 @@
 .attachment-name { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .attachment.file .attachment-remove { top: 10px; opacity: 1; background: transparent; color: var(--muted); }
 .attachment.file .attachment-remove:hover { color: var(--text); }
+
+/* /btw side-question card (side-question.js) */
+.side-card { display: grid; gap: 8px; margin-bottom: 8px; border-color: color-mix(in srgb, var(--info) 45%, var(--border-strong)); }
+.side-card h3 { margin: 0; }
+.side-card h3 .icon { color: var(--info); }
+.side-card h3 small { flex: 1; color: var(--faint); font-size: 12px; font-weight: 400; }
+.side-list { display: grid; gap: 6px; max-height: 38vh; overflow-y: auto; }
+.side-question { justify-self: start; max-width: 85%; padding: 5px 10px; border-radius: var(--radius); background: var(--surface-2); font-size: 13.5px; }
+.side-answer { font-size: 14px; } .side-answer .markdown > :last-child { margin-bottom: 0; }
+.side-notice { margin: 4px 0 0; color: var(--faint); font-size: 12.5px; }
+.side-card > input { padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 14px; }

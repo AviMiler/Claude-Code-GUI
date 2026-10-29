@@ -1,10 +1,11 @@
-/** /model, /effort, /output-style, /add-dir: model, effort, output style, main agent and extra folders of the session. */
+/** /model, /effort, /output-style, /add-dir: model, effort, fallback model, output style, main agent and extra folders of the session. */
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
 import { EFFORT_LEVELS } from '../modes.js';
 import { section, field, select, button, list, row, empty, loading, errorBox } from './kit.js';
 import { pickFolder } from '../folder-browser.js';
 import { getModels } from '../state.js';
+import { fallbackSection } from './panel-fallback.js';
 
 function modelCards(models, currentModel, onPick) {
   return h('div', { class: 'radio-cards' }, models.map(model => h('button', {
@@ -44,7 +45,7 @@ export async function renderModelPanel(body, context) {
     }, level.label)))));
 
   if (!session) {
-    body.append(empty('סגנון תשובה, סוכן ראשי ותיקיות נוספות מוגדרים לכל סשן. פתח או צור סשן כדי לשנות אותם.'));
+    body.append(empty('מודל גיבוי, סגנון תשובה, סוכן ראשי ותיקיות נוספות מוגדרים לכל סשן. פתח או צור סשן כדי לשנות אותם.'));
     return;
   }
   const styles = (catalog?.outputStyles?.length ? catalog.outputStyles : ['default']).map(style => ({ value: style === 'default' ? '' : style, label: style }));
@@ -53,6 +54,7 @@ export async function renderModelPanel(body, context) {
   const agents = [{ value: '', label: '(ללא – Claude הרגיל)' }, ...(catalog?.agents || []).map(agent => ({ value: agent.name, label: agent.name }))];
   const agentSelect = select(agents, session.agent || '');
   agentSelect.addEventListener('change', () => apply({ agent: agentSelect.value }));
+  body.append(fallbackSection({ session, models, current: currentModel, supported: Boolean(context.capabilities?.flags?.includes('--fallback-model')), apply, toast: context.toast }));
   body.append(section('סגנון ותפקיד', 'נכנסים לתוקף בהודעה הבאה (Claude Code מופעל מחדש עם השיחה הקיימת).',
     h('div', { class: 'form-grid' }, field('סגנון תשובה (/output-style)', styleSelect), field('סוכן ראשי לסשן (--agent)', agentSelect))));
 

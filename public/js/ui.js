@@ -15,10 +15,10 @@ export function toast(message, type = 'info') {
 
 /**
  * Modal question. Resolves with true/false, or with the typed text (null when cancelled) if `value` is given.
- * @param {{title:string, text?:string, value?:string, placeholder?:string, confirmLabel?:string, danger?:boolean}} options
+ * @param {{title:string, text?:string, value?:string, placeholder?:string, confirmLabel?:string, cancelLabel?:string, danger?:boolean}} options
  * @returns {Promise<boolean|string|null>}
  */
-export function ask({ title, text, value, placeholder, confirmLabel = 'אישור', danger = false }) {
+export function ask({ title, text, value, placeholder, confirmLabel = 'אישור', cancelLabel = 'ביטול', danger = false }) {
   return new Promise(resolve => {
     const input = value !== undefined ? h('input', { value, placeholder: placeholder || '', dir: 'auto' }) : null;
     const dialog = h('dialog', { class: 'confirm' });
@@ -26,7 +26,7 @@ export function ask({ title, text, value, placeholder, confirmLabel = 'אישו�
     const ok = () => finish(input ? input.value.trim() : true);
     dialog.append(...[h('h2', null, title), text ? h('p', { dir: 'auto' }, text) : null, input,
       h('div', { class: 'card-actions' },
-        h('button', { type: 'button', class: 'btn ghost', onClick: () => finish(input ? null : false) }, 'ביטול'),
+        h('button', { type: 'button', class: 'btn ghost', onClick: () => finish(input ? null : false) }, cancelLabel),
         h('button', { type: 'button', class: `btn ${danger ? 'danger' : 'primary'}`, onClick: ok }, confirmLabel))].filter(Boolean));
     dialog.addEventListener('cancel', event => { event.preventDefault(); finish(input ? null : false); });
     input?.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); ok(); } });
