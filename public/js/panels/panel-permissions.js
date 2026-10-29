@@ -27,7 +27,7 @@ export function renderPermissionsPanel(body, context) {
   const { session } = context;
   const currentMode = session?.mode || context.draft.mode;
   body.append(section('מצב הרשאות', 'אפשר גם להחליף מהשבב בתיבת הכתיבה, או עם Shift+Tab.',
-    h('div', { class: 'radio-cards' }, availableModes(context.capabilities.permissionModes).map(mode => h('button', {
+    h('div', { class: 'radio-cards' }, availableModes(context.capabilities.permissionModes, session?.safeMode).map(mode => h('button', {
       type: 'button', class: `radio-card${mode.value === currentMode ? ' on' : ''}`,
       onClick: async () => { await context.updateSession({ mode: mode.value }); context.rerender(); },
     }, icon(mode.icon), h('b', null, mode.label), h('code', { dir: 'ltr' }, mode.value), h('span', null, mode.description))))));

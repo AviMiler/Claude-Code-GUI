@@ -3,7 +3,7 @@ import { shortcutFor } from './shortcut-list.js';
 import { toggleShortcutsDialog } from './shortcuts-dialog.js';
 
 /**
- * @param {{slashMenu, newSession, toggleSidebar, settings, cycleView, toggleChanges, closePane, toggleSplit, stop,
+ * @param {{slashMenu, newSession, toggleSidebar, settings, cycleView, toggleChanges, toggleTerminal, closePane, toggleSplit, stop,
  *   isRunning:()=>boolean}} run what each action of the table does (isRunning: Esc stops only a running turn);
  *   the Ctrl+/ dialog is this folder's own
  * @example bindShortcuts({ slashMenu: () => composer.insert('/'), ... })

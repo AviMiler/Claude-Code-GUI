@@ -1,0 +1,30 @@
+/* Files pane (files/files-pane.js): the folder tree and the text editor. */
+.pane[data-pane="files"] .pane-body { display: flex; flex-direction: column; padding: 0; }
+.files-pane { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.tree-bar { position: sticky; top: 0; z-index: 1; display: flex; gap: 4px; align-items: center; padding: 6px 8px; background: var(--bg-sidebar); }
+.tree-filter-box { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--muted); }
+.tree-filter-box .icon { flex: none; width: 13px; height: 13px; }
+.tree-filter { flex: 1; min-width: 0; padding: 5px 0; border: 0; background: transparent; color: var(--text); font-size: 12.5px; outline: 0; }
+.tree-list { flex: 1; padding: 2px 4px 10px; overflow-y: auto; }
+.tree-row { display: flex; gap: 6px; align-items: center; width: 100%; padding-block: 3px; padding-inline-end: 8px; border: 0; border-radius: 4px; background: transparent; color: var(--text); text-align: start; font-size: 12.5px; }
+.tree-row:hover:not(:disabled) { background: var(--surface-2); }
+.tree-row:disabled { color: var(--faint); cursor: not-allowed; }
+.tree-row .icon { flex: none; width: 13px; height: 13px; color: var(--muted); }
+.tree-row .chevron { transition: transform .12s; }
+.tree-row .chevron.collapsed { transform: rotate(90deg); }
+[dir="rtl"] .tree-row .chevron.collapsed { transform: rotate(-90deg); }
+.tree-name { min-width: 0; overflow: hidden; font: 12.5px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.tree-note { padding-block: 3px; color: var(--muted); font-size: 12px; }
+.tree-note.error { color: var(--danger); }
+.file-editor-view { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.editor-head { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); background: var(--bg-sidebar); }
+.editor-head .back { transform: rotate(-90deg); }
+[dir="rtl"] .editor-head .back { transform: rotate(90deg); }
+.editor-head .spacer { flex: 1; }
+.editor-name { min-width: 0; overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: left; }
+.editor-dirty { color: var(--accent); }
+.editor-notes:empty { display: none; }
+.editor-note { padding: 6px 10px; background: var(--warning-soft); color: var(--warning); font-size: 12.5px; }
+.editor-note.conflict { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--danger-soft); color: var(--danger); }
+.file-editor { flex: 1; min-height: 200px; padding: 8px 10px; border: 0; resize: none; background: var(--code-block); color: var(--text); font: 12.5px/1.55 var(--font-mono); tab-size: 4; white-space: pre; overflow: auto; outline: 0; }
+.editor-status { padding: 3px 10px; border-top: 1px solid var(--border); background: var(--bg-sidebar); color: var(--muted); font-size: 11.5px; text-align: left; }

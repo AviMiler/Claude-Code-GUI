@@ -121,14 +121,14 @@ export function createComposer(root, handlers) {
       autosize();
     },
     /** modelSwitchable=false: the system has one model, so the chip is a plain label instead of a menu. */
-    update({ mode, modelLabel, modelSwitchable: switchable = true, isRunning, contextPercent, hasSession, queue = [] }) {
+    update({ mode, modelLabel, fallbackModel = '', modelSwitchable: switchable = true, isRunning, contextPercent, hasSession, queue = [] }) {
       running = isRunning;
       const info = modeInfo(mode);
       modeChip.className = `composer-chip mode-${info.value}`;
       modeChip.replaceChildren(icon(info.icon), h('span', { class: 'label' }, info.short), icon('chevron-down', 'chevron'));
       modelSwitchable = switchable;
       modelChip.classList.toggle('static', !switchable);
-      modelChip.title = switchable ? 'מודל ומאמץ' : `${modelLabel} – המודל היחיד שזמין במערכת`;
+      modelChip.title = `${switchable ? 'מודל ומאמץ' : `${modelLabel} – המודל היחיד שזמין במערכת`}${fallbackModel ? ` · גיבוי: ${fallbackModel}` : ''}`;
       modelChip.replaceChildren(...[icon('cpu'), h('span', { class: 'label' }, modelLabel), switchable && icon('chevron-down', 'chevron')].filter(Boolean));
       stop.hidden = !running;
       send.title = sendTitle(running);

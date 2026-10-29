@@ -1,5 +1,150 @@
 # Decisions
 
+## [2026-10-29] Safe mode means "a person always approves": it forbids `bypassPermissions` and `auto`, nothing else
+**Decision:** The per-session switch "מצב בטוח" (D16) refuses the permission modes `bypassPermissions` and `auto` on the server (`updateSession`, the plan card's `setMode`; `requireMode(mode, safe)`) and hides them in the GUI (chip menu, permissions panel, Shift+Tab cycle). `dontAsk` stays allowed (it only denies). Turning safe mode on in a forbidden mode switches the session to `default` in the same PATCH. No `--disallowedTools` list. The user's `!` shell and the file editor are not limited, and a mode change reported by the CLI itself is shown, not blocked.
+**Alternatives considered:** (1) Also pass `--disallowedTools` for the riskiest tools (Bash, WebFetch, WebSearch, destructive patterns). (2) A 400 when turning it on in a forbidden mode instead of switching. (3) Blocking the CLI-reported mode change by sending `set_permission_mode` back. (4) Making it a sandbox (also limiting `!` and the editor).
+**Why:** The request said "decide a concrete, honest meaning from what the CLI supports, smallest useful, safe and verifiable". Mode choice is something the GUI controls end to end and can be tested against the fake CLI; a tool-rule syntax cannot be verified without the real CLI and would suggest protection that may not exist. Switching to `default` avoids a dead-end error and is shown in the panel. Naming the limits (CLI-reported change, `!`, editor) in the spec keeps the switch from being read as a sandbox. `optionArgs` is the extension point if a tool list is wanted later.
+
+## [2026-10-29] The custom system prompt travels only as a file, with a file flag that `--help` must list
+**Decision:** The prompt text is written to `<data>/session-settings/<id>.system-prompt.md` and passed as `--append-system-prompt-file` (default, mode append) or `--system-prompt-file` (mode replace), only when `claude --help` lists that flag. If it does not, the panel shows a disabled note and nothing is passed (no argv fallback). Up to 20,000 characters, no NUL. Removed on session delete, kept on archive.
+**Alternatives considered:** (1) `--system-prompt` / `--append-system-prompt` with the text in argv. (2) The per-session settings file (`--settings`), as for `outputStyle`. (3) An env var.
+**Why:** `lib/spawn-utils.js` `quoteForCmd` refuses `%` and mangles quotes on a Windows `.cmd` shim, which free text will hit. The `--settings` file has no known system-prompt key, so using it would invent a CLI feature; an env var for a 20 KB text hits size limits and is not a documented prompt input. Append is the default because replace drops the CLI's own tool guidance. Cost: unavailable on a CLI without the file flags; a stored replace prompt with only the append flag installed applies no prompt, silently (recorded as a known limit). UNVERIFIED on 2.1.246.
+
+## [2026-10-29] Thinking off is the env var `MAX_THINKING_TOKENS=0` only
+**Decision:** `thinkingOff` starts the session's CLI process with `MAX_THINKING_TOKENS=0` (`session-env.js`); no flag and no `set_max_thinking_tokens` control request. It applies from the next message through the idle restart.
+**Alternatives considered:** `--thinking <mode>`, `--max-thinking-tokens 0`, the live control request `set_max_thinking_tokens`, or env plus a flag when listed.
+**Why:** Nothing in the code or docs of this project names those flags or the request; the env var is the one documented way, needs no argv and no `--help` detection, and a single mechanism has a single unverified surface. A live toggle would be nicer, but inventing a control request is not allowed. A local qwen model may ignore the setting (UNVERIFIED).
+
+## [2026-10-29] `/color` is a GUI-only session color from a fixed palette; a fork does not inherit it
+**Decision:** `color` is a whitelisted key (red, orange, yellow, green, teal, blue, purple, pink), stored per session, shown as a dot in the sidebar row, the topbar and the rail, and set by `/color <name>` or the panel. Nothing is sent to the CLI. The catalog's terminal-only `/color` entry becomes a GUI action. A fork copies the other three options but not the color.
+**Alternatives considered:** Sending the CLI's own `/color` (cosmetic in the terminal, no meaning in the GUI); free hex colors; the fork inheriting the color.
+**Why:** The CLI's prompt-bar color has no place in this UI, so a GUI-side session marker is what the command can honestly mean. Keys, not hex, keep markup free of user text and the palette themeable for light and dark. A fork is a different line of work, so a distinguishing color is more useful blank. Palette and wording parity with Desktop is unconfirmed; `COLOR_KEYS` and the client palette are synced by hand.
+
+## [2026-10-29] Rewind: the GUI mints a uuid for every message; a point is valid only with a replayed uuid of the current CLI conversation
+**Decision:** Every user message is sent with a GUI-generated uuid; the item stores `cliUuid`, `afterUuid` (cut point) and, after the CLI's replay, `cliSession`. A message is a rewind point only if `cliSession === session.claudeSessionId` and the session is not `forkPending`. The browser shows the button from `cliUuid` alone and the server answers 409 with a reason otherwise. Corrections, `!` items and image-only messages (button only) are not offered.
+**Alternatives considered:** (1) Take the uuid from the CLI's replay and record it on the item afterwards (needs a broadcast or an item update, and replay order matching if the CLI ignored stdin uuids). (2) Strip the marks when forking (an edit to the already over-budget `session-service.js`). (3) Map by item index.
+**Why:** One identity both sides know, needed anyway by corrections (D9). Checking `cliSession` against `claudeSessionId` disables inherited fork items, items before `/clear` and imported conversations with no change to the full files. Cost: if the real CLI changes the session id on `--resume`, older messages lose rewind after an idle restart (a degradation, not a break).
+
+## [2026-10-29] Rewind: the cut point is the last assistant uuid before the message; the restart is transactional; no `--fork-session`
+**Decision:** `afterUuid` = the last top-level assistant uuid before the message (`null` for the first message: a fresh CLI conversation, no unknown flag). Otherwise restart with `--resume <id> --resume-session-at <afterUuid>` and wait for `initialize`; on failure restore the old id, items and `resumeAt`. `resumeAt` stays until the next message's replay. The removed tail is not kept in the GUI.
+**Alternatives considered:** Seeding a new conversation with the earlier history as text (lossy, costs tokens). `--fork-session` (new session id, loses the link to the GUI session). Keeping the cut tail for an undo (more state, more UI; Desktop removes it). Gating the flag on `--help` (it is probably hidden, so the check would always fail).
+**Why:** `--resume-session-at` keeps messages up to and including the given one, so the cut point has to be the message before. A hidden flag cannot be detected, so the restart is tried and rolled back. Keeping `resumeAt` until the next replay is needed because the cut lives only in memory until a new message is written; clearing it earlier would let an idle restart bring the removed turns back. A stopped or crashed turn has no final assistant uuid, so the cut can land one answer earlier than the GUI shows (documented limit).
+
+## [2026-10-29] Rewind: files first, then the conversation; the cut is validated before anything changes; the CLI writes the files
+**Decision:** The order is validate the cut (`requireCutPoint`, for any mode touching the conversation), restore files (`rewind_files` on the live process, after a dry-run preview), then restart the conversation. A failed file step changes nothing; a failed restart after restored files says so ("הקבצים כבר הוחזרו."). The GUI writes no files itself.
+**Alternatives considered:** Conversation first (the new process may lack the old checkpoints); the GUI restoring files from its own snapshots or git (a second, unsafe write path and git-dependent). Found in Stage 3: files were restored before the cut was validated in mode "both"; fixed.
+**Why:** The current process holds the full checkpoint history, and file restore is the step most likely to be unsupported or to fail, so it goes first and fails alone. Using the CLI's own checkpoints keeps path rules and write safety in one place and works outside git.
+
+## [2026-10-29] Rewind: own routes outside the `/control` whitelist; file checkpointing on by default
+**Decision:** `POST /api/sessions/:id/rewind` (+ `/preview`) take a uuid and a mode only. `rewind_files` stays out of `catalog-service.js`. `CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=1` is set for every session process and spare unless `config.json` has `fileCheckpointing: false`.
+**Alternatives considered:** Adding `rewind_files` to the generic control whitelist (a body-controlled write that can delete files). Checkpointing off by default (the feature would silently offer conversation only). Enabling it only when the user asks for a rewind (too late: snapshots are taken as Claude edits).
+**Why:** A destructive write needs a narrow, validated door. Snapshots must exist before the edit, so the switch has to be on from the start; the cost (copies of edited files under `~/.claude`) is stated in the spec and ARCHITECTURE.md and can be turned off. Unverified: the variable name and `rewind_files` itself on 2.1.246.
+
+## [2026-10-29] Fallback model: per session, set from the model panel, no welcome-page draft, no command
+**Decision:** `session.fallbackModel` is stored per session and set from the `/model` panel of an existing session through `PATCH /api/sessions/:id`. No welcome-page draft default, no `config.json` default, no `/fallback-model` command.
+**Alternatives considered:** (1) A draft default on the welcome page like `effort` (planned in Stage 1; dropped in the build because it needs changes in `state.js`, `session-actions.js`, `warm-up.js`, `api.js` and the warm spare key for a setting that only matters on an overload). (2) A global `fallbackModel` in `config.json` (cannot be cleared per session). (3) A `/fallback-model` command (the built-in list mirrors the CLI binary's commands and this is not known to be one).
+**Why:** The smallest surface that does what `--fallback-model` does, with no new route. Adding a draft or config default later is a small, separate change (a spare-key entry and one line in `optionArgs`).
+
+## [2026-10-29] Fallback model: strict whitelist, equal-to-main refusal, flag left out when unsupported
+**Decision:** The value must match `^[A-Za-z0-9][A-Za-z0-9._:/@+[\]-]{0,127}$`, and must differ from the effective main model (checked against the new `model` when one PATCH carries both); otherwise 400. `optionArgs` omits the flag when `--help` lacks it or when the value equals the main model at start time. The value is its own argv item.
+**Alternatives considered:** Only trimming, as for `model` (a leading dash or `%` would reach argv, and `%` makes `quoteForCmd` throw on `.cmd` shims). Rejecting a main-model change that collides with the fallback instead of omitting the flag.
+**Why:** A whitelist removes the argv and cmd.exe quoting questions at the source, with no escaping code. Omitting the flag at start time keeps the CLI from refusing to start after a later main-model change. Known gap: with no named main model the server cannot see that the value equals the CLI's own default.
+
+## [2026-10-29] Per-session CLI options live in `lib/session-options.js`
+**Decision:** The text settings' PATCH handling and the flag building for new options moved into one small module (`textChanges`, `optionArgs`), called from `session-service.js` and `cli-args.js`.
+**Alternatives considered:** Adding the validation inline in `session-service.js` (152 lines, at the limit) and `cli-args.js`.
+**Why:** The size budget, and D16 will add more per-session options; each becomes an entry there instead of edits in three files. Not over-engineered for D16: the existing flags (`--effort`, `--agent`, ...) were left where they are.
+
+## [2026-10-29] Elicitation reuses the permission pipeline and answer route
+**Decision:** An `elicitation` control request is stored in the same `runtime.pending` map as permission prompts, with `kind: 'elicitation'`, sent over the same `permission` / `permission-resolved` events, and answered through `POST /api/sessions/:id/permissions/:rid` with `{ action, content }`. `runtime-permissions.js` branches on `prompt.kind`.
+**Alternatives considered:** (1) A separate map, event type, route and service function. (2) Resolving elicitations at turn end.
+**Why:** The shared map gives the idle-timer clearing, reload survival, "waiting" notification, sidebar state, split pane, `control_cancel_request` and exit cleanup with no change to `session-service.js` or `app.js` (both at the size limit). The cost: one route carries two body shapes, so cross-kind bodies are rejected with 400 (and a behavior-less body for a permission prompt is now 400 instead of a silent deny). A turn ending does not resolve an elicitation, because an MCP server may ask between turns; only the CLI's cancel, a stop and an exit do.
+
+## [2026-10-29] The interrupt loop moved into `permissions.cancelAll`
+**Decision:** `session-runtime.js` `interrupt()` calls `permissions.cancelAll(runtime)` instead of looping over `pending` itself. It replies `{ action: 'cancel' }` to elicitations and the old deny with `interrupt: true` to permissions.
+**Alternatives considered:** Leaving the loop, which would send a permission-style deny to an elicitation (the wrong reply shape).
+**Why:** The loop had to know the prompt kind; putting it next to the prompts shrank `session-runtime.js` from 147 to 144 lines instead of growing it.
+
+## [2026-10-29] The server normalizes and validates elicitation schemas and answers
+**Decision:** The server turns the untrusted JSON schema into a flat, clamped field list (unsupported types become a `json` text field) and validates the answer against it (only schema keys, own properties, types, ranges, 64 KB cap). The browser draws only from the field list.
+**Alternatives considered:** Passing the raw schema to the browser and trusting its answer; a general JSON-schema validator (needs a dependency).
+**Why:** The schema is attacker-controlled data from an MCP server. A small supported subset is enough for the cards, needs no dependency, and a bad answer is a 400 with the request still pending. Stage 3 found the first version read inherited properties (a required field named `__proto__` counted as filled); now `Object.hasOwn` and `Object.create(null)`. Supported: string, number, integer, boolean, enum, multi-select; everything else is JSON text.
+
+## [2026-10-29] URL-mode elicitation: show the URL, open on click, finish by hand
+**Decision:** The card shows the full URL as text and an open button for http / https only; the user clicks "סיימתי" (accept with no content) when done. No completion event is handled.
+**Alternatives considered:** Opening the link automatically; waiting for a CLI completion event.
+**Why:** Never act on an MCP server's URL without a click, and show the real host. The completion event's name and existence in 2.1.246 are unverified. Desktop parity of the wording is unconfirmed.
+
+## [2026-10-29] The Plan pane reads the session's items, not `get_plan`
+**Decision:** The plan is the latest top-level `ExitPlanMode` item's `input.plan` (a pending approval card's plan wins) and the todos are the latest top-level `TodoWrite`; both come from `session.items` and `pendingPermissions` in the browser. No route, no control request.
+**Alternatives considered:** (1) The CLI's `get_plan` control request (it is in the `/control` whitelist). (2) A new server route that scans the transcript.
+**Why:** `get_plan`'s response shape is unknown for 2.1.246 and it would start a CLI for a session that has none; the items are already in the browser and live. The cost, accepted: no approved or rejected state (the CLI does not say it reliably), so only "ממתינה לאישור" is shown. Desktop parity of the pane is unconfirmed.
+
+## [2026-10-29] `/clear` marks its divider so the Plan pane starts over
+**Decision:** The divider that `/clear` pushes now carries `cleared: true`; `planState` stops its backward scan at it (or, for sessions saved earlier, at a divider whose text starts with "שיחה חדשה"). The compact divider does not reset the pane.
+**Alternatives considered:** (1) Matching the divider text only. (2) Clearing a pane-side cache on the clear event. (3) Leaving the old plan shown.
+**Why:** Stage 3 found the Plan pane still showing the old plan after `/clear`. A flag is robust against a text change; the text fallback keeps old stored sessions working; a pane-side cache would be lost on reload. The Tasks pane keeps its tasks after `/clear` on purpose, like the `/tasks` panel (they live in the CLI process, not the conversation).
+
+## [2026-10-29] The Tasks pane re-reads an open output on change, throttled, with no timer
+**Decision:** An open task output is read again when the task's signature (status, tool uses, last tool, summary) changed since the last read, at most once every 2 s, and only while the panes render.
+**Alternatives considered:** (1) A polling timer per open output. (2) Read only on open and on the "רענון" button. (3) Read on every task event.
+**Why:** The CLI gives a tail on request, not a stream. A timer would run while nothing changes and breaks the batch's no-timer rule for panes; every event flooded the CLI (verified about 1 request per 2 s under 100 ms progress events with the throttle). The cost, accepted: a change inside the 2 s window shows only at the next redraw.
+
+## [2026-10-29] The new panes have no topbar icon and no shortcut; the Tasks card opens the pane
+**Decision:** Plan and Background tasks are reached from the "עוד" menu (generic `onTogglePane(id)` / `paneOpen(id)`) and, for tasks, from the rail card. The topbar chip and `/tasks` keep opening the settings panel.
+**Alternatives considered:** (1) Two more topbar icons. (2) Guessing Desktop's shortcuts. (3) Replacing the panel with the pane.
+**Why:** The topbar already has four pane buttons and little room; Desktop's layout and keys were not checked, so none was invented (as for D10 and D11). The panel stays because `/tasks` and the chip are spec requirements; the pane is its persistent version. All are one-place changes if the user disagrees.
+
+## [2026-10-27] The Files pane edits in a plain textarea, one file at a time
+**Decision:** The editor is a textarea with a status bar (encoding, line ending, caret position). No syntax highlighting, no line-number gutter, no tabs, Tab moves focus, no create / rename / delete.
+**Alternatives considered:** (1) CodeMirror or Monaco. (2) A contenteditable editor with our own highlighting. (3) Tab inserts indentation. (4) Tabs for several open files.
+**Why:** Zero npm dependencies is a platform rule, and a corporate offline machine cannot fetch an editor library. A contenteditable editor is a large amount of code for a worse result than the native textarea (undo, IME, selection). Tab moving focus avoids a keyboard trap; the cost (poor for code) is accepted and told to the user. A narrow pane is one column, so it shows the tree or the editor, not both. Desktop parity of all of this is unconfirmed.
+
+## [2026-10-27] A save is checked by content hash and written in place
+**Decision:** Opening returns a sha256 of the raw bytes; `PUT` sends it back as `baseHash`; a mismatch is HTTP 412 and only `overwrite === true` forces. The file is written in place, in one synchronous block with the re-read and the compare.
+**Alternatives considered:** (1) Compare modification time. (2) Write a temp file and rename it over the original. (3) Lock the file.
+**Why:** Modification time is unreliable on Windows and network drives and changes without a content change. Temp-plus-rename is atomic but fails on Windows when another program holds the file, drops the file's mode and breaks hard links; VS Code writes in place by default. A synchronous block leaves no race inside the server. The cost, accepted: a crash mid-write can truncate the file, and a hard link planted in the folder is written through. Two Stage 3 fixes: `overwrite` must be exactly `true`, and the answer's hash belongs to the text that was sent, not a draft typed afterwards.
+
+## [2026-10-27] The tool-row buttons still open the read-only viewer; the pane is reached by an explicit "edit"
+**Decision:** The open buttons of tool rows and changed-files cards keep opening the viewer dialog. The dialog's "עריכה" button and the file menu's "עריכה בחלונית הקבצים" open the Files pane, only when it is available (main session, room, file inside `cwd` or `addDirs`).
+**Alternatives considered:** Redirect every open action to the pane when it is available (the main agent's first idea).
+**Why:** A redirect would replace the File viewer requirement ("read-only viewer") and lose the line marks that show what a tool read or wrote; the pane is also unavailable without room and for the split pane. Decided in Stage 1 without asking the user; switching the default click is a one-place change (and a spec change). Desktop parity unconfirmed.
+
+## [2026-10-27] Claude is not told about the user's edits in the Files pane
+**Decision:** A save sends nothing to Claude. It refreshes the Changes pane and the rail.
+**Alternatives considered:** (1) A note attached to the next message, like the `!` prefix. (2) An immediate message.
+**Why:** The Changes pane already shows the edit and can send it as comments. A prefix per save would add tokens and noise on every small edit; an immediate message would be a model call the user did not ask for. From memory of the CLI (not verified for 2.1.246): its Edit tool errors when a file changed since Claude last read it, so a stale read does not silently overwrite the user's edit.
+
+## [2026-10-27] Writes refuse `.git`, the GUI's own data and config; mixed line endings and non-UTF-8 files are not edited
+**Decision:** The save route refuses any `.git` segment, the server's `data/` folder (`DATA_DIR`), `config.json` (`CONFIG_PATH`), uploads, `..`, NUL, non-regular files and, on win32, a `:` in the name. Those files open read-only. A file with mixed or lone-CR line endings opens read-only; a file that is not valid UTF-8 or has a UTF-16 BOM, or is over 1 MB, is refused.
+**Alternatives considered:** (1) Allow everything the viewer can read. (2) Normalize mixed endings to the dominant one on save. (3) Decode other encodings.
+**Why:** A file in `.git/hooks` is code that runs on the next git command, and `data/` or `config.json` would let a page overwrite the GUI's own state and token settings. Normalizing mixed endings would rewrite every line (a huge diff in the Changes pane) without telling the user; refusing to save is safe. Re-encoding could corrupt the file. Known gap: a hard link inside the folder to a protected file bypasses the check.
+
+## [2026-10-27] Shell commands run as a fresh shell per command, not a persistent shell
+**Decision:** The Terminal pane and `!` commands spawn one shell per command (`lib/terminal/shell-run.js`), stdin closed, output streamed over SSE. `cd`, environment and shell state do not carry between commands.
+**Alternatives considered:** (1) A persistent shell over pipes, with a sentinel to find the end of each command. (2) node-pty (a dependency, native build). (3) PowerShell only, or cmd only.
+**Why:** No new npm dependencies is a platform rule, so no PTY. cmd.exe and PowerShell over plain pipes show no prompt and give no reliable end-of-command signal, interactive programs hang, and exit codes and output of consecutive commands get mixed. A spawn per command gives an exact exit code, a clean kill of the process tree and output tied to one command, which `!` needs for Claude's context. The cost, accepted and told to the user: no persistent `cd` or variables, no interactive programs, no colours (ANSI stripped), no TUI. Windows behaviour (cmd with `chcp 65001`, PowerShell `-EncodedCommand`, `taskkill /T /F`, UTF-8 output) was written but never run on Windows.
+
+## [2026-10-27] The shell is an enum chosen by the user (cmd default on Windows); the request never names a program
+**Decision:** `shell` is `cmd` | `powershell` on Windows (default cmd, a selector in the pane, per browser, also used by `!`) and `sh` elsewhere. The command string is the only free input; the folder is the session's `cwd` from the server.
+**Alternatives considered:** (1) A configurable executable in `config.json`. (2) PowerShell as the default.
+**Why:** Decided in Stage 1 without asking the user. The request is the attack surface of a route that runs commands, so a fixed enum keeps it from choosing a program. cmd is always present and starts fast; the user named "cmd/PowerShell", so both are offered. Hebrew output needs UTF-8 on both (`chcp 65001`, `[Console]::OutputEncoding`), untested on Windows.
+
+## [2026-10-27] `!` output reaches Claude as a prefix of the next message; the pane's commands do not
+**Decision:** A finished `!` run is stored as a thread item and in the persisted `session.shellContext`; the next message that reaches the CLI (new turn, queued message, correction) gets a prefix (`Caveat:` line, `<bash-input>`, `<bash-stdout>`, `<bash-stderr>`; output cut at 30000 characters) and the context is cleared. If the message does not reach the CLI the context is restored; a slash-command message keeps it. Commands run in the Terminal pane are not added to the context and are not in the thread.
+**Alternatives considered:** (1) Send each `!` result to the CLI as its own message (a model turn by itself, which the request forbids). (2) Keep the context in browser memory. (3) Add the pane's commands to the context too.
+**Why:** Claude Code's bash mode puts the command and output into the conversation without a model call; a prefix on the next real message does the same here. It is server-side and persisted so a reload or another tab does not silently drop it, and a note above the composer says how many commands will be attached. The prefix format was written from memory of the CLI's own and is NOT checked against 2.1.246. That the pane stays out of Claude's context is a decision NOT confirmed against the Desktop docs page. The cost: the user bubble does not show the prefix, so the thread and what Claude read differ (the shell items and the note explain it).
+
+## [2026-10-27] Shell routes are POST-only and refuse archived sessions without restoring them
+**Decision:** `POST /api/sessions/:id/shell` and `.../shell/stop` go through the Host / Origin guard; an archived session and a session whose folder is gone answer 409; a shell command never restores a session. One run per session, no timeout, 64 KB per stream; runs die on stop, session delete, archive and server exit (including SIGINT, SIGTERM, SIGHUP).
+**Alternatives considered:** (1) Restore the archived session like a message does. (2) A confirmation before each `!`. (3) A timeout. (4) A GET route for output.
+**Why:** The user asked that nothing runs for an archived session or a missing folder; "send restores" (D6) is a rule for messages, and running a command in a re-created worktree by accident is worse than a message. A confirmation would make bash mode useless (the terminal has none), and the Origin check is the project's convention for anything that acts. No timeout because the user can stop it and a build may take long. Output over SSE avoids a new GET. This widens the accepted "no authentication" issue: a local program can now run a command in a session folder without bypass mode (ARCHITECTURE.md -> Security). The verify-agent found orphaned commands on SIGINT/SIGTERM and a lost `!` context when the correction fell back; both fixed.
+
+## [2026-10-27] Ctrl+` toggles the Terminal pane, Desktop parity unverified
+**Decision:** The shortcut table has a page-wide Ctrl+` row (`code` Backquote) for the Terminal pane and a documentation-only `!` row (21 rows).
+**Alternatives considered:** No shortcut.
+**Why:** I believed Desktop uses Ctrl+`; the main agent did not check the Desktop page, so it is a recorded guess, matching the batch rule only if true. It is one table row to change or remove.
+
 ## [2026-10-27] Enter while Claude works is a mid-turn correction; the GUI queue moved to Alt+Enter (user decision)
 **Decision:** While a turn runs, Enter (main and split composers) writes the message straight to the live CLI as a correction (`{type:'user', message, uuid}`), which the CLI drains into the running turn at its next step; Alt+Enter keeps the old GUI queue (sent at the end of the turn). The GUI queue's edit, remove and "שליחת הבאה" are unchanged; there is no "send now" control, so nothing else injects.
 **Alternatives considered:** (1) Keep Enter = queue and give corrections another key. (2) Make the GUI queue itself inject ("send now"). (3) Corrections for every sender.

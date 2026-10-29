@@ -15,7 +15,7 @@ export function createChipMenus({ actions, getComposer }) {
   return {
     onModeMenu(anchor) {
       const current = activeSession()?.mode || state.draft.mode;
-      showDropdown(anchor, [{ section: 'מצב הרשאות · Shift+Tab' }, ...availableModes(state.capabilities.permissionModes).map(mode => ({
+      showDropdown(anchor, [{ section: 'מצב הרשאות · Shift+Tab' }, ...availableModes(state.capabilities.permissionModes, activeSession()?.safeMode).map(mode => ({
         icon: mode.icon, title: mode.label, desc: mode.description, checked: mode.value === current, onSelect: () => actions.setMode(mode.value),
       })), { icon: 'shield', title: 'כללי הרשאה…', hint: '/permissions', onSelect: () => actions.openPanel('permissions') }]);
     },

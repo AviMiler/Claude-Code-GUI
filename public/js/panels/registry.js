@@ -13,9 +13,11 @@ import { renderHelpPanel } from './panel-help.js';
 import { renderNotificationsPanel } from './panel-notifications.js';
 import { renderTasksPanel } from './panel-tasks.js';
 import { renderTemplatesPanel } from './panel-templates.js';
+import { renderSessionOptionsPanel } from './panel-session-options.js';
 
 export const PANELS = [
   { id: 'model', group: 'session', title: 'מודל וסשן', icon: 'cpu', render: renderModelPanel },
+  { id: 'session-options', group: 'session', title: 'אפשרויות הסשן', icon: 'sliders', render: renderSessionOptionsPanel },
   { id: 'permissions', group: 'session', title: 'הרשאות', icon: 'shield', render: renderPermissionsPanel },
   { id: 'usage', group: 'session', title: 'הקשר ושימוש', icon: 'gauge', render: renderUsagePanel },
   { id: 'diff', group: 'session', title: 'שינויים (git)', icon: 'diff', render: renderDiffPanel },

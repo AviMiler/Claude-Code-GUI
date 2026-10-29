@@ -23,6 +23,7 @@ import { createPanes } from './panes/panes.js';
 import { bindShortcuts } from './shortcuts/bind-shortcuts.js';
 import { enableFileMenus } from './context-menu/file-menu.js';
 import { viewModeLabel } from './transcript/view-mode.js';
+import { showLiveShells } from './terminal/shell-live.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -35,9 +36,10 @@ const thread = createThread({ scroller: els.scroller, messages: els.messages, on
 const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 enableFileLinks(els.messages, () => state.activeId);
+showLiveShells(els);
 const modelHealth = createModelHealth(byId('model-health'));
 const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh() });
-const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), openPanel: id => actions.openPanel(id), modelLabel,
+const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), modelLabel,
   getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
@@ -61,6 +63,7 @@ function refresh() {
     onArchive: () => actions.archive(), onUnarchive: () => actions.unarchive(),
     onToggleDetails: () => panes.toggle('details'), detailsOpen: panes.isOpen('details'),
     onToggleChanges: () => panes.toggle('changes'), changesOpen: panes.isOpen('changes'),
+    onToggleTerminal: () => panes.toggle('terminal'), terminalOpen: panes.isOpen('terminal'), onToggleFiles: () => panes.toggle('files'), filesOpen: panes.isOpen('files'), onTogglePane: id => panes.toggle(id), paneOpen: id => panes.isOpen(id),
     viewMode: () => thread.view.mode(), onViewMode: mode => thread.view.setMode(mode),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');
@@ -74,7 +77,7 @@ function refresh() {
     });
   }
   const settings = session || state.draft;
-  composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), modelSwitchable: peekModels()?.switchable ?? true, isRunning: session?.status === 'running',
+  composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), fallbackModel: settings.fallbackModel, modelSwitchable: peekModels()?.switchable ?? true, isRunning: session?.status === 'running',
     contextPercent: session ? state.context.get(session.id) ?? -1 : -1, hasSession: Boolean(session), queue: session?.queue || [] });
   const cardsBefore = els.cards.childElementCount;
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
@@ -143,7 +146,7 @@ document.querySelectorAll('[data-panel]').forEach(button => button.addEventListe
 bindShortcuts({
   slashMenu: () => composer.insert('/', { replace: !composer.textarea.value }), newSession: () => selectSession(null),
   toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(),
-  toggleChanges: () => panes.toggle('changes'), closePane: () => panes.closeFocused(),
+  toggleChanges: () => panes.toggle('changes'), toggleTerminal: () => panes.toggle('terminal'), closePane: () => panes.closeFocused(),
   cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
   stop: () => actions.stop(), isRunning: () => activeSession()?.status === 'running',
 });

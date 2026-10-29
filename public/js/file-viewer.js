@@ -6,6 +6,7 @@ import { api } from './api.js';
 import { h, copyText } from './dom.js';
 import { icon } from './icons.js';
 import { toast } from './ui.js';
+import { canOpenInFiles, openInFiles } from './files/open-in-files.js';
 
 const MAX_RENDERED_LINES = 20000;
 const targets = new WeakMap(); // open button -> { path, highlight }
@@ -84,6 +85,7 @@ export async function openFileViewer(sessionId, path, highlight) {
     h('span', { class: 'file-meta' }, `${file.totalLines} שורות${marked.size ? ` · ${marked.size} מסומנות` : ''}`),
     h('button', { type: 'button', class: 'icon-button', title: 'העתקת הנתיב', onClick: async () => { await copyText(file.path); toast('הנתיב הועתק'); } }, icon('copy')),
     h('button', { type: 'button', class: 'icon-button', title: 'העתקת התוכן', onClick: async () => { await copyText(file.content); toast('התוכן הועתק'); } }, icon('file')),
+    canOpenInFiles(sessionId) ? h('button', { type: 'button', class: 'btn small', title: 'פתיחה בחלונית הקבצים לעריכה', onClick: () => { close(); openInFiles(sessionId, file.path); } }, icon('pencil'), 'עריכה') : null,
     h('button', { type: 'button', class: 'icon-button', title: 'סגירה (Esc)', onClick: close }, icon('x'))),
   ...(notes ? [h('div', { class: 'file-note' }, notes)] : []), body); // native append would print a null as "null"
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });

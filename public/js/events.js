@@ -1,11 +1,14 @@
 /**
  * Applies one server event (SSE) to the client state and the views. Every live update flows through here,
  * including the user's notifications (notify.js) for a finished, waiting or failed turn.
- * Event types come from lib/session-service.js: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks.
+ * Event types come from lib/session-service.js: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks,
+ * shell (lib/terminal/shell-runs.js) and rewound (lib/rewind/).
  */
 import { state, forgetCatalog } from './state.js';
 import { notify } from './notify.js';
 import { isTurnStart } from './turn-stats.js';
+import { applyShellEvent, forgetShellSession } from './terminal/shell-store.js';
+import { applyRewound } from './rewind/rewind-apply.js';
 
 /** Window event fired when a session's background tasks change (panels/panel-tasks.js listens while open). */
 export const TASKS_EVENT = 'claude-gui:tasks';
@@ -48,6 +51,7 @@ export function handleEvent(event, view) {
     case 'removed':
       state.sessions.delete(event.sessionId);
       forgetCatalog({ sessionId: event.sessionId });
+      forgetShellSession(event.sessionId);
       if (isActive) return view.selectSession(null);
       break;
     case 'item':
@@ -57,6 +61,12 @@ export function handleEvent(event, view) {
       threads.forEach(thread => thread.append(event.item, session.items.length - 1, session.items));
       if (event.item.kind === 'divider' || event.item.kind === 'command-output') view.fetchContext(event.sessionId);
       break;
+    case 'rewound':
+      applyRewound(event, view);
+      break;
+    case 'shell':
+      applyShellEvent(event);
+      return undefined; // only the terminal pane and the live `!` card listen (terminal/)
     case 'delta':
       threads.forEach(thread => thread.delta(event));
       return undefined; // no other view depends on streaming text

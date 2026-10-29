@@ -3,6 +3,13 @@
  * (a turn starts or ends), when another session is shown, or on demand. One request at a time per session.
  */
 
+const fetchers = new Set(); // the entries of every fetcher, so a change made elsewhere can mark them old
+
+/** Something changed the session's folder (a saved edit): the next draw of every pane fetches again. */
+export function invalidateSessionFetches(sessionId) {
+  fetchers.forEach(entries => { const entry = entries.get(sessionId); if (entry) entry.status = null; });
+}
+
 /**
  * @template T
  * @param {(sessionId:string)=>Promise<T>} load
@@ -14,6 +21,7 @@
 export function createSessionFetch(load, onError) {
   const entries = new Map(); // session id -> { status, value, pending }
   let shownId = null;
+  fetchers.add(entries);
 
   function get(session, onReady, force = false) {
     const switched = shownId !== session.id;
