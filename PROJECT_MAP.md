@@ -9,7 +9,7 @@ _Last updated: 2026-10-29 (D13: MCP elicitation cards: added lib/elicitation/ (e
 ./dev/config.fake.json  ./dev/fake-claude.cmd  ./dev/fake-claude.js  ./dev/fake-corrections.js  ./dev/fake-catalog.js  ./dev/fake-elicitation.js
 ./lib/elicitation/elicitation-normalize.js  ./lib/elicitation/elicitation-validate.js  ./lib/elicitation/elicitation-reply.js
 ./lib/api-routes.js  ./lib/api-routes-tools.js  ./lib/catalog-service.js  ./lib/claude-files.js
-./lib/cli-args.js  ./lib/cli-capabilities.js  ./lib/cli-commands.js  ./lib/cli-process.js  ./lib/config.js
+./lib/cli-args.js  ./lib/session-options.js  ./lib/cli-capabilities.js  ./lib/cli-commands.js  ./lib/cli-process.js  ./lib/config.js
 ./lib/terminal/shell-spec.js  ./lib/terminal/shell-run.js  ./lib/terminal/shell-runs.js  ./lib/terminal/shell-context.js  ./lib/terminal/terminal-routes.js
 ./lib/files/safe-path.js  ./lib/files/text-format.js  ./lib/files/file-open.js  ./lib/files/file-save.js  ./lib/files/file-tree.js  ./lib/files/files-routes.js
 ./lib/git/run.js  ./lib/git/changes.js  ./lib/git/session-diff.js  ./lib/git/worktree.js  ./lib/git/worktree-paths.js  ./lib/git/worktree-remove.js
@@ -36,7 +36,7 @@ _Last updated: 2026-10-29 (D13: MCP elicitation cards: added lib/elicitation/ (e
 ./public/js/tasks/task-format.js  ./public/js/tasks/task-actions.js  ./public/js/tasks/tasks-pane.js
 ./public/js/context-menu/menu.js  ./public/js/context-menu/session-menu.js  ./public/js/context-menu/file-menu.js  ./public/js/context-menu/paths.js
 ./public/js/panels/registry.js  ./public/js/panels/panel-host.js  ./public/js/panels/kit.js  ./public/js/panels/file-editor.js
-./public/js/panels/panel-model.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
+./public/js/panels/panel-model.js  ./public/js/panels/panel-fallback.js  ./public/js/panels/panel-permissions.js  ./public/js/panels/panel-usage.js
 ./public/js/panels/panel-workspace.js  ./public/js/panels/panel-skills.js  ./public/js/panels/panel-agents.js
 ./public/js/panels/panel-mcp.js  ./public/js/panels/panel-plugins.js  ./public/js/panels/panel-config.js
 ./public/js/panels/panel-status.js  ./public/js/panels/panel-help.js  ./public/js/panels/panel-notifications.js  ./public/js/panels/panel-tasks.js  ./public/js/panels/panel-templates.js
@@ -57,7 +57,9 @@ Also at the root: `./spec.md` (permanent requirements).
 | `lib/session-store.js` | In-memory sessions with persistence to `data/sessions.json` (or `CLAUDE_GUI_DATA`); attachments live next to it in `data/images/` and `data/uploads/`. A session has `worktree` (`{ path, branch, root, source }` or null; set only by the server) and, since D6, `archived` / `archivedAt` (set only by `session-archive.js`). |
 | `lib/spawn-utils.js` | How to start `claude` (cmd.exe quoting) and run it to completion. |
 | `lib/cli-capabilities.js` | Reads `claude --help/--version`: version, flags, permission modes. |
-| `lib/cli-args.js` | Flags for a session process, filtered by capabilities (always `--add-dir` for the uploads folder; since D9 `--replay-user-messages` when `--help` lists it). |
+| `lib/cli-args.js` | Flags for a session process, filtered by capabilities (always `--add-dir` for the uploads folder; since D9 `--replay-user-messages` when `--help` lists it; since D14 the per-session options of `session-options.js`). |
+| `lib/session-options.js` | D14: per-session settings that become CLI flags. `textChanges(patch, current, config)` trims model / effort / agent / outputStyle and validates `fallbackModel` (whitelist, not equal to the main model; 400); `optionArgs(session, config, supports)` returns `--fallback-model <v>` as separate argv items when the CLI lists the flag. |
+| `public/js/panels/panel-fallback.js` | D14: the "מודל גיבוי (fallback)" section of the `/model` panel (input + system model list, save / clear, disabled note when the CLI lacks the flag, hint when equal to the main model). |
 | `lib/cli-process.js` | One long-lived stream-json process and its control protocol; `send(content, { uuid })` (D9: the uuid of a correction). |
 | `lib/session-runtime.js` | Process per session (147 lines since D9): start (`ensure`), `sendMessage`, `correct(sessionId, content)` (a mid-turn correction, only when `canCorrect`), interrupt (`dropCorrections` on stop), settings, idle shutdown (skipped while background tasks run), and the hooks to `session-events.js` (now incl. `onTurnResume`). The moved parts are below. |
 | `lib/runtime-events.js` | Moved out of `session-runtime.js` in D9: `createRuntimeEvents({ hooks, runtimes, scheduleIdle, permissions, spare })` -> `{ handleMessage, handleExit }`. `handleMessage` routes each CLI event (init, deltas, tasks, mode, items; first `noteEvent` for replays and a late resume via `onTurnResume`; at a `result` it asks `holdTurn` whether corrections keep the turn open, else `endTurn`: `turnActive` false, `onTurnEnd`, idle timer). `handleExit` clears the tracking, timers and pending prompts and calls `onExit`. |

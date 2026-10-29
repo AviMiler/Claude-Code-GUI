@@ -40,6 +40,7 @@ function environmentCard(session, summary, modelLabel) {
     summary?.isRepo ? row('ענף', branchName(summary.branch), summary.branch) : null,
     (session.addDirs || []).length ? row('תיקיות נוספות', String(session.addDirs.length), session.addDirs.join('\n')) : null,
     row('מודל', modelLabel(session)),
+    session.fallbackModel ? row('מודל גיבוי', session.fallbackModel) : null,
     row('הרשאות', mode?.label || session.mode));
 }
 

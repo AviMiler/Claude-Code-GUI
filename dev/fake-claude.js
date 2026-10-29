@@ -16,7 +16,7 @@ const { elicit } = require('./fake-elicitation');
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
-  console.log(`Usage: claude [options]\n  --model <model>\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
+  console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
   --include-partial-messages\n  --replay-user-messages\n  --permission-prompts <target>\n  --fork-session\n  --settings <file-or-json>
   --permission-mode <mode>  Permission mode (choices: "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan")
 Commands:\n  mcp  Configure MCP\n  plugin|plugins  Manage plugins\n  doctor  Check health`);

@@ -151,6 +151,15 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
   with Anthropic (or when nothing is known) the browser uses the CLI's own list from the catalog
 - One model -> the composer's model chip is a plain label; several -> a menu. Picking one sets the session's model
   (`--model` on start, `set_model` live)
+- Fallback model (D14): `session.fallbackModel`, per session, set from the `/model` panel through `PATCH` (no route, no draft
+  default). Applied like effort: idle restart with `--resume`, `set_model` does not touch it. Passed as `--fallback-model <v>`
+  only if `--help` lists it and the value differs from the main model; validated by a whitelist (see spec.md "Fallback model")
+
+## Per-session CLI options (`lib/session-options.js`)
+- One place for session settings that become CLI flags: `textChanges(patch, current, config)` trims and validates a PATCH
+  (model, effort, agent, outputStyle, fallbackModel) and `optionArgs(session, config, supports)` returns flags whose values are
+  separate argv items. `cli-args.js` calls it once. A new option is an entry there plus a store field and a restart key in
+  `session-runtime.js` `applySettings`. Not yet moved in: the other flags that `cli-args.js` builds itself (`--effort`, `--agent`, ...)
 
 ## Responsiveness
 - The CLI's startup (seconds) is paid while typing (step 0), not after Enter

@@ -1,5 +1,20 @@
 # Decisions
 
+## [2026-10-29] Fallback model: per session, set from the model panel, no welcome-page draft, no command
+**Decision:** `session.fallbackModel` is stored per session and set from the `/model` panel of an existing session through `PATCH /api/sessions/:id`. No welcome-page draft default, no `config.json` default, no `/fallback-model` command.
+**Alternatives considered:** (1) A draft default on the welcome page like `effort` (planned in Stage 1; dropped in the build because it needs changes in `state.js`, `session-actions.js`, `warm-up.js`, `api.js` and the warm spare key for a setting that only matters on an overload). (2) A global `fallbackModel` in `config.json` (cannot be cleared per session). (3) A `/fallback-model` command (the built-in list mirrors the CLI binary's commands and this is not known to be one).
+**Why:** The smallest surface that does what `--fallback-model` does, with no new route. Adding a draft or config default later is a small, separate change (a spare-key entry and one line in `optionArgs`).
+
+## [2026-10-29] Fallback model: strict whitelist, equal-to-main refusal, flag left out when unsupported
+**Decision:** The value must match `^[A-Za-z0-9][A-Za-z0-9._:/@+[\]-]{0,127}$`, and must differ from the effective main model (checked against the new `model` when one PATCH carries both); otherwise 400. `optionArgs` omits the flag when `--help` lacks it or when the value equals the main model at start time. The value is its own argv item.
+**Alternatives considered:** Only trimming, as for `model` (a leading dash or `%` would reach argv, and `%` makes `quoteForCmd` throw on `.cmd` shims). Rejecting a main-model change that collides with the fallback instead of omitting the flag.
+**Why:** A whitelist removes the argv and cmd.exe quoting questions at the source, with no escaping code. Omitting the flag at start time keeps the CLI from refusing to start after a later main-model change. Known gap: with no named main model the server cannot see that the value equals the CLI's own default.
+
+## [2026-10-29] Per-session CLI options live in `lib/session-options.js`
+**Decision:** The text settings' PATCH handling and the flag building for new options moved into one small module (`textChanges`, `optionArgs`), called from `session-service.js` and `cli-args.js`.
+**Alternatives considered:** Adding the validation inline in `session-service.js` (152 lines, at the limit) and `cli-args.js`.
+**Why:** The size budget, and D16 will add more per-session options; each becomes an entry there instead of edits in three files. Not over-engineered for D16: the existing flags (`--effort`, `--agent`, ...) were left where they are.
+
 ## [2026-10-29] Elicitation reuses the permission pipeline and answer route
 **Decision:** An `elicitation` control request is stored in the same `runtime.pending` map as permission prompts, with `kind: 'elicitation'`, sent over the same `permission` / `permission-resolved` events, and answered through `POST /api/sessions/:id/permissions/:rid` with `{ action, content }`. `runtime-permissions.js` branches on `prompt.kind`.
 **Alternatives considered:** (1) A separate map, event type, route and service function. (2) Resolving elicitations at turn end.

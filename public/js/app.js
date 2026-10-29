@@ -75,7 +75,7 @@ function refresh() {
     });
   }
   const settings = session || state.draft;
-  composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), modelSwitchable: peekModels()?.switchable ?? true, isRunning: session?.status === 'running',
+  composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), fallbackModel: settings.fallbackModel, modelSwitchable: peekModels()?.switchable ?? true, isRunning: session?.status === 'running',
     contextPercent: session ? state.context.get(session.id) ?? -1 : -1, hasSession: Boolean(session), queue: session?.queue || [] });
   const cardsBefore = els.cards.childElementCount;
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
