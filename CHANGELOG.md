@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 (GUI sessions in the CLI's /resume list)
+- Every GUI session now shows in the CLI's `claude --resume` picker: the CLI is started with `CLAUDE_CODE_ENTRYPOINT=claude-code-gui` (with `-p` alone the CLI marks the conversation `sdk-cli`, which the picker hides)
+- Same name in both: a rename in the GUI (and a fork's name) is written to the CLI conversation (`rename_session`, or the CLI's own `custom-title` line); a rename in the terminal comes back to the GUI; a session nobody named takes the CLI's own title after its first answer
+- Answers added to a GUI session from the terminal (`claude --resume`) come back to the GUI after the divider "המשך השיחה מחוץ ל-GUI (טרמינל)", and the next GUI message continues from them
+- New `lib/session-cli-sync.js`; `lib/transcripts.js` reads titles and the part after a known answer; the past-conversations list also reads the CLI's `ai-title`
+
 ## 2026-10-29 (audit: where the GUI departs from the CLI)
 - Docs only, no code change: ARCHITECTURE.md has a new section "Departures from the CLI" (the conversation-history problem, data the GUI owns that the CLI also keeps, CLI features the GUI reimplements, what is aligned, what is GUI-only on purpose); spec.md (Past conversations) and AGENT_CONTEXT.md (Current State) name the history problem
 

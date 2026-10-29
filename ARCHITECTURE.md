@@ -38,21 +38,39 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   built from the CLI's stdout while the turn runs. The CLI keeps the real conversation in
   `<config>/projects/<folder>/<claudeSessionId>.jsonl` and is the only one that sends it to the model (`--resume`).
 - The two are not linked except by `claudeSessionId`, and they drift apart:
-  - The GUI's session list is not the CLI's `/resume` list: a terminal conversation is not in the GUI until it is
-    imported (a one-way copy, `lib/transcripts.js`), and a GUI session is not shown as one in the terminal.
+  - A terminal conversation is not in the GUI's list until it is imported (a one-way copy, `lib/transcripts.js`).
+    The other way is fixed (see "Sync with the CLI conversation" below): a GUI session is in the CLI's `/resume`
+    picker under the same name, and a terminal continuation comes back.
   - The GUI session id and the CLI conversation id are different ids.
   - Rewind (D15), fork and `/clear` change `claudeSessionId` and cut or copy `items` in the GUI separately.
   - Items that exist only in the GUI (`!` and Terminal output, dividers, cards) are not in the CLI's transcript.
   - A session that runs in a worktree (D5) is stored by the CLI under the worktree's folder, not the project's.
 - Risk: if the CLI's file is missing or different (another `CLAUDE_CONFIG_DIR`, deleted, another machine), the GUI
   still shows the whole conversation while `--resume` gives the model none of it, and nothing tells the user.
-- Not verified: that `claude -p` in stream-json mode writes the `.jsonl` at all (no `--no-session-persistence` is passed).
+- Checked on 2.1.312: `claude -p` in stream-json mode writes the `.jsonl`, and the uuids of its `user` / `assistant`
+  stream events are the uuids of the transcript lines.
 - Plan: AGENT_CONTEXT.md -> Next Steps.
+
+### Sync with the CLI conversation (2026-10-29, DECISIONS.md)
+- `lib/session-env.js`: every session process gets `CLAUDE_CODE_ENTRYPOINT=claude-code-gui`. Without it the CLI marks a
+  `-p` conversation `sdk-cli` and its `/resume` picker hides it.
+- `lib/session-cli-sync.js` `pushName`: a name a person gave (`named: true`: rename, fork) goes to the CLI
+  conversation with `rename_session` when its process runs (`session-runtime.js` `requestIfLive`, never starts one),
+  else as a `custom-title` line appended to the `.jsonl` (`transcripts.js` `appendTitle`). `cliName` is the name the
+  current CLI conversation has; `session-events.js` `onSessionId` resets it for a new conversation and pushes again.
+- `pullFromCli`: at `GET /api/state` (`listSessions(config)` -> `pullAll`) and at every turn end, when the file's mtime
+  is not `cliSeen`: a `custom-title` that is not `cliName` (a terminal rename) becomes the name; a session nobody
+  named takes the CLI's `ai-title` / summary / first prompt (`transcripts.js` `readTitles`, the start and end 256 KB of
+  the file); `itemsAfter` follows `parentUuid` from the file's last main-thread answer back to `lastAssistantUuid` and,
+  when another program wrote part of it (`entrypoint` not `claude-code-gui`), appends those items after a divider and
+  closes the idle process so the next message resumes from the file. Skipped while running and after an unanswered
+  rewind (`resumeAt`). A chain that does not reach `lastAssistantUuid` (a terminal rewind, a compaction) is ignored.
+- Older sessions have no `named`: a name other than the folder's counts as given by a person.
 
 ### The GUI is the source for data the CLI also keeps
 | Where | What the GUI does | What the CLI has |
 |---|---|---|
-| Session name (`/rename`, `action:rename`) | Stored only in `sessions.json` | A custom title in the transcript (read by `lib/transcripts.js`); not written |
+| Session name (`/rename`, `action:rename`) | Fixed 2026-10-29: kept in `sessions.json` and synced both ways with the transcript's custom title (`session-cli-sync.js`) | A custom title in the transcript |
 | Cost (`costUsd`, `session-events.js`) | Adds each result's `total_cost_usd` | `/cost`; if `total_cost_usd` is cumulative per process the sum over-counts (UNVERIFIED) |
 | Composer ↑ / ↓ history (`composer-history.js`) | The session's own items | The CLI's prompt history (UNVERIFIED location) |
 | Full-text search (`session-search.js`) | Scans `session.items` only | Conversations never imported are not searched |
