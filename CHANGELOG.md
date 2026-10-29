@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30 (cost comes from the CLI)
+- Changed: a turn's cost is how much the CLI's running total for the process (`get_usage` `session.total_cost_usd`) grew during the turn (`lib/runtime-cost.js`: a baseline after the process starts, a reading after each result, 2 s at most; the result and the end of the turn wait for it, `runtime-events.js` handles a process's events in order). Without a reading the result's own `total_cost_usd` is used, and `null` (unknown) when it has none. Why: the developer decided cost comes from the CLI, and the GUI's sum of `total_cost_usd` over-counts if that value is a running total
+- Removed: the GUI's session cost total ("עלות מצטברת בממשק", `session.costUsd` and its sum). The usage panel shows the CLI's figures for the current process instead (cost, API time, lines added / removed; they restart with each CLI process, the panel says so) plus the `/cost` text. Why: the user chose to show only what the CLI reports (option B, over keeping both)
+- Changed: `dev/fake-claude.js` keeps a running total and answers `get_usage` (`FAKE_CLAUDE_NO_USAGE=1` for the old per-turn behaviour without it)
+- Not verified: the real CLI, a browser look at the panel, Windows. UNVERIFIED (the user declined a paid test): whether a result's `total_cost_usd` is per turn or a running total; only the fallback depends on it. `lib/session-runtime.js` is 153 lines (budget ~150)
+
 ## 2026-10-30 (follow-ups of the history move: incremental read, extras prune, results for terminal turns)
 - Changed: a CLI file is read only from where the last read ended when it only grew (`lib/transcripts/jsonl-reader.js`: per file the parsed lines, the offset after the last newline and 64 check bytes; at most 32 MB cached, a bigger file is read whole). Why: every build parsed the whole file (a 24 MB file: 48 ms first read, 2.7 ms incremental)
 - Changed: `lib/transcripts.js` (256 lines) is split into `lib/transcripts/` (`transcript-files.js`, `transcript-items.js`, `jsonl-reader.js`, `turn-results.js`); `history-build.js`, `session-cli-sync.js` and `api-routes-tools.js` import the new files. Why: code separated by feature, over the ~150-line budget

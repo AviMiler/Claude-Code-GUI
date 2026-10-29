@@ -22,7 +22,7 @@ export function countToolCalls(items, resultIndex) {
 }
 
 /**
- * @param {{durationMs:number, durationApiMs?:number, turns:number, costUsd:number,
+ * @param {{durationMs:number, durationApiMs?:number, turns:number, costUsd:number|null,
  *   usage:{input:number, output:number, cacheRead?:number, cacheWrite?:number}|null}} result a `result` item
  * @param {number|null} toolCalls null when unknown
  * @returns {{text:string, details:string}} text for the line, details for its tooltip

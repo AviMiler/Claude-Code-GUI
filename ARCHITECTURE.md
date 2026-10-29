@@ -66,7 +66,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   on any line of the turn; the last turn only when its final assistant line has `stop_reason: 'end_turn'`. Time = the
   start line to the turn's last user / assistant line; tokens = the last line of each distinct `message.id` summed;
   rounds = the number of distinct ids; no model time, no cost. The item is not an extra and does not go through
-  `session-events.js` `onItem`, so `session.costUsd` is untouched. Subagents' tokens are not counted.
+  `session-events.js` `onItem`. Subagents' tokens are not counted.
 - When (`session-cli-sync.js`): `start(config)` from `server.js` builds every session, then looks every second at the
   files' change times (`stampOf`: the files' mtimes, `resumeAt`, the number of extras and sent messages) and reads a
   file only when it changed, and then only the part appended since the last read (`transcripts/jsonl-reader.js`
@@ -120,7 +120,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | Where | What the GUI does | What the CLI has |
 |---|---|---|
 | Session name (`/rename`, `action:rename`) | Fixed 2026-10-29: kept in `sessions.json` and synced both ways with the transcript's custom title (`session-cli-sync.js`) | A custom title in the transcript |
-| Cost (`costUsd`, `session-events.js`) | Adds each result's `total_cost_usd` | `/cost`; if `total_cost_usd` is cumulative per process the sum over-counts (UNVERIFIED) |
+| Cost (`costUsd` of a result item, `runtime-cost.js`) | Fixed 2026-10-30 (option B): taken from the CLI. A turn's cost is how much the CLI's running total for the process (`get_usage` `session.total_cost_usd`) grew, read after the process starts and after each result (2 s at most, the result waits for it). No session sum is kept or stored; the usage panel shows the CLI's own figure for the current process, which restarts with each new process | `/cost` and `get_usage`. UNVERIFIED: whether a result's `total_cost_usd` is per turn or a running total per process; it is used only when `get_usage` gives no reading, and as a running total it would overstate that turn |
 | Composer ↑ / ↓ history (`composer-history.js`) | The session's own items | The CLI's prompt history (UNVERIFIED location) |
 | Full-text search (`session-search.js`) | Scans `session.items` (built from the CLI's files) | Conversations that are not a GUI session are not searched |
 | Session settings: mode, model, effort, agent, folders, output style, fallback model | Stored per session and passed as flags on every restart; output style through a GUI-written `--settings` file (`cli-args.js`) | The CLI's own settings files and its live state; a CLI change is copied back (`onModeChange`) but the GUI wins on restart. Accepted: run settings, per platform (DECISIONS.md) |
@@ -149,7 +149,8 @@ Permission prompts (`can_use_tool`), elicitation, `/btw` (`side_question`), live
 ### Status of each departure (developer's decisions, 2026-10-29, DECISIONS.md)
 - Accepted, stays as is: session settings (per platform), `!` output kept by the GUI, composer ↑ / ↓ history,
   `/color`, `/clear` (one GUI session over several CLI conversations), `/export` / `/copy`, the Plan pane.
-- To change: cost is taken from the CLI instead of the GUI's sum; prompt templates are stored as CLI custom commands
+- Done 2026-10-30: cost is taken from the CLI instead of the GUI's sum (the developer chose to show only the CLI's figure, no session total across processes; DECISIONS.md).
+- To change: prompt templates are stored as CLI custom commands
   (`~/.claude/commands`, the form and insert-without-send stay GUI additions); the session list shows every CLI
   conversation, like `claude --resume --all` (a terminal conversation is a light row, built only when opened), with a
   choice between search modes and an explanation of each. The worktree per session moves to the CLI's `--worktree`
@@ -174,6 +175,11 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   on the session's process (started if needed; 10 min timeout). The answer is `{ response, notice }`
 - It never becomes a thread item or a queue entry and is never saved; follow-up history lives only in the open card.
   A CLI without `side_question` -> HTTP 501 -> neutral "not available" note. It calls the model, so it costs tokens
+
+## Turn cost (2026-10-30)
+- `lib/runtime-cost.js`: `startCounting(runtime)` (after `initialize`, a `get_usage` baseline into `runtime.costBefore`) and `turnCost(runtime, result)` (a new `get_usage` reading, the growth since the last one, rounded to 1e-8; the result's own `total_cost_usd` when a reading is missing; `null` when the CLI gives none). 2 s wait at most per reading.
+- Ordering: `runtime-events.js` runs `handleMessage` and `handleExit` through an `inOrder` chain on `runtime.waiting`, so a result is emitted after its cost, then `holdTurn` / `endTurn`; the process's later events (a queued next turn) wait behind it. Anything that is added to the handling of one event must keep that order.
+- A warm spare adopted by a session is its own process with its own baseline. Nothing is summed or stored for the session.
 
 ## Background tasks
 - `task_started` / `task_progress` / `task_notification` system events are normalized by `readTaskEvent` (event-translator);
@@ -450,8 +456,8 @@ the right to run commands as that user.
   every request, routes load only at startup, so after an update a new screen may call a route the old server lacks
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, shell (D10: a finished `!` run), divider, notice (`stopped: true` when a
   stop ended the turn), error
-- Result item: `{ kind: 'result', isError, subtype, text, durationMs, durationApiMs?, costUsd, turns, usage: { input, output, cacheRead?, cacheWrite? } | null }`; the `?` fields are missing in older saved items
-- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks; ignored for an archived session), `archived` (boolean) and `archivedAt` (ms, null after a restore) (persisted; set only by `POST .../archive` / `.../unarchive`, never by PATCH; not inherited by forks; the queue is kept while archived), `worktree` (`{ path, branch, root, source }` or null, persisted; set only by the server when the session is made, inherited by forks, not settable through PATCH), `shellContext` (D10: `[{ command, stdout, stderr, exitCode }]`, max 10, persisted; set only by the server when a `!` run ends, cleared when a message carries it to the CLI and by `/clear`, not inherited by forks, not settable through PATCH)
+- Result item: `{ kind: 'result', isError, subtype, text, durationMs, durationApiMs?, costUsd (number, or null when unknown), turns, usage: { input, output, cacheRead?, cacheWrite? } | null }`; the `?` fields are missing in older saved items
+- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks; ignored for an archived session), `archived` (boolean) and `archivedAt` (ms, null after a restore) (persisted; set only by `POST .../archive` / `.../unarchive`, never by PATCH; not inherited by forks; the queue is kept while archived), `worktree` (`{ path, branch, root, source }` or null, persisted; set only by the server when the session is made, inherited by forks, not settable through PATCH), `shellContext` (D10: `[{ command, stdout, stderr, exitCode }]`, max 10, persisted; set only by the server when a `!` run ends, cleared when a message carries it to the CLI and by `/clear`, not inherited by forks, not settable through PATCH)
 - Sidebar grouping: `session-groups.js` (pure: sessions + mode -> groups: pinned first, then by date or by project folder) feeds `sidebar.js`;
   the mode is per browser in localStorage `claude-gui.sidebar-grouping`. Frontend only
 - User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`

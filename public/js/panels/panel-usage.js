@@ -41,9 +41,20 @@ export function renderUsagePanel(body, context) {
         button('ניקוי ההקשר (/clear)', () => { context.close(); context.runCommand('clear'); }, { iconName: 'refresh' }))),
     section('עלות ושימוש (/usage)', null, costBox));
   load(contextBox, () => context.api.control(context.scope, 'get_context_usage'), renderContextUsage);
-  load(costBox, () => context.api.control(context.scope, 'get_session_cost').catch(() => null), result => [
-    kv([['עלות מצטברת בממשק', `$${(session.costUsd || 0).toFixed(4)}`], ['הודעות בשיחה', String(session.items.filter(item => item.kind === 'user').length)],
-      ['מזהה שיחה ב-CLI', session.claudeSessionId || '—']]),
-    result?.text ? h('pre', { class: 'output-pre', style: 'margin-top:10px' }, result.text) : null,
-  ]);
+  // The cost is the CLI's own figure (the user's decision): its running total for the current process, which starts
+  // again with each new process (idle restart, settings change, resume). A CLI without get_usage shows only /cost's text.
+  const ask = subtype => context.api.control(context.scope, subtype).catch(() => null);
+  load(costBox, () => Promise.all([ask('get_usage'), ask('get_session_cost')]), ([usage, cost]) => {
+    const cli = usage?.session && typeof usage.session.total_cost_usd === 'number' ? usage.session : null;
+    return [
+      kv([
+        ...(cli ? [['עלות לפי ה-CLI (התהליך הנוכחי)', `$${cli.total_cost_usd.toFixed(4)}`],
+          ['זמן API (התהליך הנוכחי)', `${((cli.total_api_duration_ms || 0) / 1000).toFixed(1)} שנ׳`],
+          ['שורות שנוספו / נמחקו', `${cli.total_lines_added || 0} / ${cli.total_lines_removed || 0}`]] : []),
+        ['הודעות בשיחה', String(session.items.filter(item => item.kind === 'user').length)],
+        ['מזהה שיחה ב-CLI', session.claudeSessionId || '—']]),
+      cli ? h('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' }, 'ה-CLI סופר לכל תהליך בנפרד: המספר מתחיל מחדש כשהתהליך מופעל מחדש.') : null,
+      cost?.text ? h('pre', { class: 'output-pre', style: 'margin-top:10px' }, cost.text) : null,
+    ];
+  });
 }

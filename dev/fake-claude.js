@@ -33,7 +33,7 @@ let interrupted = false;
 let running = false;
 const corrections = createCorrections(out, sessionId);
 const waiting = new Map();
-let counter = 0;
+let counter = 0; let totalCost = 0; // the process's running cost, like the CLI's (FAKE_CLAUDE_NO_USAGE: per turn, no get_usage)
 
 const CATALOG = fakeCatalog(mode);
 const tasks = new Map(); // task id -> timer of a running background task
@@ -57,7 +57,8 @@ const CONTROL = {
   mcp_status: () => ({ mcpServers: [{ name: 'dummy', status: 'connected', scope: 'project', config: { type: 'stdio', command: 'node' }, tools: [{ name: 'ping' }] }] }),
   get_context_usage: () => ({ categories: [{ name: 'System prompt', tokens: 2600, kind: 'used' }, { name: 'Messages', tokens: 9000, kind: 'used' }, { name: 'Free space', tokens: 188400, kind: 'free' }], totalTokens: 11600, maxTokens: 200000, percentage: 6 }),
   get_status: () => ({ sections: [{ title: 'Session', rows: [{ label: 'Version', value: '2.1.308 (fake)' }, { label: 'Session ID', value: sessionId }] }] }),
-  get_session_cost: () => ({ text: 'Total cost: $0.0000' }),
+  get_session_cost: () => ({ text: `Total cost: ${totalCost.toFixed(4)}` }),
+  ...(!process.env.FAKE_CLAUDE_NO_USAGE && { get_usage: () => ({ session: { total_cost_usd: totalCost, total_api_duration_ms: 0, total_duration_ms: 0, total_lines_added: 0, total_lines_removed: 0, model_usage: {} } }) }),
   list_permission_rules: () => ({ state: { rules: [{ behavior: 'allow', source: 'localSettings', rule: 'Bash(git status)' }] } }),
   get_hooks_listing: () => ({ hooks: [], eventCatalog: [{ name: 'PreToolUse', summary: 'Before tool execution' }] }),
   get_memory_dialog: () => ({ files: [], folders: [], memories: [] }),
@@ -117,7 +118,7 @@ async function turn(prompt) {
     const seen = heard.length ? ` (תיקון שהתקבל באמצע: ${heard.join(' | ')})` : '';
     await stream(`**תשובה מזויפת** ל: ${prompt}${seen}. זה טקסט שמוזרם מילה אחרי מילה כדי לבדוק את הממשק \`code\` וגם רשימה.`, /slow/.test(prompt) ? 400 : 25);
   }
-  out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: 0.0012, usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
+  out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: process.env.FAKE_CLAUDE_NO_USAGE ? 0.0012 : (totalCost += 0.0012), usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
   running = false;
   // Too late for this turn (it was already answering): the waiting corrections start the next one, like the real CLI.
   if (corrections.size()) { const late = corrections.drain(); queue = queue.then(() => turn(`תיקון: ${late.join(' | ')}`)); }
