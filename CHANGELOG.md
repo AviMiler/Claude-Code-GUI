@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-30 (credentials in the base URL; model, agent, effort and output style are checked)
+- Fixed: a model server URL with `user:password@` made `/api/models` fail and showed the credentials to the browser in the error text. The model list, the health dot and the startup log now use one cleaned URL (`displayUrl`, moved into `lib/model-list.js`: no user, password or query, empty unless http or https); the error text never contains the raw URL. The credentials are not turned into a Basic auth header. A base URL that is not http(s) (for example without a scheme, which also leaked) gives "ANTHROPIC_BASE_URL אינה כתובת תקינה" in the list and a red health dot with that text, and "(invalid URL)" in the startup log
+- Added: `model`, `agent`, `effort` and `outputStyle` are checked (`checkText` in `lib/session-options.js`) by PATCH, `POST /api/sessions` and the warm-up: model and agent like the fallback model, effort one of low / medium / high / xhigh / max, output style up to 128 characters without control characters. A bad value is HTTP 400 with a Hebrew message. A fork or import keeps stored values unchecked
+- Changed: the chip menu's model cards, custom model and effort buttons (`actions.trySettings`) show a refused value as a toast instead of failing silently
+- Added: `git-instructions.md`, the developer's git workflow (develop, one commit per task, push after it)
+- Not verified: the toast in a real browser (traced in code, the 400 checked over HTTP); nothing against the real CLI or model server. Known: a model the server lists but the name rule refuses is refused when picked (use `model` in `config.json`)
+
 ## 2026-10-29 (workflow pass on the history move)
 - Subagents' inner steps are shown again after the history is rebuilt: read from the CLI's subagent files and placed inside their tool row
 - A fork keeps its "(ענף)" name while it has not answered yet (it took the source conversation's name)

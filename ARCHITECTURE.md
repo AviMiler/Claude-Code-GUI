@@ -264,7 +264,10 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
   `GET /v1/models` (Ollama: `/api/tags` as fallback) plus the names in `config.json` (`model`, `ANTHROPIC_*_MODEL`);
-  with Anthropic (or when nothing is known) the browser uses the CLI's own list from the catalog
+  with Anthropic (or when nothing is known) the browser uses the CLI's own list from the catalog. The request, the error text and
+  the startup log use `displayUrl(baseUrl)` (exported from `model-list.js`, shared with `model-health.js`): no user:password, no query,
+  and '' for anything that is not http(s), so credentials in `ANTHROPIC_BASE_URL` never reach the browser or the console and are not
+  turned into a Basic auth header
 - One model -> the composer's model chip is a plain label; several -> a menu. Picking one sets the session's model
   (`--model` on start, `set_model` live)
 - Fallback model (D14): `session.fallbackModel`, per session, set from the `/model` panel through `PATCH` (no route, no draft
@@ -276,6 +279,16 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   (model, effort, agent, outputStyle, fallbackModel) and `optionArgs(session, config, supports)` returns flags whose values are
   separate argv items. `cli-args.js` calls it once. A new option is an entry there plus a store field and a restart key in
   `session-runtime.js` `applySettings`. Not yet moved in: the other flags that `cli-args.js` builds itself (`--effort`, `--agent`, ...)
+- Value rules for the four text options (2026-10-30, `checkText(key, value)`, exported): `model` and `agent` must match `MODEL_ID` (the same
+  pattern as `fallbackModel`: `^[A-Za-z0-9][A-Za-z0-9._:/@+[\]-]{0,127}$`, because both go into argv through the `.cmd` shim, where `%` and a
+  leading dash are a problem; plugin agents are `plugin:name`); `effort` is `''` or `low|medium|high|xhigh|max` (synced by hand with
+  `public/js/modes.js` `EFFORT_LEVELS`: a level a newer CLI adds is refused until it is added in `session-options.js`); `outputStyle` is `''`
+  or up to 128 characters without control characters (spaces allowed; it goes only into the `--settings` JSON file, never argv). A value is
+  trimmed; `undefined` / `null` mean `''`; a non-string is 400; a bad value is 400 with a Hebrew message. Checked on the request paths only:
+  `textChanges` (PATCH; a non-string PATCH value is still ignored), `startSession` (`POST /api/sessions`) and the draft branch of `warm`.
+  `createSession` does not check, so a fork or import keeps the values already stored, and a stored value is not re-checked at CLI start.
+  Known: a model the model server lists but `MODEL_ID` refuses (for example a vLLM id that is a path, or a name with a space) can be shown as a
+  card and then refused when picked; `model` in `config.json` is the user's own file and is not checked
 - D16 added four more, each in its own small module that `session-options.js` delegates to (the table stays ~150 lines):
   `thinkingOff` -> env `MAX_THINKING_TOKENS=0` (`session-env.js` `withSessionEnv`, applied by `startProcess` in `session-runtime.js`, so it
   covers a restart and a spare adoption path the same way; no flag); `systemPrompt` + `systemPromptMode` -> a file in
@@ -395,7 +408,7 @@ the right to run commands as that user.
 
 **Outside this computer**
 - The GUI server makes one kind of network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured
-  token), only when the base URL is not Anthropic's. It serves the model list (`lib/model-list.js`, cached 5 min) and the
+  token; the URL is used without user:password and query), only when the base URL is not Anthropic's. It serves the model list (`lib/model-list.js`, cached 5 min) and the
   health dot (`GET /api/model-health`, `lib/model-health.js`, cached 15 s, polled by each visible tab every 60 s and after
   a failed turn). The cloud is never pinged. Claude Code talks to the model server only through the messages API, which
   cannot change the server's configuration.
