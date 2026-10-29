@@ -46,11 +46,13 @@ function askVariables(template, names) {
 }
 
 /**
- * Fills a template's variables (if any) and inserts the result into the composer.
- * @param {{name:string, text:string}} template
+ * Fills a template's variables (if any) and inserts the result into the composer. A command whose text the CLI must
+ * expand itself (!`command`, a line starting with @) goes in as `/name `: the CLI runs it on send.
+ * @param {{id:string, name:string, text:string, expands?:boolean}} template
  * @param {(text:string)=>void} insert puts text into the composer
  */
 export async function useTemplate(template, insert) {
+  if (template.expands) return insert(`/${template.id} `);
   const names = templateVariables(template.text);
   const values = names.length ? await askVariables(template, names) : {};
   if (values) insert(fillTemplate(template.text, values));
@@ -72,7 +74,7 @@ export async function showTemplateMenu(anchor, { insert, openPanel }) {
   const search = h('input', { type: 'search', class: 'menu-search', placeholder: 'חיפוש תבנית…', dir: 'auto', 'aria-label': 'חיפוש תבנית' });
   const entries = templates.map(template => ({
     icon: 'file', title: template.name, desc: template.text.replace(/\s+/g, ' ').slice(0, 90),
-    tag: templateVariables(template.text).length ? '{{…}}' : '', onSelect: () => useTemplate(template, insert),
+    tag: template.expands ? `/${template.id}` : templateVariables(template.text).length ? '{{…}}' : '', onSelect: () => useTemplate(template, insert),
   }));
   const menu = showDropdown(anchor, [
     { section: 'תבניות פרומפטים' },

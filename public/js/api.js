@@ -61,7 +61,10 @@ export const api = {
   openFile: (sessionId, path) => request('GET', `/api/sessions/${sessionId}/file?${query({ path })}`),
   /** Saves an edit; status 412 (error.status) when the file changed on disk since it was opened. @returns {Promise<{hash, size, mtimeMs}>} */
   saveFile: (sessionId, edit) => request('PUT', `/api/sessions/${sessionId}/file`, edit),
-  /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */
+  /**
+   * Prompt templates = the user's CLI commands: [{ id (command name), name, text ({{variables}}), expands, updatedAt }],
+   * newest first. saveTemplate(name, { description, text, create, previous }): previous = the name it had (a rename).
+   */
   templates: () => request('GET', '/api/templates'),
   saveTemplate: (id, template) => request('PUT', `/api/templates/${id}`, template),
   deleteTemplate: id => request('DELETE', `/api/templates/${id}`),

@@ -5,7 +5,7 @@ _Last updated: 2026-10-30 — the D1–D16 sections are below; the history of ea
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
 The server speaks Claude Code's control protocol (the one the Agent SDK uses) over the process's stdin/stdout:
 user turns, permission prompts, interrupt, model/mode switches, and read-only catalog queries. No database;
-sessions are kept in memory and saved to `data/sessions.json` (settings and the GUI's own items only; the conversation is read from the CLI's files, see Departures from the CLI); prompt templates are saved to `data/templates.json`.
+sessions are kept in memory and saved to `data/sessions.json` (settings and the GUI's own items only; the conversation is read from the CLI's files, see Departures from the CLI); prompt templates are the user's CLI custom commands (`<config home>/commands/*.md`), not saved by the GUI.
 
 ## Data Flow
 0. While the user types, `POST /api/warm` starts the CLI ahead of time: the session's own process, or (on the welcome
@@ -136,7 +136,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | Safe mode (D16) | A GUI policy on permission modes | The CLI's permission settings (a bypass-disable setting, UNVERIFIED key) |
 | Custom system prompt (D16) | Text owned by the GUI (`data/session-settings/`), passed with the CLI's file flags | The CLI's own `CLAUDE.md` and output styles |
 | Worktree per session (D5) | Runs `git worktree` itself | The CLI's `--worktree`: checked by the developer to work in `-p` mode without a terminal; to move to it (DECISIONS.md) |
-| Prompt templates | A GUI library (`data/templates.json`) | The CLI's custom slash commands and skills |
+| Prompt templates | Each is a CLI custom command file in the user's commands folder (since 2026-10-30; the fill form and insert-without-send are GUI additions) | Aligned: the terminal's `/name` uses the same files. Limit: `$1`/`$2` expansion by the real CLI UNVERIFIED |
 | `/color` | GUI-only color | The CLI's `/color` is cosmetic; decision recorded |
 | Model list (`model-list.js`) | Reads the model server, not the CLI | Decision recorded (custom base URL) |
 | Plan pane | Reads `items`, not `get_plan` | Decision recorded |
@@ -150,8 +150,9 @@ Permission prompts (`can_use_tool`), elicitation, `/btw` (`side_question`), live
 - Accepted, stays as is: session settings (per platform), `!` output kept by the GUI, composer ↑ / ↓ history,
   `/color`, `/clear` (one GUI session over several CLI conversations), `/export` / `/copy`, the Plan pane.
 - Done 2026-10-30: cost is taken from the CLI instead of the GUI's sum (the developer chose to show only the CLI's figure, no session total across processes; DECISIONS.md).
-- To change: prompt templates are stored as CLI custom commands
-  (`~/.claude/commands`, the form and insert-without-send stay GUI additions); the session list shows every CLI
+- Done 2026-10-30: prompt templates are stored as CLI custom commands
+  (`~/.claude/commands`, the form and insert-without-send stay GUI additions; DECISIONS.md).
+- To change: the session list shows every CLI
   conversation, like `claude --resume --all` (a terminal conversation is a light row, built only when opened), with a
   choice between search modes and an explanation of each. The worktree per session moves to the CLI's `--worktree`
   (the developer checked that it works in `-p` mode without a terminal; the D5 reason no longer holds).
@@ -190,11 +191,14 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   (`/control` whitelist), through the shared `tasks/task-actions.js`; a CLI without them gives a neutral "not available" note
 
 ## Prompt templates
-- `lib/templates.js` keeps the user's saved prompts in `data/templates.json` (next to `sessions.json`, `CLAUDE_GUI_DATA`; temp file + rename). Routes in
-  `lib/api-routes-tools.js`: `GET /api/templates` (newest first), `PUT /api/templates/:id` (upsert; id from the browser, `/^[\w-]{1,64}$/`), `DELETE` (404 if missing).
-  Limits: name 80, text 20000, 200 templates (409). Writes pass the Origin check; no model call
-- The browser (`public/js/templates.js`) parses `{{name}}` variables, shows the fill form and inserts the result into the composer (never sends); the
-  "+" menu (`chip-menus.js`) and the panel (`panel-templates.js`) both use it
+- A template is a CLI custom command: `lib/templates/template-store.js` lists, saves and removes `<configHome>/commands/<name>.md` (user scope, files only,
+  `NAME_PATTERN` names, temp file + rename). `lib/templates/command-format.js` reads and writes the file: `description` is the Hebrew name, the body is the text,
+  variables are `$1`…`$9` (a single one `$ARGUMENTS`) plus `argument-hint`; other front matter is kept. Routes in `lib/api-routes-tools.js`:
+  `GET /api/templates` (newest first by file mtime), `PUT /api/templates/:name` (`{ description, text, create, previous }`: create 409 when taken, rename when `previous` differs),
+  `DELETE` (404 if missing). Limits: description 80, text 20000, 200 listed (409 on create), at most 9 variables. Writes pass the Origin check; no model call
+- `lib/templates/template-migration.js` (`migrateTemplates`, called from `server.js` at startup) moves a leftover `data/templates.json` into command files once and renames it `.migrated`
+- The browser (`public/js/templates.js`) turns the file's arguments into `{{name}}` variables, shows the fill form and inserts the filled text into the composer (never sends); a command the CLI
+  expands (an inline `!` followed by a backtick command, or a line starting with `@`) inserts `/name ` instead. The "+" menu (`chip-menus.js`) and the panel (`panel-templates.js`) both use it
 
 ## File viewer
 - A click on the open button of a file tool row (Read, Edit, MultiEdit, Write, NotebookEdit) or a changed-files card row calls `GET /api/file-view?sessionId=&path=`
@@ -368,7 +372,7 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
 | `/btw` on its own route, not in the `/control` whitelist | `side_question` calls the model (tokens) and needs a long timeout; the generic control routes are documented as no-token with short timeouts. See DECISIONS.md |
 | Background tasks in memory, idle shutdown blocked while they run | Tasks live inside the CLI process, so persisting them would show ghosts; retiring the process would kill a long job after `idleMinutes` |
 | Session search in the browser, no server index | The browser already holds every item (`/api/state` + SSE); no route or index to keep in sync. See DECISIONS.md |
-| Prompt templates on the server (`data/templates.json`), not localStorage | User content must survive a browser reset and be shared by every tab; preferences stay per browser. See DECISIONS.md |
+| Prompt templates are the user's CLI custom command files, not a GUI file or localStorage | The CLI is the source of truth: the terminal's `/name` shares them, they survive a browser reset and every tab sees them (was `data/templates.json` until 2026-10-30). See DECISIONS.md |
 | File viewer reads the current file through a session-scoped route | Tool items hold only partial content; roots come from the session on the server so the route is not an arbitrary-file reader. See DECISIONS.md |
 | Pane area for the main session only, hidden by a room rule | Desktop panes belong to the focused session; `/btw` and the search bar are already main-only; a width rule is simpler and safer than a special case for the split view. See DECISIONS.md |
 | Rail totals from a small `git-summary` route | `/api/git` returns up to 300000 characters of diff; the rail needs only counts and must not fetch that on every turn. See DECISIONS.md |
