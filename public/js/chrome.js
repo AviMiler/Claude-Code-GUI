@@ -31,7 +31,7 @@ function greeting() {
  * @param {HTMLElement} bar
  * @param {object|null} session
  * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onToggleDetails,
- *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, onToggleTerminal, terminalOpen:boolean, onToggleFiles, filesOpen:boolean, viewMode:()=>string, onViewMode, onArchive, onUnarchive, onNewSession}}
+ *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, onToggleTerminal, terminalOpen:boolean, onToggleFiles, filesOpen:boolean, onTogglePane, paneOpen:(id:string)=>boolean, viewMode:()=>string, onViewMode, onArchive, onUnarchive, onNewSession}}
  *   handlers detailsOpen / changesOpen: that pane is open (its toggle shows pressed); viewMode: the transcript's current mode
  */
 export function renderTopbar(bar, session, handlers) {
@@ -67,6 +67,8 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', disabled: Boolean(session.archived), onSelect: handlers.onPin },
     session.archived ? { icon: 'history', title: 'שחזור מהארכיון', onSelect: handlers.onUnarchive }
       : { icon: 'archive', title: 'העברה לארכיון', onSelect: handlers.onArchive },
+    { icon: 'map', title: handlers.paneOpen('plan') ? 'הסתרת חלונית התוכנית' : 'הצגת חלונית התוכנית', onSelect: () => handlers.onTogglePane('plan') },
+    { icon: 'list', title: handlers.paneOpen('tasks') ? 'הסתרת חלונית משימות הרקע' : 'הצגת חלונית משימות הרקע', onSelect: () => handlers.onTogglePane('tasks') },
     { icon: 'folder', title: handlers.filesOpen ? 'הסתרת חלונית הקבצים' : 'הצגת חלונית הקבצים', onSelect: handlers.onToggleFiles },
     { icon: 'terminal', title: handlers.terminalOpen ? 'הסתרת הטרמינל' : 'הצגת הטרמינל', hint: 'Ctrl+`', onSelect: handlers.onToggleTerminal },
     { icon: 'panel-right', title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onSelect: handlers.onToggleDetails },

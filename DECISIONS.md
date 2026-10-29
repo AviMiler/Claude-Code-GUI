@@ -1,5 +1,25 @@
 # Decisions
 
+## [2026-10-29] The Plan pane reads the session's items, not `get_plan`
+**Decision:** The plan is the latest top-level `ExitPlanMode` item's `input.plan` (a pending approval card's plan wins) and the todos are the latest top-level `TodoWrite`; both come from `session.items` and `pendingPermissions` in the browser. No route, no control request.
+**Alternatives considered:** (1) The CLI's `get_plan` control request (it is in the `/control` whitelist). (2) A new server route that scans the transcript.
+**Why:** `get_plan`'s response shape is unknown for 2.1.246 and it would start a CLI for a session that has none; the items are already in the browser and live. The cost, accepted: no approved or rejected state (the CLI does not say it reliably), so only "ממתינה לאישור" is shown. Desktop parity of the pane is unconfirmed.
+
+## [2026-10-29] `/clear` marks its divider so the Plan pane starts over
+**Decision:** The divider that `/clear` pushes now carries `cleared: true`; `planState` stops its backward scan at it (or, for sessions saved earlier, at a divider whose text starts with "שיחה חדשה"). The compact divider does not reset the pane.
+**Alternatives considered:** (1) Matching the divider text only. (2) Clearing a pane-side cache on the clear event. (3) Leaving the old plan shown.
+**Why:** Stage 3 found the Plan pane still showing the old plan after `/clear`. A flag is robust against a text change; the text fallback keeps old stored sessions working; a pane-side cache would be lost on reload. The Tasks pane keeps its tasks after `/clear` on purpose, like the `/tasks` panel (they live in the CLI process, not the conversation).
+
+## [2026-10-29] The Tasks pane re-reads an open output on change, throttled, with no timer
+**Decision:** An open task output is read again when the task's signature (status, tool uses, last tool, summary) changed since the last read, at most once every 2 s, and only while the panes render.
+**Alternatives considered:** (1) A polling timer per open output. (2) Read only on open and on the "רענון" button. (3) Read on every task event.
+**Why:** The CLI gives a tail on request, not a stream. A timer would run while nothing changes and breaks the batch's no-timer rule for panes; every event flooded the CLI (verified about 1 request per 2 s under 100 ms progress events with the throttle). The cost, accepted: a change inside the 2 s window shows only at the next redraw.
+
+## [2026-10-29] The new panes have no topbar icon and no shortcut; the Tasks card opens the pane
+**Decision:** Plan and Background tasks are reached from the "עוד" menu (generic `onTogglePane(id)` / `paneOpen(id)`) and, for tasks, from the rail card. The topbar chip and `/tasks` keep opening the settings panel.
+**Alternatives considered:** (1) Two more topbar icons. (2) Guessing Desktop's shortcuts. (3) Replacing the panel with the pane.
+**Why:** The topbar already has four pane buttons and little room; Desktop's layout and keys were not checked, so none was invented (as for D10 and D11). The panel stays because `/tasks` and the chip are spec requirements; the pane is its persistent version. All are one-place changes if the user disagrees.
+
 ## [2026-10-27] The Files pane edits in a plain textarea, one file at a time
 **Decision:** The editor is a textarea with a status bar (encoding, line ending, caret position). No syntax highlighting, no line-number gutter, no tabs, Tab moves focus, no create / rename / delete.
 **Alternatives considered:** (1) CodeMirror or Monaco. (2) A contenteditable editor with our own highlighting. (3) Tab inserts indentation. (4) Tabs for several open files.

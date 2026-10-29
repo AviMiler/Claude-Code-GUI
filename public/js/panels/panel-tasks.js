@@ -1,25 +1,9 @@
 /** /tasks: background tasks of the session (shell commands, subagents, Monitor) — live status, output tail, stop. */
 import { h, timeAgo, formatTokens } from '../dom.js';
-import { section, row, list, empty, badge, button, isUnsupported } from './kit.js';
+import { section, row, list, empty, badge, button } from './kit.js';
 import { TASKS_EVENT } from '../events.js';
-
-const STATUS = {
-  running: ['רץ', 'info'], completed: ['הסתיים', 'success'], failed: ['נכשל', 'danger'], stopped: ['נעצר', 'warning'], killed: ['נעצר', 'warning'],
-};
-const TYPE_LABELS = { local_bash: 'פקודה', local_agent: 'סוכן משנה', remote_agent: 'סוכן מרוחק', monitor: 'Monitor', local_workflow: 'תהליך' };
-
-function duration(task) {
-  const ms = task.usage?.durationMs ?? ((task.endedAt || Date.now()) - task.startedAt);
-  const seconds = Math.round(ms / 1000);
-  return seconds < 60 ? `${seconds} שנ׳` : `${Math.floor(seconds / 60)} דק׳ ${seconds % 60} שנ׳`;
-}
-
-/** The CLI returns the output tail; its exact field name is not documented, so read the likely ones. */
-function outputText(response) {
-  if (typeof response === 'string') return response;
-  const text = response?.output ?? response?.content ?? response?.text ?? response?.tail;
-  return typeof text === 'string' ? text : JSON.stringify(response, null, 2);
-}
+import { STATUS, TYPE_LABELS, duration } from '../tasks/task-format.js';
+import { readTaskOutput, stopTask } from '../tasks/task-actions.js';
 
 /**
  * @param {HTMLElement} body
@@ -32,25 +16,13 @@ export function renderTasksPanel(body, context) {
   const outputs = new Map(); // task id -> output node (kept across redraws)
   const holder = h('div');
 
+  const control = (subtype, payload) => context.api.control(context.scope, subtype, payload);
+
   async function loadOutput(task) {
     const node = outputs.get(task.id) || h('pre', { class: 'output-pre', dir: 'ltr' });
     outputs.set(task.id, node);
     node.textContent = 'טוען…';
-    try {
-      node.textContent = outputText(await context.api.control(context.scope, 'get_task_output', { task_id: task.id })) || '(אין פלט)';
-    } catch (error) {
-      node.textContent = isUnsupported(error) || /refused|not a shell|unknown task/i.test(error.message)
-        ? 'הפלט זמין רק לפקודות ול-Monitor, ורק בגרסאות Claude Code שתומכות בכך.' : error.message;
-    }
-  }
-
-  async function stop(task) {
-    try {
-      await context.api.control(context.scope, 'stop_task', { task_id: task.id });
-      context.toast('נשלחה בקשת עצירה');
-    } catch (error) {
-      context.toast(isUnsupported(error) ? 'עצירת משימה לא זמינה בגרסת Claude Code המותקנת.' : error.message, 'error');
-    }
+    node.textContent = await readTaskOutput(control, task);
   }
 
   function taskRow(task) {
@@ -72,7 +44,7 @@ export function renderTasksPanel(body, context) {
       actions: [
         button(open.has(task.id) ? 'הסתרת פלט' : 'פלט', toggleOutput, { iconName: 'terminal' }),
         open.has(task.id) ? button('רענון', () => loadOutput(task), { iconName: 'refresh', title: 'קריאה מחדש של סוף הפלט' }) : null,
-        task.status === 'running' ? button('עצירה', () => stop(task), { variant: 'danger', iconName: 'stop' }) : null,
+        task.status === 'running' ? button('עצירה', () => stopTask(control, task, context.toast), { variant: 'danger', iconName: 'stop' }) : null,
       ].filter(Boolean),
       details: open.has(task.id) ? outputs.get(task.id) : null,
     });

@@ -54,19 +54,19 @@ function changesCard(summary, openPane, onRefresh) {
   h('div', { class: 'detail-row detail-muted' }, h('span', null, files), refresh));
 }
 
-function tasksCard(session, openPanel) {
+function tasksCard(session, openPane) {
   const running = (session.tasks || []).filter(task => task.status === 'running');
-  return card({ title: 'משימות רקע', iconName: 'list', value: running.length ? String(running.length) : '', onClick: () => openPanel('tasks') },
+  return card({ title: 'משימות רקע', iconName: 'list', value: running.length ? String(running.length) : '', onClick: () => openPane('tasks') },
     running.length ? h('ul', { class: 'detail-list' }, running.slice(0, 5).map(task => h('li', { dir: 'auto' }, icon('loader', 'spinning'), task.description || task.id)))
       : h('p', { class: 'detail-muted' }, 'אין משימות שרצות עכשיו.'));
 }
 
 /**
- * @param {{openPanel:(id:string)=>void, openPane:(id:string)=>void, modelLabel:(session:object)=>string, rerender:()=>void}} deps
- *   openPanel: the settings panels (tasks); openPane: another pane (changes); rerender: draws the panes again once a fetch is back
+ * @param {{openPane:(id:string)=>void, modelLabel:(session:object)=>string, rerender:()=>void}} deps
+ *   openPane: another pane (changes, tasks); rerender: draws the panes again once a fetch is back
  * @returns {import('./pane-host.js').PaneDefinition}
  */
-export function createDetailsPane({ openPanel, openPane, modelLabel, rerender }) {
+export function createDetailsPane({ openPane, modelLabel, rerender }) {
   let contextOpen = false;
   let contextBox = null;
   let contextFor = null;
@@ -95,7 +95,7 @@ export function createDetailsPane({ openPanel, openPane, modelLabel, rerender })
       body.replaceChildren(h('div', { class: 'detail-cards' },
         environmentCard(session, summary, modelLabel),
         changesCard(summary, openPane, () => summaries.get(session, rerender, true)),
-        tasksCard(session, openPanel),
+        tasksCard(session, openPane),
         contextCard(session)));
     },
   };

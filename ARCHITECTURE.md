@@ -47,8 +47,8 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
   `session-runtime` passes them to the `onTask` hook and keeps `runtime.runningTasks`; `lib/task-tracker.js` holds the tasks
   per session in memory (never persisted, 50 per session); `session-events` broadcasts SSE `tasks` and `session-common` puts them in the session meta
 - When the CLI process ends for any reason, its running tasks become `killed`. Idle shutdown is skipped while a task runs
-- The panel (`panel-tasks.js`) stops a task and reads its output with the no-token control requests `stop_task` / `get_task_output`
-  (`/control` whitelist); a CLI without them gives a neutral "not available" note
+- The panel (`panel-tasks.js`) and, since D12, the Background tasks pane (`tasks/tasks-pane.js`) stop a task and read its output with the no-token control requests `stop_task` / `get_task_output`
+  (`/control` whitelist), through the shared `tasks/task-actions.js`; a CLI without them gives a neutral "not available" note
 
 ## Prompt templates
 - `lib/templates.js` keeps the user's saved prompts in `data/templates.json` (next to `sessions.json`, `CLAUDE_GUI_DATA`; temp file + rename). Routes in
@@ -71,12 +71,12 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 ## Workspace panes and session details rail
 - Layout: `.main` = topbar + `.workspace` (`#workspace`), a row of `.chat` (thread + composer, ids unchanged) and `#pane-area`. `.app` still has the sidebar column and the optional split column, so the order in RTL is
   sidebar, chat, pane area, then the split pane. `public/js/panes/panes.js` is the only module `app.js` talks to; `pane-host.js` owns the area (registry, open set, width, room rule, `closeFocused()`, which Ctrl+\ calls);
-  each pane is `{ id, title, icon, render(body, session) }` registered in `panes.js` (the details rail, Changes, Terminal and Files now; later Plan, Background tasks). The host has `open(id)` (never closes) and `toggle(id)`, and calls `onChange` after any open or close so the topbar toggles stay in step. The area belongs to the main session only
+  each pane is `{ id, title, icon, render(body, session) }` registered in `panes.js` (the details rail, Changes, Terminal, Files, Plan and Background tasks). The host has `open(id)` (never closes) and `toggle(id)`, and calls `onChange` after any open or close so the topbar toggles stay in step. The area belongs to the main session only
 - Room rule: shown only when `#workspace` is at least 560 px of chat plus the column wide (a `ResizeObserver` re-checks); otherwise hidden with the saved choice kept (`claude-gui.panes-open`, `claude-gui.panes-width`).
   The split view needs no special case: it narrows the main region, so the rule hides the area
 - The rail (`pane-details.js`) reads only what the browser has (`session`, `state.context`, `session.tasks`) plus the git summary: `GET /api/sessions/:id/git-summary` (`lib/git/changes.js` `gitSummary`: `git status --branch`
   and `git diff --numstat` staged + unstaged through `lib/git/run.js`; the session's own folder, no `cwd` parameter). The summary is fetched on select/switch, on status change and by hand, never on a timer (`panes/session-fetch.js`, shared with the Changes pane).
-  The Context card reads categories with `get_context_usage` and `ifRunning` (no CLI is started, no model call). The Changes card opens the Changes pane; the Tasks card still opens the settings-modal tasks panel until its pane exists
+  The Context card reads categories with `get_context_usage` and `ifRunning` (no CLI is started, no model call). The Changes card opens the Changes pane; the Tasks card opens the Background tasks pane (since D12; the settings-modal panel stays behind `/tasks` and the topbar chip)
 
 ## Changes pane
 - `pane-changes.js` fetches `GET /api/sessions/:id/diff` (`lib/git/session-diff.js` `sessionDiff`) through `session-fetch.js` (first use, session switch, status change, refresh button; no timers), parses the text with the pure `diff-parse.js`,
@@ -135,6 +135,11 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 - Frontend (`public/js/files/`): `files-pane.js` (registered in `panes/panes.js`; two states, tree and editor; 134 lines, split at the next change), `tree-view.js`, `tree-filter.js`, `editor-view.js` (textarea, status bar, Save and Ctrl+S, conflict banner "דריסה" / "טעינה מחדש"), `editor-store.js` (per-session open file, draft, base hash, dirty flag, in browser memory), `open-in-files.js` (registry: `file-viewer.js` and `context-menu/file-menu.js` open the pane through it without importing the pane). A save calls `invalidateSessionFetches` (`panes/session-fetch.js`) so the Changes pane and the rail refetch; a clean open file reloads when the session status changes
 - Claude is not told about the user's edits (the Changes pane shows them). No model call, no CLI start. Windows behaviour, case-insensitive file systems and the real CLI are unverified
 
+## Plan and Background tasks panes
+- Frontend only, no route. `plan/plan-source.js` `planState(session)` scans `session.items` backwards for the latest top-level `ExitPlanMode` plan and `TodoWrite` list and stops at a clear divider (`cleared: true`, set by `/clear` in `session-service.js`; older sessions: text starting "שיחה חדשה"); a pending `ExitPlanMode` in `session.pendingPermissions` overrides the plan and marks it "ממתינה לאישור". `plan/plan-pane.js` renders it (Markdown through `renderMarkdown`, which escapes raw HTML)
+- `tasks/tasks-pane.js` draws `session.tasks` (from `task-tracker.js` through the session meta) and redraws on the normal pane refresh; output is read on demand and again when a task's signature changes, throttled to 2 s, on a render only (the CLI gives a tail, not a stream). The cache is keyed by session and task id. `tasks/task-format.js` and `tasks/task-actions.js` were moved unchanged out of `panels/panel-tasks.js`, which imports them
+- Entry points: the "עוד" menu through the generic `onTogglePane(id)` / `paneOpen(id)` of `chrome.js` and the rail's Tasks card. No topbar icon, no shortcut. Security: no new surface; model-controlled plan text goes through the Markdown escaper, task text through `textContent`
+
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
   `GET /v1/models` (Ollama: `/api/tags` as fallback) plus the names in `config.json` (`model`, `ANTHROPIC_*_MODEL`);
@@ -187,6 +192,7 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 | Enter while Claude works is a mid-turn correction written to the live CLI; the GUI queue is behind Alt+Enter; a turn with corrections waiting is held open (20 s fallback) | User decision, like Desktop and the terminal; the CLI already queues inbound messages as "next" and replays the ones it takes in, so the GUI only has to track uuids and not end the turn too early. Needs `--replay-user-messages`, else Enter queues. See DECISIONS.md |
 | Shell commands: a fresh shell per command, output streamed over SSE; `!` output reaches Claude as a prefix of the next message | No node-pty (zero dependencies) and no usable prompt over pipes on Windows; per-command spawn gives exit codes, kill and attributable output; a prefix needs no model call by itself. See DECISIONS.md |
 | Files pane: a plain textarea, save by content hash, in-place write, one file at a time | Zero dependencies rules out CodeMirror / Monaco; mtime is unreliable on Windows and network drives; temp-plus-rename breaks on Windows locks and drops file modes; the user's edits are not sent to Claude because the Changes pane already shows them. See DECISIONS.md |
+| Plan pane reads the session's items; Tasks pane re-reads output on change, not on a timer | `get_plan` has an unknown shape and would start the CLI; the items and pending cards already hold the plan and todos, live. The CLI gives only an output tail, so a change-triggered, 2 s throttled re-read avoids timers and request floods. See DECISIONS.md |
 | Prompt via stdin JSON, settings via files | Avoids shell quoting and encoding issues (Hebrew, cmd.exe) |
 | Loopback bind + Host/Origin check, file kinds, CLI whitelist | Sessions can run commands; other websites and arbitrary paths must not be reachable |
 | SSE instead of WebSocket | One-way stream, built into browsers and Node |
