@@ -6,6 +6,7 @@ import { renderTool, attachToolResult } from './render-tools.js';
 import { turnStats } from './turn-stats.js';
 import { imageUrl, fileUrl, formatSize } from './attachments.js';
 import { renderShellItem, shellItemMarkdown } from './terminal/shell-item.js';
+import { rewindButton } from './rewind/rewind-button.js';
 
 const LOOKS_LIKE_MARKDOWN = /(^|\n)(#{1,4} |\|.*\||[-*] |\*\*)/;
 const copySources = new WeakMap(); // copy button -> the message's original text (Markdown for Claude's answers)
@@ -41,7 +42,10 @@ function renderUser(item) {
   else if (bubble) bubble.textContent = item.text;
   // A correction sent while Claude worked (it joined the running turn at its next step).
   const label = item.correction ? h('span', { class: 'correction-label' }, icon('pencil'), 'תיקון באמצע התור') : null;
-  return h('div', { class: `msg-user${item.correction ? ' correction' : ''}` }, label, images, files, bubble, item.text ? copyButton(item.text) : null);
+  const point = item.cliUuid && !item.correction; // a message the CLI can go back to (rewind/)
+  const actions = item.text ? copyButton(item.text) : null;
+  if (point && actions) actions.append(rewindButton());
+  return h('div', { class: `msg-user${item.correction ? ' correction' : ''}`, dataset: point ? { rewindUuid: item.cliUuid } : null }, label, images, files, bubble, actions);
 }
 
 export function renderAssistantText(text, live = false) {

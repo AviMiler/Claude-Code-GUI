@@ -7,6 +7,7 @@ import { warmUp } from './warm-up.js';
 import { toast } from './ui.js';
 import { bangCommand, runBang } from './terminal/shell-command.js';
 import { createShellNote } from './terminal/shell-note.js';
+import { enableRewind } from './rewind/rewind-menu.js';
 
 /**
  * @param {HTMLElement} area the composer's container
@@ -36,6 +37,7 @@ export function createMainComposer(area, { actions, runCommand }) {
     onTyping: () => warmUp(),
     ...createChipMenus({ actions, getComposer: () => composer }),
   });
+  enableRewind({ restore: entries => composer.restore(entries) });
   const note = createShellNote();
   area.prepend(note.node);
   const showNote = () => note.update(activeSession(), composer.textarea.value);

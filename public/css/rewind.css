@@ -1,0 +1,11 @@
+/* Rewind (rewind/): the question dialog and the hover button; the split pane has no button. */
+[data-split-session] .rewind-button { display: none; }
+.rewind-dialog { max-width: 520px; }
+.rewind-dialog h2 { display: flex; gap: 8px; align-items: center; }
+.rewind-dialog h2 .icon { flex: none; width: 18px; height: 18px; }
+.rewind-dialog input[type=radio] { width: auto; margin: 0; padding: 0; } /* dialog.confirm input is a full-width text field */
+.rewind-quote { margin: 0 0 10px; padding: 6px 10px; border-inline-start: 3px solid var(--border-strong); color: var(--muted); font-size: 13px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.rewind-choices { display: grid; gap: 4px; margin-bottom: 8px; }
+.rewind-choice { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.rewind-detail, .rewind-note { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.rewind-note.warn { color: var(--warning); }

@@ -42,6 +42,7 @@ export const BUILTIN_COMMANDS = [
   c('fork', 'העתקת השיחה לסשן חדש והמשך עבודה כאן', 'action:fork', { icon: 'branch' }),
   c('focus', 'תצוגה ממוקדת: רק הודעות, תשובות וסיכומים', 'action:focus', { args: '[on|off]', icon: 'focus' }),
   c('theme', 'החלפת ערכת נושא (בהיר / כהה / מערכת)', 'action:theme', { icon: 'moon' }),
+  c('rewind', 'חזרה להודעה קודמת בשיחה: קוד, שיחה או שניהם', 'action:rewind', { aliases: ['checkpoint'], icon: 'history' }),
   c('stop', 'עצירת הריצה הנוכחית', 'action:stop', { icon: 'stop' }),
   c('security-review', 'סקירת אבטחה של השינויים בענף הנוכחי', 'send', { icon: 'shield' }),
   c('insights', 'דוח שמנתח את סשני Claude Code שלך', 'send', { icon: 'activity' }),

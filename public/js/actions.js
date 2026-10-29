@@ -6,6 +6,7 @@ import { forServer, fromStored } from './attachments.js';
 import { openPanel } from './panels/panel-host.js';
 import { toast, ask } from './ui.js';
 import { createSessionActions } from './session-actions.js';
+import { rewindLast } from './rewind/rewind-menu.js';
 import { guardedApi, confirmMode, confirmOutwardCommand, isCancelled, CANCELLED_MESSAGE } from './risk.js';
 
 /**
@@ -101,6 +102,7 @@ export function createActions(view) {
       document.body.classList.toggle('focus-view', state.focusView);
       toast(state.focusView ? 'תצוגה ממוקדת פעילה (/focus לכיבוי)' : 'תצוגה רגילה');
     },
+    rewind: () => rewindLast(activeSession()),
     answerPermission(prompt, answer) {
       const session = activeSession();
       if (session) api.answerPermission(session.id, prompt.requestId, answer).catch(report);

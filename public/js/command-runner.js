@@ -29,6 +29,7 @@ export function createCommandRunner(actions) {
     focus: args => actions.toggleFocus(args === 'on' ? true : args === 'off' ? false : undefined),
     theme: () => actions.openPanel('appearance'),
     stop: () => actions.stop(),
+    rewind: () => actions.rewind(),
     btw: args => actions.sideQuestion(args),
   };
 

@@ -43,6 +43,10 @@ export const api = {
   /** Runs a shell command in the session's folder (output arrives as `shell` events): source 'terminal' (the pane) or 'bang' (a `!` line). */
   runShell: (id, command, source, shell) => request('POST', `/api/sessions/${id}/shell`, { command, source, ...(shell && { shell }) }),
   stopShell: id => request('POST', `/api/sessions/${id}/shell/stop`),
+  /** What going back to a user message (its cliUuid) would do: { text, conversation, code: { available, reason, files, insertions, deletions }, runningTasks }. */
+  rewindPreview: (id, uuid) => request('POST', `/api/sessions/${id}/rewind/preview`, { uuid }),
+  /** mode: 'conversation' | 'code' | 'both'. @returns {Promise<{text:string, images:object[], files:object[], mode:string}>} the message, for the composer */
+  rewind: (id, uuid, mode) => request('POST', `/api/sessions/${id}/rewind`, { uuid, mode }),
   clear: id => request('POST', `/api/sessions/${id}/clear`),
   fork: id => request('POST', `/api/sessions/${id}/fork`),
   /** Branch and uncommitted line counts of the session's folder: { isRepo, branch, files, untracked, added, removed }. */
