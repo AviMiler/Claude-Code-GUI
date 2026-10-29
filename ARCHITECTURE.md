@@ -5,7 +5,7 @@ _Last updated: 2026-10-29 — the D1–D16 sections are below; the history of ea
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
 The server speaks Claude Code's control protocol (the one the Agent SDK uses) over the process's stdin/stdout:
 user turns, permission prompts, interrupt, model/mode switches, and read-only catalog queries. No database;
-sessions are kept in memory and saved to `data/sessions.json` (a copy of the history that departs from the CLI, see Departures from the CLI); prompt templates are saved to `data/templates.json`.
+sessions are kept in memory and saved to `data/sessions.json` (settings and the GUI's own items only; the conversation is read from the CLI's files, see Departures from the CLI); prompt templates are saved to `data/templates.json`.
 
 ## Data Flow
 0. While the user types, `POST /api/warm` starts the CLI ahead of time: the session's own process, or (on the welcome
@@ -33,39 +33,55 @@ The rule (DECISIONS.md, 2026-10-29): the CLI is the source of truth and the GUI 
 place the code departs from that rule, so new work does not widen it and each one can be moved to the CLI or confirmed
 as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED where they were not checked on 2.1.246.
 
-### The main problem: two copies of the conversation history
-- The GUI keeps its own copy of every conversation: `session.items` in `data/sessions.json` (`lib/session-store.js`),
-  built from the CLI's stdout while the turn runs. The CLI keeps the real conversation in
-  `<config>/projects/<folder>/<claudeSessionId>.jsonl` and is the only one that sends it to the model (`--resume`).
-- The two are not linked except by `claudeSessionId`, and they drift apart:
-  - A terminal conversation is not in the GUI's list until it is imported (a one-way copy, `lib/transcripts.js`).
-    The other way is fixed (see "Sync with the CLI conversation" below): a GUI session is in the CLI's `/resume`
-    picker under the same name, and a terminal continuation comes back.
-  - The GUI session id and the CLI conversation id are different ids.
-  - Rewind (D15), fork and `/clear` change `claudeSessionId` and cut or copy `items` in the GUI separately.
-  - Items that exist only in the GUI (`!` and Terminal output, dividers, cards) are not in the CLI's transcript.
-  - A session that runs in a worktree (D5) is stored by the CLI under the worktree's folder, not the project's.
-- Risk: if the CLI's file is missing or different (another `CLAUDE_CONFIG_DIR`, deleted, another machine), the GUI
-  still shows the whole conversation while `--resume` gives the model none of it, and nothing tells the user.
-- Checked on 2.1.312: `claude -p` in stream-json mode writes the `.jsonl`, and the uuids of its `user` / `assistant`
-  stream events are the uuids of the transcript lines.
-- Plan: AGENT_CONTEXT.md -> Next Steps.
+### The conversation history comes from the CLI (fixed 2026-10-29, DECISIONS.md)
+- The CLI's file `<config>/projects/<folder>/<claudeSessionId>.jsonl` is the conversation. `data/sessions.json` keeps
+  no items: `session.items` exists only in memory and is built from the file (`lib/session-cli-sync.js` `refresh`).
+- Reading (`lib/transcripts.js`): `chainOf` walks from the file's latest line (or `resumeAt`, a GUI rewind not answered
+  yet) back through `parentUuid`, and through a compaction boundary's `logicalParentUuid`. So what a terminal rewind
+  left behind is not shown, and the history before a compaction is shown under the divider "השיחה נדחסה (compact)".
+  `lineItems` turns a line into items (the shared `event-translator.js`); a `queued_command` attachment is a message
+  sent into a running turn (a correction); the CLI's own compaction summary is skipped.
+- Building (`lib/history-build.js` `buildItems`): the conversations before each `/clear` (`session.conversations`), then
+  the current one, with the GUI's own items between their lines. `session.extras` = `{ anchors, item }` for what the
+  file does not hold: turn results, `api_retry` / task / informational notices, errors, dividers, `!` output, a message
+  that never reached the CLI. `anchors` are the uuids of the latest CLI lines when it was added (`session.anchors`,
+  newest first, from the stream's `user` / `assistant` events and from each build); it is shown after the first one
+  still in the conversation, and dropped when none is. `session.sent[uuid]` keeps how the GUI showed a message it sent
+  (typed text, images, files; `sentText` when the CLI got more: `!` output in front, file paths); used only while the
+  CLI's line holds exactly that text, otherwise the CLI's text is shown (two messages it joined into one). User items
+  get `cliUuid`, `cliSession` and `afterUuid` (the answer before them; `false` before the last compaction, where the
+  CLI cannot resume).
+- When (`session-cli-sync.js`): `start(config)` from `server.js` builds every session, then looks every second at the
+  files' change times (`stampOf`: the files' mtimes, `resumeAt`, the number of extras and sent messages) and reads a
+  file only when it changed; also at each turn end, at `GET /api/state` and after a rewind (`force`). Never while a turn
+  runs (its items arrive live) and not while the file lacks an answer the stream already gave (`lastAssistantUuid`):
+  the next look takes it. A different result is sent as SSE `history { sessionId, items }`; the browser replaces the
+  items and redraws (`public/js/events.js`). Compared with sorted keys, so a turn whose live items match the file
+  sends nothing.
+- A change written by another program (the latest message's `entrypoint` is not `claude-code-gui`, or a terminal
+  rename) closes the session's idle process: the next message starts one with `--resume`, from the file.
+- Rewind (D15, `rewind/rewind-conversation.js`): sets `resumeAt` (or a new conversation for the first message), drops
+  the extras shown from the message on, and builds again; the browser gets `history`, then `rewound { keep: null }`.
+  Fork copies `conversations`, `extras`, `sent` and `anchors` (the CLI's `--fork-session` keeps the line uuids, checked
+  on 2.1.312) and adds the divider "ענף חדש מכאן". `/clear` moves the conversation into `conversations`. Import creates
+  a session on the conversation and adds the divider "השיחה נטענה – אפשר להמשיך מכאן" after its last line.
+- Images in a CLI line are stored under an id from their bytes (`images.saveImages(..., { stable: true })`), so a
+  build does not add files; the startup sweep may remove them, the first build writes them again.
+- Not covered: subagent side chains (their inner tool calls show live, not after a build); a terminal rewind shows
+  only once a message follows it (the CLI writes nothing before that); every build reads the whole file.
+- Checked on 2.1.312: `claude -p` in stream-json mode writes the `.jsonl`; a uuid the GUI sends with a message becomes
+  its line's uuid; a correction during a tool call is a `queued_command` attachment; one sent before the turn starts is
+  joined into the first message (under the second uuid).
 
-### Sync with the CLI conversation (2026-10-29, DECISIONS.md)
+### Names and the `/resume` picker (2026-10-29, DECISIONS.md)
 - `lib/session-env.js`: every session process gets `CLAUDE_CODE_ENTRYPOINT=claude-code-gui`. Without it the CLI marks a
   `-p` conversation `sdk-cli` and its `/resume` picker hides it.
-- `lib/session-cli-sync.js` `pushName`: a name a person gave (`named: true`: rename, fork) goes to the CLI
-  conversation with `rename_session` when its process runs (`session-runtime.js` `requestIfLive`, never starts one),
-  else as a `custom-title` line appended to the `.jsonl` (`transcripts.js` `appendTitle`). `cliName` is the name the
-  current CLI conversation has; `session-events.js` `onSessionId` resets it for a new conversation and pushes again.
-- `pullFromCli`: at `GET /api/state` (`listSessions(config)` -> `pullAll`) and at every turn end, when the file's mtime
-  is not `cliSeen`: a `custom-title` that is not `cliName` (a terminal rename) becomes the name; a session nobody
-  named takes the CLI's `ai-title` / summary / first prompt (`transcripts.js` `readTitles`, the start and end 256 KB of
-  the file); `itemsAfter` follows `parentUuid` from the file's last main-thread answer back to `lastAssistantUuid` and,
-  when another program wrote part of it (`entrypoint` not `claude-code-gui`), appends those items after a divider and
-  closes the idle process so the next message resumes from the file. Skipped while running and after an unanswered
-  rewind (`resumeAt`). A chain that does not reach `lastAssistantUuid` (a terminal rewind, a compaction) is ignored.
-- Older sessions have no `named`: a name other than the folder's counts as given by a person.
+- `session-cli-sync.js` `pushName`: a name a person gave (`named: true`: rename, fork) goes to the CLI conversation
+  with `rename_session` when its process runs (`session-runtime.js` `requestIfLive`, never starts one), else as a
+  `custom-title` line appended to the `.jsonl` (`transcripts.js` `appendTitle`). `cliName` is the name the current CLI
+  conversation has; `session-events.js` `onSessionId` resets it for a new conversation and pushes again. Each build
+  takes a `custom-title` that is not `cliName` (a terminal rename) as the name, and gives a session nobody named the
+  CLI's `ai-title` / summary / first prompt (`titlesOf`).
 
 ### The GUI is the source for data the CLI also keeps
 | Where | What the GUI does | What the CLI has |
@@ -73,7 +89,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | Session name (`/rename`, `action:rename`) | Fixed 2026-10-29: kept in `sessions.json` and synced both ways with the transcript's custom title (`session-cli-sync.js`) | A custom title in the transcript |
 | Cost (`costUsd`, `session-events.js`) | Adds each result's `total_cost_usd` | `/cost`; if `total_cost_usd` is cumulative per process the sum over-counts (UNVERIFIED) |
 | Composer ↑ / ↓ history (`composer-history.js`) | The session's own items | The CLI's prompt history (UNVERIFIED location) |
-| Full-text search (`session-search.js`) | Scans `session.items` only | Conversations never imported are not searched |
+| Full-text search (`session-search.js`) | Scans `session.items` (built from the CLI's files) | Conversations that are not a GUI session are not searched |
 | Session settings: mode, model, effort, agent, folders, output style, fallback model | Stored per session and passed as flags on every restart; output style through a GUI-written `--settings` file (`cli-args.js`) | The CLI's own settings files and its live state; a CLI change is copied back (`onModeChange`) but the GUI wins on restart |
 
 ### The GUI reimplements a CLI feature

@@ -7,8 +7,10 @@ const { loadConfig } = require('./lib/config');
 const { isAllowedRequest, sendJson } = require('./lib/http-utils');
 const { handleApi } = require('./lib/api-routes');
 const { serveStatic } = require('./lib/static-files');
+const cliSync = require('./lib/session-cli-sync');
 
 const config = loadConfig();
+cliSync.start(config); // sessions show their CLI conversations, kept up to date
 
 const server = http.createServer(async (request, response) => {
   try {

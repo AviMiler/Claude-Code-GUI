@@ -10,7 +10,7 @@ function createCorrections(out, sessionId) {
     drain() {
       const taken = pending;
       pending = [];
-      taken.forEach(item => out({ type: 'user', isReplay: true, uuid: item.uuid, message: { role: 'user', content: item.text }, parent_tool_use_id: null, session_id: sessionId }));
+      taken.forEach(item => out({ type: 'user', isReplay: true, queued: true, uuid: item.uuid, message: { role: 'user', content: item.text }, parent_tool_use_id: null, session_id: sessionId }));
       return taken.map(item => item.text);
     },
     cancel(uuid) { const before = pending.length; pending = pending.filter(item => item.uuid !== uuid); return before !== pending.length; },

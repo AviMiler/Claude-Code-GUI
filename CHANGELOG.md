@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-29 (the conversation comes from the CLI)
+- What a session shows is built from the CLI's own conversation file; `data/sessions.json` no longer stores the conversation, only settings and the GUI's own items (turn results, notices, dividers, `!` output), placed after the CLI's lines
+- Changes made in a terminal (`claude --resume`: messages, rename, `/rewind`, `/compact`) show in an open page within about a second, without a reload; the next GUI message continues the conversation as the CLI has it
+- A terminal rewind shows the conversation from the chosen point on; a compaction shows the history before it under "השיחה נדחסה (compact)"; messages before a compaction are no rewind point (the CLI cannot resume there)
+- Rewind, fork, `/clear` and import in the GUI no longer cut or copy a stored history: they tell the CLI, and the history is read again
+- The fake CLI writes a conversation file like the real one (`dev/fake-transcript.js`)
+- Not migrated: sessions created before this change
+
 ## 2026-10-29 (GUI sessions in the CLI's /resume list)
 - Every GUI session now shows in the CLI's `claude --resume` picker: the CLI is started with `CLAUDE_CODE_ENTRYPOINT=claude-code-gui` (with `-p` alone the CLI marks the conversation `sdk-cli`, which the picker hides)
 - Same name in both: a rename in the GUI (and a fork's name) is written to the CLI conversation (`rename_session`, or the CLI's own `custom-title` line); a rename in the terminal comes back to the GUI; a session nobody named takes the CLI's own title after its first answer
