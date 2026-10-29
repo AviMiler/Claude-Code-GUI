@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-29 (audit: where the GUI departs from the CLI)
+- Docs only, no code change: ARCHITECTURE.md has a new section "Departures from the CLI" (the conversation-history problem, data the GUI owns that the CLI also keeps, CLI features the GUI reimplements, what is aligned, what is GUI-only on purpose); spec.md (Past conversations) and AGENT_CONTEXT.md (Current State) name the history problem
+
 ## 2026-10-29 (principle: the CLI is the source of truth)
 - Docs only, no code change: DECISIONS.md, spec.md (Platform constraints), AGENT_CONTEXT.md (Gotchas, Next Steps) now state that the CLI owns the conversation and the GUI is a display; departures from the CLI must be flagged to the developer
 - Recorded as a known deviation: the GUI still keeps its own copy of the history (`session.items` in `data/sessions.json`), so its session list does not match the CLI's `/resume`; moving to the CLI transcript is a planned task, not started

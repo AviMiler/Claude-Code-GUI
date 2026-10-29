@@ -5,7 +5,7 @@ _Last updated: 2026-10-29 — the D1–D16 sections are below; the history of ea
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
 The server speaks Claude Code's control protocol (the one the Agent SDK uses) over the process's stdin/stdout:
 user turns, permission prompts, interrupt, model/mode switches, and read-only catalog queries. No database;
-sessions are kept in memory and saved to `data/sessions.json`; prompt templates are saved to `data/templates.json`.
+sessions are kept in memory and saved to `data/sessions.json` (a copy of the history that departs from the CLI, see Departures from the CLI); prompt templates are saved to `data/templates.json`.
 
 ## Data Flow
 0. While the user types, `POST /api/warm` starts the CLI ahead of time: the session's own process, or (on the welcome
@@ -27,6 +27,61 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
    Stop empties the queue first and hands the texts back to the browser. Archiving a session keeps its queue, paused (`dispatchNext` skips archived sessions)
 8. Enter while a turn runs sends `delivery: 'correct'` (see Mid-turn corrections): the message is written to the live CLI at once instead of queued
 9. Rewind (D15): the hover button, the message menu or `/rewind` -> `POST /api/sessions/:id/rewind/preview` -> dialog -> `POST /api/sessions/:id/rewind` `{ uuid, mode }`; the server restores files through `rewind_files`, restarts the CLI at the cut point, cuts the items and broadcasts `rewound` (see Rewind)
+
+## Departures from the CLI (audit 2026-10-29)
+The rule (DECISIONS.md, 2026-10-29): the CLI is the source of truth and the GUI is a display. This audit lists every
+place the code departs from that rule, so new work does not widen it and each one can be moved to the CLI or confirmed
+as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED where they were not checked on 2.1.246.
+
+### The main problem: two copies of the conversation history
+- The GUI keeps its own copy of every conversation: `session.items` in `data/sessions.json` (`lib/session-store.js`),
+  built from the CLI's stdout while the turn runs. The CLI keeps the real conversation in
+  `<config>/projects/<folder>/<claudeSessionId>.jsonl` and is the only one that sends it to the model (`--resume`).
+- The two are not linked except by `claudeSessionId`, and they drift apart:
+  - The GUI's session list is not the CLI's `/resume` list: a terminal conversation is not in the GUI until it is
+    imported (a one-way copy, `lib/transcripts.js`), and a GUI session is not shown as one in the terminal.
+  - The GUI session id and the CLI conversation id are different ids.
+  - Rewind (D15), fork and `/clear` change `claudeSessionId` and cut or copy `items` in the GUI separately.
+  - Items that exist only in the GUI (`!` and Terminal output, dividers, cards) are not in the CLI's transcript.
+  - A session that runs in a worktree (D5) is stored by the CLI under the worktree's folder, not the project's.
+- Risk: if the CLI's file is missing or different (another `CLAUDE_CONFIG_DIR`, deleted, another machine), the GUI
+  still shows the whole conversation while `--resume` gives the model none of it, and nothing tells the user.
+- Not verified: that `claude -p` in stream-json mode writes the `.jsonl` at all (no `--no-session-persistence` is passed).
+- Plan: AGENT_CONTEXT.md -> Next Steps.
+
+### The GUI is the source for data the CLI also keeps
+| Where | What the GUI does | What the CLI has |
+|---|---|---|
+| Session name (`/rename`, `action:rename`) | Stored only in `sessions.json` | A custom title in the transcript (read by `lib/transcripts.js`); not written |
+| Cost (`costUsd`, `session-events.js`) | Adds each result's `total_cost_usd` | `/cost`; if `total_cost_usd` is cumulative per process the sum over-counts (UNVERIFIED) |
+| Composer ↑ / ↓ history (`composer-history.js`) | The session's own items | The CLI's prompt history (UNVERIFIED location) |
+| Full-text search (`session-search.js`) | Scans `session.items` only | Conversations never imported are not searched |
+| Session settings: mode, model, effort, agent, folders, output style, fallback model | Stored per session and passed as flags on every restart; output style through a GUI-written `--settings` file (`cli-args.js`) | The CLI's own settings files and its live state; a CLI change is copied back (`onModeChange`) but the GUI wins on restart |
+
+### The GUI reimplements a CLI feature
+| Feature | What the GUI does | Note |
+|---|---|---|
+| `/clear` (`clearConversation`) | Closes the CLI and drops `claudeSessionId`, adds a divider | Not the CLI's `/clear` |
+| `/fork` | Uses `--fork-session` (aligned) but copies `items` | Follows the history problem |
+| `/rewind` (D15) | GUI-minted uuids and GUI rewind points; cuts `items` | Uses the CLI's `--resume-session-at` and `rewind_files`; see DECISIONS.md |
+| `/export`, `/copy` | Built from `items` | The CLI has its own commands |
+| `!` and the Terminal pane (D10) | Runs the shell itself and writes the CLI's bash-mode tags into the next message (`terminal/shell-context.js`) | The CLI's own `!` bash mode; output is not in the CLI transcript until the next message |
+| Safe mode (D16) | A GUI policy on permission modes | The CLI's permission settings (a bypass-disable setting, UNVERIFIED key) |
+| Custom system prompt (D16) | Text owned by the GUI (`data/session-settings/`), passed with the CLI's file flags | The CLI's own `CLAUDE.md` and output styles |
+| Worktree per session (D5) | Runs `git worktree` itself | The CLI's own worktree option (UNVERIFIED on 2.1.246) |
+| Prompt templates | A GUI library (`data/templates.json`) | The CLI's custom slash commands and skills |
+| `/color` | GUI-only color | The CLI's `/color` is cosmetic; decision recorded |
+| Model list (`model-list.js`) | Reads the model server, not the CLI | Decision recorded (custom base URL) |
+| Plan pane | Reads `items`, not `get_plan` | Decision recorded |
+
+### Aligned (the GUI only displays or calls the CLI)
+Permission prompts (`can_use_tool`), elicitation, `/btw` (`side_question`), live model / mode switch (`set_model`,
+`set_permission_mode`), the settings, hooks, memory and permissions panels (they write the CLI's own files,
+`lib/claude-files.js`), skills and memory read from the CLI's folders, mid-turn corrections, background tasks.
+
+### GUI-only on purpose (no CLI equivalent)
+Pins, archive, split view, notifications, the message queue, transcript view modes, focus, theme, the crab, the
+Changes pane comments, the Files editor, and storing attachments (`data/images/`, `data/uploads/`) as transport.
 
 ## Attachments
 - Images (PNG, JPEG, GIF, WebP): image content blocks in the user turn, so the model sees them (needs a vision model).
