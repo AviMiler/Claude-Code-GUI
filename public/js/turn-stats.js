@@ -53,6 +53,7 @@ export function turnStats(result, toolCalls) {
     `סבבים: ${result.turns || 1}`,
     toolCalls !== null ? `קריאות כלים: ${toolCalls}` : null,
     result.costUsd > 0 ? `עלות: $${result.costUsd.toFixed(4)}` : null,
+    result.fromFile ? 'מחושב מקובץ השיחה (הרצה מחוץ ל-GUI), ללא עלות' : null,
   ].filter(Boolean).join('\n');
   return { text: parts.join(' · '), details };
 }

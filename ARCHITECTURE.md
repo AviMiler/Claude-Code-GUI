@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-29 — the D1–D16 sections are below; the history of each change is in CHANGELOG.md._
+_Last updated: 2026-10-30 — the D1–D16 sections are below; the history of each change is in CHANGELOG.md._
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -36,7 +36,9 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 ### The conversation history comes from the CLI (fixed 2026-10-29, DECISIONS.md)
 - The CLI's file `<config>/projects/<folder>/<claudeSessionId>.jsonl` is the conversation. `data/sessions.json` keeps
   no items: `session.items` exists only in memory and is built from the file (`lib/session-cli-sync.js` `refresh`).
-- Reading (`lib/transcripts.js`): `chainOf` walks from the file's latest line (or `resumeAt`, a GUI rewind not answered
+- Reading (`lib/transcripts/`, split 2026-10-30: `transcript-files.js` folders, lookup, titles, list, `readConversation`,
+  `readSubagents`, `conversationStamp`; `jsonl-reader.js` the cached read; `transcript-items.js` line to items;
+  `turn-results.js` results for terminal turns): `chainOf` walks from the file's latest line (or `resumeAt`, a GUI rewind not answered
   yet) back through `parentUuid`, and through a compaction boundary's `logicalParentUuid`. So what a terminal rewind
   left behind is not shown, and the history before a compaction is shown under the divider "השיחה נדחסה (compact)".
   `lineItems` turns a line into items (the shared `event-translator.js`); a `queued_command` attachment is a message
@@ -46,14 +48,33 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   file does not hold: turn results, `api_retry` / task / informational notices, errors, dividers, `!` output, a message
   that never reached the CLI. `anchors` are the uuids of the latest CLI lines when it was added (`session.anchors`,
   newest first, from the stream's `user` / `assistant` events and from each build); it is shown after the first one
-  still in the conversation, and dropped when none is. `session.sent[uuid]` keeps how the GUI showed a message it sent
+  still in the conversation, and not shown when none is. Such an extra is also deleted from `session.extras` by
+  `lib/history-prune.js` `keptExtras` (called by `refresh` after the build, `historyStamp` recomputed from the kept
+  extras): only when no anchor is on a shown chain but ALL are lines of the files read, every conversation file was
+  read, and no `resumeAt`, `forkPending` or missing `claudeSessionId` (a rewind or fork not answered yet could still bring
+  it back). An anchor no file holds (the CLI still writing it, a deleted file) keeps the extra; one with no anchors is
+  never dropped; deleting is final. `session.sent[uuid]` keeps how the GUI showed a message it sent
   (typed text, images, files; `sentText` when the CLI got more: `!` output in front, file paths); used only while the
   CLI's line holds exactly that text, otherwise the CLI's text is shown (two messages it joined into one). User items
   get `cliUuid`, `cliSession` and `afterUuid` (the answer before them; `false` before the last compaction, where the
   CLI cannot resume).
+- Turns another program ran (2026-10-30, `transcripts/turn-results.js` `fileResults`, used by `buildItems`): the CLI
+  writes no `result` line, so a `{ kind: 'result', fromFile: true, costUsd: null, durationApiMs: 0 }` item is built from
+  the chain and put after the turn's last line (before that line's extras). A turn starts at a non-meta user line that
+  is not only `tool_result` blocks and ends at the next one. Only a turn whose start line's `entrypoint` is not
+  `claude-code-gui` (the GUI's own turns have their result in `extras`), and only when no GUI `result` extra is anchored
+  on any line of the turn; the last turn only when its final assistant line has `stop_reason: 'end_turn'`. Time = the
+  start line to the turn's last user / assistant line; tokens = the last line of each distinct `message.id` summed;
+  rounds = the number of distinct ids; no model time, no cost. The item is not an extra and does not go through
+  `session-events.js` `onItem`, so `session.costUsd` is untouched. Subagents' tokens are not counted.
 - When (`session-cli-sync.js`): `start(config)` from `server.js` builds every session, then looks every second at the
   files' change times (`stampOf`: the files' mtimes, `resumeAt`, the number of extras and sent messages) and reads a
-  file only when it changed; also at each turn end, at `GET /api/state` and after a rewind (`force`). Never while a turn
+  file only when it changed, and then only the part appended since the last read (`transcripts/jsonl-reader.js`
+  `readLines`: per file the lines read so far, the offset after the last newline and the 64 bytes before it; when the
+  file is not smaller and those bytes are unchanged only the new bytes are read and parsed, else the whole file; a last
+  line with no newline yet is returned but not kept; the cache holds at most 32 MB of files, least recently read out
+  first, and a file over that is read whole every time; callers get a new array but share the line objects, so nothing
+  may change them); also at each turn end, at `GET /api/state` and after a rewind (`force`). Never while a turn
   runs (its items arrive live) and not while the file lacks an answer the stream already gave (`lastAssistantUuid`):
   the next look takes it. A different result is sent as SSE `history { sessionId, items }`; the browser replaces the
   items and redraws (`public/js/events.js`). Compared with sorted keys, so a turn whose live items match the file
@@ -66,7 +87,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   on 2.1.312) and adds the divider "ענף חדש מכאן". `/clear` moves the conversation into `conversations`. Import creates
   a session on the conversation and adds the divider "השיחה נטענה – אפשר להמשיך מכאן" after its last line.
 - Subagents (the Agent tool): the CLI keeps each in `<conversation>/subagents/agent-<id>.jsonl` with a `.meta.json`
-  whose `toolUseId` is the tool call that started it (checked on 2.1.312). `transcripts.readSubagents` reads them,
+  whose `toolUseId` is the tool call that started it (checked on 2.1.312). `transcript-files.js` `readSubagents` reads them (through the same cached reader),
   `history-build.withSubagents` puts their items (`parent` = that id, nested ones too) right after the tool item, as
   they arrive live. `conversationStamp` includes those files, so a background subagent's progress is read too.
 - Images in a CLI line are stored under an id from their bytes (`images.saveImages(..., { stable: true })`), so a
@@ -74,10 +95,13 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   `cliSync.start` built every session, so those images count as used.
 - A fork not answered yet shows the source conversation but does not take its name (`namePatch` is skipped while
   `forkPending`).
-- Not covered: a terminal rewind shows only once a message follows it (the CLI writes nothing before that); a turn run
-  in a terminal has no result item (no stats line, no changed-files card); every build reads the whole file; sessions
+- Not covered: a terminal rewind shows only once a message follows it (the CLI writes nothing before that); sessions
   saved before 2026-10-29 lose their stored items (not migrated, by the developer's decision); if the CLI deletes an
   old conversation file (`cleanupPeriodDays`, default not checked) the session shows only its GUI-only items.
+  Limits of the 2026-10-30 additions: the reader compares only the 64 bytes before its cached end, so an in-place
+  rewrite of the same size that keeps those bytes is not seen (the CLI only appends); a terminal turn that was
+  interrupted and followed by another prompt gets a stats line like a finished one (`end_turn` is checked for the last
+  turn only); an interrupted last turn gets none; `session.sent` also keeps entries for lines that no longer show.
 - Checked on 2.1.312: `claude -p` in stream-json mode writes the `.jsonl`; a uuid the GUI sends with a message becomes
   its line's uuid; a correction during a tool call is a `queued_command` attachment; one sent before the turn starts is
   joined into the first message (under the second uuid).
@@ -87,7 +111,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   `-p` conversation `sdk-cli` and its `/resume` picker hides it.
 - `session-cli-sync.js` `pushName`: a name a person gave (`named: true`: rename, fork) goes to the CLI conversation
   with `rename_session` when its process runs (`session-runtime.js` `requestIfLive`, never starts one), else as a
-  `custom-title` line appended to the `.jsonl` (`transcripts.js` `appendTitle`). `cliName` is the name the current CLI
+  `custom-title` line appended to the `.jsonl` (`transcripts/transcript-files.js` `appendTitle`). `cliName` is the name the current CLI
   conversation has; `session-events.js` `onSessionId` resets it for a new conversation and pushes again. Each build
   takes a `custom-title` that is not `cliName` (a terminal rename) as the name, and gives a session nobody named the
   CLI's `ai-title` / summary / first prompt (`titlesOf`).
@@ -141,7 +165,7 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   The browser shrinks them to ≤1568 px / ≤3.75 MB first (`public/js/attachments.js`)
 - Any other file: stored as `data/uploads/<uuid>/<name>`; the message ends with "[Attached files – read them with the
   Read tool]" and the full paths. Every session process gets `--add-dir <data/uploads>`, so Read needs no prompt
-- Imported CLI transcripts (`lib/transcripts.js`): the user's base64 images are stored through `saveImages` (same validation), one call per image, and referenced on the user item; failed or URL images keep a "[תמונה]" marker
+- Imported CLI transcripts (`lib/transcripts/transcript-items.js`): the user's base64 images are stored through `saveImages` (same validation), one call per image, and referenced on the user item; failed or URL images keep a "[תמונה]" marker
 - Items and queue entries hold references only; `sessions.json` never holds file bytes
 
 ## Side questions (/btw)
