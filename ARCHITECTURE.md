@@ -111,7 +111,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | `!` and the Terminal pane (D10) | Runs the shell itself and writes the CLI's bash-mode tags into the next message (`terminal/shell-context.js`) | The CLI's own `!` bash mode; output is not in the CLI transcript until the next message |
 | Safe mode (D16) | A GUI policy on permission modes | The CLI's permission settings (a bypass-disable setting, UNVERIFIED key) |
 | Custom system prompt (D16) | Text owned by the GUI (`data/session-settings/`), passed with the CLI's file flags | The CLI's own `CLAUDE.md` and output styles |
-| Worktree per session (D5) | Runs `git worktree` itself | The CLI's `--worktree` (listed in 2.1.312's help); decision recorded (it needs workspace trust accepted in a terminal) |
+| Worktree per session (D5) | Runs `git worktree` itself | The CLI's `--worktree`: checked by the developer to work in `-p` mode without a terminal; to move to it (DECISIONS.md) |
 | Prompt templates | A GUI library (`data/templates.json`) | The CLI's custom slash commands and skills |
 | `/color` | GUI-only color | The CLI's `/color` is cosmetic; decision recorded |
 | Model list (`model-list.js`) | Reads the model server, not the CLI | Decision recorded (custom base URL) |
@@ -128,9 +128,9 @@ Permission prompts (`can_use_tool`), elicitation, `/btw` (`side_question`), live
 - To change: cost is taken from the CLI instead of the GUI's sum; prompt templates are stored as CLI custom commands
   (`~/.claude/commands`, the form and insert-without-send stay GUI additions); the session list shows every CLI
   conversation, like `claude --resume --all` (a terminal conversation is a light row, built only when opened), with a
-  choice between search modes and an explanation of each.
-- To check against the CLI first: `--worktree` in `-p` mode without a terminal (move to it if it works), and that
-  picking a model really switches the CLI's model (`set_model`, `--model`).
+  choice between search modes and an explanation of each. The worktree per session moves to the CLI's `--worktree`
+  (the developer checked that it works in `-p` mode without a terminal; the D5 reason no longer holds).
+- To check against the CLI first: that picking a model really switches the CLI's model (`set_model`, `--model`).
 
 ### GUI-only on purpose (no CLI equivalent)
 Pins, archive, split view, notifications, the message queue, transcript view modes, focus, theme, the crab, the
@@ -331,7 +331,7 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
 | Rail totals from a small `git-summary` route | `/api/git` returns up to 300000 characters of diff; the rail needs only counts and must not fetch that on every turn. See DECISIONS.md |
 | Changes pane has its own route against HEAD, untracked files synthesized in node | `/api/git` has no untracked files and shows staged and unstaged apart; Claude mostly creates new files, so the pane must show them. See DECISIONS.md |
 | Transcript view groups by wrapping the existing rows in the DOM | Rows keep their nodes, ids and listeners, so live tool results, subagent rows, search hits and the file-viewer buttons need no change; re-rendering from items per mode would duplicate that logic. See DECISIONS.md |
-| A worktree per session, made by the GUI with git (not `claude --worktree`), from the local HEAD | `--worktree` needs workspace trust accepted in an interactive terminal; the machine is offline, so no fetch; the GUI knows the path. Hooks run, the branch is never reset or deleted, removal never forces. See DECISIONS.md |
+| A worktree per session, made by the GUI with git (not `claude --worktree`), from the local HEAD | `--worktree` was thought to need workspace trust accepted in an interactive terminal (no longer holds: it works in `-p` mode, checked by the developer 2026-10-29; to move to it); the machine is offline, so no fetch; the GUI knows the path. Hooks run, the branch is never reset or deleted, removal never forces. See DECISIONS.md |
 | A worktree session belongs to the folder it was opened from (`worktree.source`) | Grouping by project, search and the folder line would otherwise split one project into a group per worktree. See DECISIONS.md |
 | Archiving removes a clean worktree; restoring checks it out again at the same path (user decision, like Desktop) | Matches the Desktop Code tab; no `--force` and the branch stays, so dirty work is never lost; the same path keeps the CLI's per-folder conversation. See DECISIONS.md |
 | An archived session opens normally, sending restores it; its queue is kept, paused | No read-only concept to enforce at many entry points; one server rule at the send path; nothing typed is lost. See DECISIONS.md |
