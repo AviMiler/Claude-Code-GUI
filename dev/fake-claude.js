@@ -6,11 +6,12 @@
  * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
  * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
+ * The conversation is written where the real CLI keeps it (fake-transcript.js); set CLAUDE_CONFIG_DIR in experiments.
  */
 const readline = require('readline');
 const args = process.argv.slice(2);
 const rewind = require('./fake-rewind');
-const out = rewind.uuidOut(message => process.stdout.write(`${JSON.stringify(message)}\n`));
+const out = rewind.uuidOut(require('./fake-transcript').recorder(rewind.sessionId)(message => process.stdout.write(`${JSON.stringify(message)}\n`)));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation');
 

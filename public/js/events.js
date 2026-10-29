@@ -2,7 +2,8 @@
  * Applies one server event (SSE) to the client state and the views. Every live update flows through here,
  * including the user's notifications (notify.js) for a finished, waiting or failed turn.
  * Event types come from lib/session-service.js: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks,
- * shell (lib/terminal/shell-runs.js) and rewound (lib/rewind/).
+ * shell (lib/terminal/shell-runs.js), rewound (lib/rewind/) and history (lib/session-cli-sync.js: the conversation built
+ * again from the CLI's files, after a turn, a rewind, or a change made in a terminal).
  */
 import { state, forgetCatalog } from './state.js';
 import { notify } from './notify.js';
@@ -63,6 +64,12 @@ export function handleEvent(event, view) {
       break;
     case 'rewound':
       applyRewound(event, view);
+      break;
+    case 'history':
+      if (!session) return undefined;
+      session.items = event.items;
+      threads.forEach(thread => thread.show(session));
+      view.fetchContext(event.sessionId);
       break;
     case 'shell':
       applyShellEvent(event);

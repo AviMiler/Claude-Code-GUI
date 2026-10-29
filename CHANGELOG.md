@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-10-29 (workflow pass on the history move)
+- Subagents' inner steps are shown again after the history is rebuilt: read from the CLI's subagent files and placed inside their tool row
+- A fork keeps its "(ענף)" name while it has not answered yet (it took the source conversation's name)
+- Attachments are swept at startup only after every session's history is built, so images shown from the CLI's files are not removed first
+- spec.md: the four requirements of the history move were confirmed by the developer; passages that still described the old behaviour were fixed (initial name, import, images, corrections, rewind points and failure, known limits)
+
+## 2026-10-29 (the conversation comes from the CLI)
+- What a session shows is built from the CLI's own conversation file; `data/sessions.json` no longer stores the conversation, only settings and the GUI's own items (turn results, notices, dividers, `!` output), placed after the CLI's lines
+- Changes made in a terminal (`claude --resume`: messages, rename, `/rewind`, `/compact`) show in an open page within about a second, without a reload; the next GUI message continues the conversation as the CLI has it
+- A terminal rewind shows the conversation from the chosen point on; a compaction shows the history before it under "השיחה נדחסה (compact)"; messages before a compaction are no rewind point (the CLI cannot resume there)
+- Rewind, fork, `/clear` and import in the GUI no longer cut or copy a stored history: they tell the CLI, and the history is read again
+- The fake CLI writes a conversation file like the real one (`dev/fake-transcript.js`)
+- Not migrated: sessions created before this change
+
+## 2026-10-29 (GUI sessions in the CLI's /resume list)
+- Every GUI session now shows in the CLI's `claude --resume` picker: the CLI is started with `CLAUDE_CODE_ENTRYPOINT=claude-code-gui` (with `-p` alone the CLI marks the conversation `sdk-cli`, which the picker hides)
+- Same name in both: a rename in the GUI (and a fork's name) is written to the CLI conversation (`rename_session`, or the CLI's own `custom-title` line); a rename in the terminal comes back to the GUI; a session nobody named takes the CLI's own title after its first answer
+- Answers added to a GUI session from the terminal (`claude --resume`) come back to the GUI after the divider "המשך השיחה מחוץ ל-GUI (טרמינל)", and the next GUI message continues from them
+- New `lib/session-cli-sync.js`; `lib/transcripts.js` reads titles and the part after a known answer; the past-conversations list also reads the CLI's `ai-title`
+
+## 2026-10-29 (audit: where the GUI departs from the CLI)
+- Docs only, no code change: ARCHITECTURE.md has a new section "Departures from the CLI" (the conversation-history problem, data the GUI owns that the CLI also keeps, CLI features the GUI reimplements, what is aligned, what is GUI-only on purpose); spec.md (Past conversations) and AGENT_CONTEXT.md (Current State) name the history problem
+
+## 2026-10-29 (principle: the CLI is the source of truth)
+- Docs only, no code change: DECISIONS.md, spec.md (Platform constraints), AGENT_CONTEXT.md (Gotchas, Next Steps) now state that the CLI owns the conversation and the GUI is a display; departures from the CLI must be flagged to the developer
+- Recorded as a known deviation: the GUI still keeps its own copy of the history (`session.items` in `data/sessions.json`), so its session list does not match the CLI's `/resume`; moving to the CLI transcript is a planned task, not started
+
 ## 2026-10-29 (documentation audit)
 - Docs only, no code change: every source file was read and the docs compared with it
 - spec.md: new "as built" sections for what shipped before the spec existed (sessions, welcome page and topbar; the Claude Code process; the thread and streaming; Claude's crab; permission, question and plan cards; permission modes; the composer; the message queue; attachments; slash commands and the catalog; the settings panels; model, effort and folders; warm-up; past conversations; the folder browser; server safety) and the configuration; fixed the sidebar date-group labels and the file viewer's Read marks
