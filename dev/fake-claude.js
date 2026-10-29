@@ -2,6 +2,7 @@
  * Fake `claude` CLI for developing the GUI without an API key. Speaks the stream-json + control protocol.
  * Prompt keywords (whole words where they overlap): "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
  * "slow" -> long streaming (to test stop), "fail" -> crash, "task" -> a background task that ends 8 s later, "elicit" / "elicit-url" -> an MCP elicitation, "write <file>" -> changes a file (rewind, fake-rewind.js)
+ * MAX_THINKING_TOKENS=0 -> no thinking item; FAKE_NO_SYSTEM_PROMPT_FILE / FAKE_NO_REPLACE_PROMPT hide the system prompt flags from --help
  * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
  * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
@@ -15,7 +16,7 @@ const { createCorrections } = require('./fake-corrections'); const { fakeCatalog
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
-  console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
+  console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}${process.env.FAKE_NO_SYSTEM_PROMPT_FILE ? '' : `\n  --append-system-prompt-file <file>${process.env.FAKE_NO_REPLACE_PROMPT ? '' : '\n  --system-prompt-file <file>'}`}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
   --include-partial-messages\n  --replay-user-messages\n  --permission-prompts <target>\n  --fork-session\n  --settings <file-or-json>
   --permission-mode <mode>  Permission mode (choices: "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan")
 Commands:\n  mcp  Configure MCP\n  plugin|plugins  Manage plugins\n  doctor  Check health`);
@@ -103,7 +104,7 @@ async function turn(prompt) {
     process.stderr.write('Fake failure: API Error 500\n');
     process.exit(1);
   } else {
-    out({ type: 'assistant', message: { content: [{ type: 'thinking', thinking: `The user said: ${prompt}. I will answer.` }] }, parent_tool_use_id: null, session_id: sessionId });
+    if (process.env.MAX_THINKING_TOKENS !== '0') out({ type: 'assistant', message: { content: [{ type: 'thinking', thinking: `The user said: ${prompt}. I will answer.` }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/bash/.test(prompt)) await toolTurn('Bash', { command: 'npm test', description: 'Run tests' }, () => 'All 12 tests passed');
     if (/\bask/.test(prompt)) await toolTurn('AskUserQuestion', { questions: [{ question: 'איזה צבע?', header: 'צבע', multiSelect: false, options: [{ label: 'כתום', description: 'צבע Claude' }, { label: 'כחול', description: 'קלאסי' }] }] }, input => `answers: ${JSON.stringify(input.answers)}`);
     if (/plan/.test(prompt)) await toolTurn('ExitPlanMode', { plan: '## התוכנית\n1. לקרוא קבצים\n2. לערוך את `app.js`\n3. להריץ בדיקות' }, () => 'Plan approved');

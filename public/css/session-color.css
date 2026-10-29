@@ -1,0 +1,7 @@
+/* Session color (session-color/): the dot beside a session's name, and the options panel (panels/panel-session-options.js). */
+.color-dot { display: inline-block; flex: none; width: 9px; height: 9px; margin-inline-end: 6px; border-radius: 50%; vertical-align: baseline; }
+.color-palette { display: flex; flex-wrap: wrap; gap: 6px; }
+.color-choice { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 12.5px; }
+.color-choice.on { border-color: var(--accent); background: var(--accent-soft); }
+.option-check { display: flex; gap: 8px; align-items: center; margin-block: 4px; font-size: 13.5px; }
+.option-group { margin-top: 6px; }

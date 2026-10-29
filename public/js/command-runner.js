@@ -30,6 +30,7 @@ export function createCommandRunner(actions) {
     theme: () => actions.openPanel('appearance'),
     stop: () => actions.stop(),
     rewind: () => actions.rewind(),
+    color: args => actions.setColor(args),
     btw: args => actions.sideQuestion(args),
   };
 

@@ -41,6 +41,9 @@ function environmentCard(session, summary, modelLabel) {
     (session.addDirs || []).length ? row('תיקיות נוספות', String(session.addDirs.length), session.addDirs.join('\n')) : null,
     row('מודל', modelLabel(session)),
     session.fallbackModel ? row('מודל גיבוי', session.fallbackModel) : null,
+    session.thinkingOff ? row('חשיבה', 'כבויה') : null,
+    session.systemPrompt ? row('הנחיית מערכת', session.systemPromptMode === 'replace' ? 'מחליפה' : 'נוספת', session.systemPrompt.slice(0, 300)) : null,
+    session.safeMode ? row('מצב בטוח', 'פעיל') : null,
     row('הרשאות', mode?.label || session.mode));
 }
 

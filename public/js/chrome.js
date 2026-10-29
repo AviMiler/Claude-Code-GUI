@@ -1,5 +1,6 @@
 /** Top bar of the thread and the welcome page shown before a session exists. */
 import { h, folderName, copyText } from './dom.js';
+import { colorDot } from './session-color/color-dot.js';
 import { icon } from './icons.js';
 import { showDropdown } from './popover.js';
 import { recentFolders } from './state.js';
@@ -67,6 +68,7 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', disabled: Boolean(session.archived), onSelect: handlers.onPin },
     session.archived ? { icon: 'history', title: 'שחזור מהארכיון', onSelect: handlers.onUnarchive }
       : { icon: 'archive', title: 'העברה לארכיון', onSelect: handlers.onArchive },
+    { icon: 'sliders', title: 'אפשרויות הסשן: צבע, חשיבה, הנחיית מערכת, מצב בטוח', hint: '/color', onSelect: () => handlers.onOpenPanel('session-options') },
     { icon: 'map', title: handlers.paneOpen('plan') ? 'הסתרת חלונית התוכנית' : 'הצגת חלונית התוכנית', onSelect: () => handlers.onTogglePane('plan') },
     { icon: 'list', title: handlers.paneOpen('tasks') ? 'הסתרת חלונית משימות הרקע' : 'הצגת חלונית משימות הרקע', onSelect: () => handlers.onTogglePane('tasks') },
     { icon: 'folder', title: handlers.filesOpen ? 'הסתרת חלונית הקבצים' : 'הצגת חלונית הקבצים', onSelect: handlers.onToggleFiles },
@@ -80,7 +82,7 @@ export function renderTopbar(bar, session, handlers) {
     { icon: 'help', title: 'קיצורי מקלדת', hint: 'Ctrl+/', onSelect: toggleShortcutsDialog },
     { icon: 'trash', title: 'מחיקת הסשן', onSelect: handlers.onDelete },
   ], { placement: 'bottom' }));
-  bar.replaceChildren(...[toggle, title, folder, branch, archived, extra, agent, tasks, h('span', { class: 'spacer' }),
+  bar.replaceChildren(...[toggle, colorDot(session), title, folder, branch, archived, extra, agent, tasks, h('span', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
     h('button', { type: 'button', class: `icon-button${handlers.changesOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.changesOpen),
       title: 'שינויים (Ctrl+Shift+D)', onClick: handlers.onToggleChanges }, icon('diff')),

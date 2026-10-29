@@ -4,6 +4,7 @@
  */
 import { h, folderName } from './dom.js';
 import { icon } from './icons.js';
+import { colorDot } from './session-color/color-dot.js';
 import { searchSessions } from './session-search.js';
 import { groupSessions, groupingPreference, saveGrouping } from './session-groups.js';
 import { projectFolder } from './worktree/project-folder.js';
@@ -63,7 +64,7 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
         type: 'button', class: 'session-row', 'aria-current': String(session.id === activeId), title: session.cwd,
         onClick: () => onSelect(session.id, content ? { indexes: content.indexes, query } : undefined),
       }, h('span', { class: `dot ${status}`, title: STATUS_TITLES[status] }),
-      h('span', null, h('strong', { dir: 'auto' }, session.name), placeLine(session, grouping === 'project' && !session.pinned),
+      h('span', null, h('strong', { dir: 'auto' }, colorDot(session), session.name), placeLine(session, grouping === 'project' && !session.pinned),
         content ? snippetOf(content) : null));
       const pin = archive ? null : h('button', { type: 'button', class: `pin-button${session.pinned ? ' pinned' : ''}`,
         title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה', 'aria-pressed': String(Boolean(session.pinned)),

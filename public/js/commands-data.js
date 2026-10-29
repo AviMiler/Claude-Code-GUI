@@ -66,7 +66,7 @@ export const BUILTIN_COMMANDS = [
   c('ide', 'ניהול חיבור ל-IDE', 'terminal', { icon: 'monitor' }),
   c('terminal-setup', 'הגדרת קיצורי מקשים בטרמינל', 'terminal', { icon: 'terminal' }),
   c('tui', 'בחירת מצב תצוגת הטרמינל', 'terminal', { icon: 'terminal' }),
-  c('color', 'צבע שורת הפרומפט', 'terminal', { icon: 'sliders' }),
+  c('color', 'צבע לסשן (נקודה ברשימה ובכותרת): /color <צבע>', 'action:color', { args: '[צבע | default]', icon: 'sliders' }),
   c('scroll-speed', 'מהירות גלילה בעכבר', 'terminal', { icon: 'sliders' }),
   c('remote-control', 'שליטה בסשן מהטלפון או מ-claude.ai/code', 'terminal', { aliases: ['rc'], icon: 'monitor' }),
   c('teleport', 'שליחת הסשן לענן או המשך סשן ענן', 'terminal', { aliases: ['tp'], icon: 'globe' }),
