@@ -53,7 +53,9 @@ export async function renderSkillsPanel(body, context) {
   const draw = () => {
     const needle = search.value.trim().toLowerCase();
     const shown = skills.filter(skill => !needle || `${skill.name} ${skill.description}`.toLowerCase().includes(needle));
-    listBox.replaceChildren(section(`${shown.length} Skills ופקודות`, 'מה-CLI עצמו: מובנים, מהפרויקט, מהמשתמש ומפלאגינים.', shown.length ? list(shown.map(skill => {
+    // 2.1.246 has no get_skills_dialog; the server then takes each skill's source from the skill folders on disk.
+    const origin = catalog?.skillsFromDisk ? ' גרסת Claude Code הזו לא מדווחת על Skills ישירות, אז המקור נקרא מתיקיות ה-skills בדיסק (בלי ספירת טוקנים).' : '';
+    listBox.replaceChildren(section(`${shown.length} Skills ופקודות`, `מה-CLI עצמו: מובנים, מהפרויקט, מהמשתמש ומפלאגינים.${origin}`, shown.length ? list(shown.map(skill => {
       const info = dialogSkills.get(skill.name);
       const source = info?.source || skill.source;
       const editable = source === 'project' || source === 'user';

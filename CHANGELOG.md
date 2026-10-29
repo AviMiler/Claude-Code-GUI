@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 (skills and auto memory from disk)
+- Fixed: on Claude Code 2.1.246 (no `get_skills_dialog` / `get_memory_dialog`) the skills panel and command catalog lost their skills and the memory panel showed nothing; skills now fall back to the skills folders on disk (`skillsFromDisk` in lib/catalog-service.js, `listNamed` exported from lib/claude-files.js; the panel says the source was read from disk, no token counts) and the memory panel shows the auto memory folder and its file count from disk (`autoMemory` in lib/claude-files.js, `fetchMemoryDialog` in public/js/panels/panel-config.js; status "לא ידוע")
+- Verified by static review only (no Node on this machine); re-check on the target machine with the real CLI. Known: a transient skills timeout in the probe path also shows the "read from disk" note
+
 ## 2026-10-29 (quiet unsupported control requests)
 - Fixed: on Claude Code 2.1.246 control requests the CLI does not know (list_permission_rules, get_hooks_listing, get_memory_dialog, get_status) answered HTTP 502 and flooded the server console; they now answer 501 with the same message, so the panels' "not available" fallback is unchanged (lib/catalog-service.js `noAnswerError`, used by `sessionControl` and `folderControl`)
 - Changed: `server.js` no longer logs a failed request with status 501 (it means the CLI lacks the feature, not a failure); other errors are still logged

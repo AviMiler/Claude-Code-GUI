@@ -45,6 +45,17 @@ const MEMORY_KINDS = [
   { kind: 'memory-user', label: 'הוראות משתמש', hint: '~/.claude/CLAUDE.md – בכל הפרויקטים' },
 ];
 
+/** Older CLIs (2.1.246) lack get_memory_dialog; then the auto memory folder is read from disk (its on/off state stays unknown). */
+async function fetchMemoryDialog(context) {
+  try {
+    return await context.api.control(context.scope, 'get_memory_dialog');
+  } catch (error) {
+    if (!isUnsupported(error)) throw error;
+    const { autoMemory } = await context.api.claudeFiles(context.scope);
+    return { fromDisk: true, folders: [{ label: 'תיקיית הזיכרון', path: autoMemory.exists ? autoMemory.path : `${autoMemory.path} (לא קיימת)` }], memories: autoMemory.files };
+  }
+}
+
 export function renderMemoryPanel(body, context) {
   const editorBox = h('div');
   const infoBox = h('div');
@@ -61,8 +72,9 @@ export function renderMemoryPanel(body, context) {
   body.append(section('קובצי CLAUDE.md', 'הוראות קבועות ש-Claude קורא בתחילת כל שיחה. בחר קובץ לעריכה.', files,
     h('div', { class: 'panel-toolbar', style: 'margin-top:10px' },
       button('יצירה אוטומטית עם /init', () => { context.close(); context.send('/init'); }, { iconName: 'file-plus' }))), editorBox, infoBox);
-  load(infoBox, () => context.api.control(context.scope, 'get_memory_dialog'), dialog => section('זיכרון אוטומטי', null, kv([
-    ['זיכרון אוטומטי', dialog.auto_memory?.status || '—'],
+  load(infoBox, () => fetchMemoryDialog(context), dialog => section('זיכרון אוטומטי',
+    dialog.fromDisk ? 'נקרא מהדיסק: גרסת Claude Code הזו לא מדווחת על הזיכרון האוטומטי ישירות.' : null, kv([
+    ['זיכרון אוטומטי', dialog.auto_memory?.status || (dialog.fromDisk ? 'לא ידוע' : '—')],
     ...(dialog.folders || []).map(folder => [folder.label, folder.path]),
     ['זיכרונות שמורים', String((dialog.memories || []).length)],
   ])));

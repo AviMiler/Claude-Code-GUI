@@ -138,7 +138,8 @@ sessions are kept in memory and saved to `data/sessions.json`; prompt templates 
 - Built-in commands of the installed version (read from the 2.1.308 binary) live in `public/js/commands-data.js` with
   Hebrew text and where they run: a GUI panel, a GUI action, the CLI (sent as text), or terminal-only
 - The live catalog (`initialize` + `get_skills_dialog` control requests) adds skills, custom/plugin/MCP commands and
-  upgrades a terminal-only entry to "send" when this version supports it non-interactively
+  upgrades a terminal-only entry to "send" when this version supports it non-interactively. When `get_skills_dialog`
+  fails (for example 2.1.246) skills are read from the skills folders on disk instead (`skillsFromDisk`, flag in the catalog)
 - `/` at the start of the message lists every command; `/` after a space mid-sentence lists Skills and custom
   commands only, and the pick stays in the text (the model then invokes the skill itself)
 - Panels use control requests (`mcp_status`, `get_context_usage`, `list_permission_rules`, ...) and whitelisted
