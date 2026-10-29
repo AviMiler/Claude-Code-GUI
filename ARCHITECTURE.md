@@ -105,13 +105,13 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | Feature | What the GUI does | Note |
 |---|---|---|
 | `/clear` (`clearConversation`) | Closes the CLI and drops `claudeSessionId`, adds a divider | Not the CLI's `/clear` |
-| `/fork` | Uses `--fork-session` (aligned) but copies `items` | Follows the history problem |
-| `/rewind` (D15) | GUI-minted uuids and GUI rewind points; cuts `items` | Uses the CLI's `--resume-session-at` and `rewind_files`; see DECISIONS.md |
-| `/export`, `/copy` | Built from `items` | The CLI has its own commands |
+| `/fork` | Uses `--fork-session` (aligned); copies only the GUI's own parts (`conversations`, `extras`, `sent`, `anchors`) and adds a divider | The history comes from the CLI's fork (see above) |
+| `/rewind` (D15) | The GUI's own rewind button; sets `resumeAt` and drops the extras after the point, then builds again from the CLI's file | Points are the CLI's line uuids (`afterUuid`); uses the CLI's `--resume-session-at` and `rewind_files`; a terminal `/rewind` is read from the file; see DECISIONS.md |
+| `/export`, `/copy` | Built from `items` (built from the CLI's file) | The CLI has its own commands |
 | `!` and the Terminal pane (D10) | Runs the shell itself and writes the CLI's bash-mode tags into the next message (`terminal/shell-context.js`) | The CLI's own `!` bash mode; output is not in the CLI transcript until the next message |
 | Safe mode (D16) | A GUI policy on permission modes | The CLI's permission settings (a bypass-disable setting, UNVERIFIED key) |
 | Custom system prompt (D16) | Text owned by the GUI (`data/session-settings/`), passed with the CLI's file flags | The CLI's own `CLAUDE.md` and output styles |
-| Worktree per session (D5) | Runs `git worktree` itself | The CLI's own worktree option (UNVERIFIED on 2.1.246) |
+| Worktree per session (D5) | Runs `git worktree` itself | The CLI's `--worktree` (listed in 2.1.312's help); decision recorded (it needs workspace trust accepted in a terminal) |
 | Prompt templates | A GUI library (`data/templates.json`) | The CLI's custom slash commands and skills |
 | `/color` | GUI-only color | The CLI's `/color` is cosmetic; decision recorded |
 | Model list (`model-list.js`) | Reads the model server, not the CLI | Decision recorded (custom base URL) |
