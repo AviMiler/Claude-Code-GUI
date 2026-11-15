@@ -4,7 +4,7 @@
  * "slow" -> long streaming (to test stop), "fail" -> crash, "task" -> a background task that ends 8 s later, "stall" -> silent mid-turn for FAKE_STALL_MS (fake-stall.js), "elicit" / "elicit-url" -> an MCP elicitation, "write <file>" -> changes a file (rewind, fake-rewind.js)
  * MAX_THINKING_TOKENS=0 -> no thinking item; FAKE_NO_SYSTEM_PROMPT_FILE / FAKE_NO_REPLACE_PROMPT / FAKE_NO_SETTINGS hide those flags from --help
  * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
- * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
+ * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows). FAKE_CONTEXT_*: fake-context.js.
  * "loop [n]", "editloop [n]", "subloop", "pollloop" -> repeated tool calls (fake-loop.js).
  * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
  * The conversation is written where the real CLI keeps it (fake-transcript.js); set CLAUDE_CONFIG_DIR in experiments.
@@ -13,7 +13,7 @@ const readline = require('readline'); const args = process.argv.slice(2);
 const rewind = require('./fake-rewind');
 const out = rewind.uuidOut(require('./fake-transcript').recorder(rewind.sessionId)(message => process.stdout.write(`${JSON.stringify(message)}\n`)));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation'); const tools = require('./fake-tools'); const { stopHookRounds } = require('./fake-stop-hook'); const { stall } = require('./fake-stall');
+const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation'); const tools = require('./fake-tools'); const { stopHookRounds } = require('./fake-stop-hook'); const { stall } = require('./fake-stall'); const fakeContext = require('./fake-context');
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
@@ -51,7 +51,7 @@ function startTask() {
 const CONTROL = {
   initialize: () => CATALOG,
   get_skills_dialog: () => ({ skills: [{ name: 'hello-skill', description: 'Says hello', source: 'project', tokens: 13, state: 'on' }] }),
-  get_context_usage: () => ({ categories: [{ name: 'System prompt', tokens: 2600, kind: 'used' }, { name: 'Messages', tokens: 9000, kind: 'used' }, { name: 'Free space', tokens: 188400, kind: 'free' }], totalTokens: 11600, maxTokens: 200000, percentage: 6 }),
+  get_context_usage: () => fakeContext.usage(), // grows with the turns (fake-context.js)
   get_status: () => ({ sections: [{ title: 'Session', rows: [{ label: 'Version', value: '2.1.308 (fake)' }, { label: 'Session ID', value: sessionId }] }] }),
   get_session_cost: () => ({ text: `Total cost: ${totalCost.toFixed(4)}` }),
   ...(!process.env.FAKE_CLAUDE_NO_USAGE && { get_usage: () => ({ session: { total_cost_usd: totalCost, total_api_duration_ms: 0, total_duration_ms: 0, total_lines_added: 0, total_lines_removed: 0, model_usage: {} } }) }),
@@ -116,7 +116,7 @@ async function turn(prompt) {
     await stream(`**תשובה מזויפת** ל: ${prompt}${seen}. זה טקסט שמוזרם מילה אחרי מילה כדי לבדוק את הממשק \`code\` וגם רשימה.`, /slow/.test(prompt) ? 400 : 25);
   }
   await stopHookRounds({ args, sessionId, out, stream, prompt, stopped: () => interrupted }); // Stop hooks of --settings (fake-stop-hook.js)
-  out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: process.env.FAKE_CLAUDE_NO_USAGE ? 0.0012 : (totalCost += 0.0012), usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
+  out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: process.env.FAKE_CLAUDE_NO_USAGE ? 0.0012 : (totalCost += 0.0012), usage: fakeContext.turnUsage(), session_id: sessionId });
   running = false;
   // Too late for this turn (it was already answering): the waiting corrections start the next one, like the real CLI.
   if (corrections.size()) { const late = corrections.drain(); queue = queue.then(() => turn(`תיקון: ${late.join(' | ')}`)); }

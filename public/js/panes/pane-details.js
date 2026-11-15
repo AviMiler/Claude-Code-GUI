@@ -8,7 +8,9 @@ import { icon } from '../icons.js';
 import { state } from '../state.js';
 import { MODES } from '../modes.js';
 import { toast } from '../ui.js';
-import { renderContextUsage } from '../panels/panel-usage.js';
+import { renderContextUsage } from '../context/context-usage-view.js';
+import { contextInfo, contextLevel, percentText, describeContext } from '../context/context-info.js';
+import { loadContext } from '../context/context-live.js';
 import { createSessionFetch } from './session-fetch.js';
 import { projectFolder } from '../worktree/project-folder.js';
 import { toolLimitRows } from '../tool-limits/details-rows.js';
@@ -75,21 +77,24 @@ export function createDetailsPane({ openPane, modelLabel, rerender }) {
   let contextOpen = false;
   let contextBox = null;
   let contextFor = null;
+  let contextNote; // undefined while the rail's reading is on its way; then why there is no CLI breakdown (or null)
 
-  function loadContext(session) {
+  function openContext(session) {
     contextFor = session.id;
     contextBox = h('div', { class: 'detail-context' }, h('p', { class: 'detail-muted' }, 'טוען…'));
-    // ifRunning: looking at the rail must never start a Claude Code process.
-    api.control({ sessionId: session.id }, 'get_context_usage', { ifRunning: true }).then(usage => {
-      contextBox.replaceChildren(...(usage ? renderContextUsage(usage) : [h('p', { class: 'detail-muted' }, 'זמין כש-Claude Code של הסשן פעיל.')]));
-    }).catch(error => contextBox.replaceChildren(h('p', { class: 'detail-muted' }, error.message)));
+    // ifRunning: looking at the rail must never start a Claude Code process; without one it shows the estimate.
+    contextNote = undefined;
+    loadContext(session, { ifRunning: true }).then(({ note }) => { contextNote = note; rerender(); });
   }
 
   function contextCard(session) {
-    const percent = state.context.get(session.id);
-    if (contextOpen && contextFor !== session.id) loadContext(session);
-    const toggle = () => { contextOpen = !contextOpen; if (contextOpen) loadContext(session); rerender(); };
-    return card({ title: 'הקשר', iconName: 'gauge', value: percent >= 0 ? `${percent}%` : '', onClick: toggle },
+    const info = contextInfo(session, rerender);
+    if (contextOpen && contextFor !== session.id) openContext(session);
+    // Drawn again from the shared model on every render, so the open card follows turn ends like the ring does.
+    if (contextOpen && contextNote !== undefined) contextBox.replaceChildren(...renderContextUsage(info, { note: contextNote }));
+    const toggle = () => { contextOpen = !contextOpen; if (contextOpen) openContext(session); rerender(); };
+    const value = info ? h('span', { class: `context-rail-value level-${contextLevel(info)}`, dir: 'ltr' }, percentText(info)) : '';
+    return card({ title: 'הקשר', iconName: 'gauge', value, onClick: toggle, tooltip: info ? describeContext(info) : 'עוד אין נתונים על ההקשר' },
       contextOpen ? contextBox : null);
   }
 

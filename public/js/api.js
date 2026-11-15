@@ -55,6 +55,8 @@ export const api = {
   fork: id => request('POST', `/api/sessions/${id}/fork`),
   /** Branch and uncommitted line counts of the session's folder: { isRepo, branch, files, untracked, added, removed }. */
   gitSummary: sessionId => request('GET', `/api/sessions/${sessionId}/git-summary`),
+  /** The real context window of the session's model: { window, source, estimate, model, warnPercent } (lib/context/). */
+  contextWindow: sessionId => request('GET', `/api/sessions/${sessionId}/context-window`),
   /** The session folder's uncommitted diff against HEAD, new files included: { isRepo, diff, truncated, newFilesSkipped }. */
   sessionDiff: sessionId => request('GET', `/api/sessions/${sessionId}/diff`),
   /** Text of a file in the session's folders: { path, content, totalLines, truncated, size }. */

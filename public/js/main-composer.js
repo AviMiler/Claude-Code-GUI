@@ -9,6 +9,7 @@ import { bangCommand, runBang } from './terminal/shell-command.js';
 import { createShellNote } from './terminal/shell-note.js';
 import { enableRewind } from './rewind/rewind-menu.js';
 import { enableRetry } from './retry/retry-button.js';
+import { createContextWarning } from './context/context-warning.js';
 
 /**
  * @param {HTMLElement} area the composer's container
@@ -44,5 +45,7 @@ export function createMainComposer(area, { actions, runCommand }) {
   area.prepend(note.node);
   const showNote = () => note.update(activeSession(), composer.textarea.value);
   composer.textarea.addEventListener('input', showNote);
-  return { ...composer, update(args) { composer.update(args); showNote(); } };
+  const warning = createContextWarning({ actions, putDraft: text => (composer.textarea.value.trim() ? composer.restore([{ text, attachments: [] }]) : composer.insert(text, { replace: true })) });
+  area.prepend(warning.node);
+  return { ...composer, update(args) { composer.update(args); showNote(); warning.update(activeSession()); } };
 }
