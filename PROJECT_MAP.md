@@ -1,12 +1,19 @@
 # Project Map
-_Last updated: 2026-10-30 — the D1–D16 files are in the tree below; the history of each change is in CHANGELOG.md._
+_Last updated: 2026-11-16 — the D1–D16 files and the local-model batch (A–F, tests) are in the tree below; the history of each change is in CHANGELOG.md._
 
 ## File Tree
 ```
 ./AGENT_CONTEXT.md  ./ARCHITECTURE.md  ./CHANGELOG.md  ./DECISIONS.md  ./DEPENDENCIES.md  ./PROJECT_MAP.md  ./spec.md  ./git-instructions.md
 ./.gitignore  ./config.json
 ./server.js
-./dev/config.fake.json  ./dev/fake-claude.cmd  ./dev/fake-claude.js  ./dev/fake-corrections.js  ./dev/fake-transcript.js  ./dev/fake-catalog.js  ./dev/fake-elicitation.js  ./dev/fake-rewind.js
+./dev/config.fake.json  ./dev/fake-claude.cmd  ./dev/fake-claude.js  ./dev/fake-corrections.js  ./dev/fake-transcript.js  ./dev/fake-catalog.js  ./dev/fake-elicitation.js  ./dev/fake-rewind.js  ./dev/fake-context.js  ./dev/fake-ollama.js  ./dev/fake-stall.js  ./dev/fake-stop-hook.js  ./dev/fake-loop.js  ./dev/fake-tools.js
+./lib/safe-file.js  ./lib/event-buffer.js  ./lib/context/{ollama-window,context-window,session-window}.js  ./lib/stall/last-event.js  ./lib/model-gate/{gate-state,turn-gate}.js
+./lib/verify/{stop-hook,verify-hook-settings,verify-secrets,verify-store,verify-state,verify-runs,turn-edits,verify-hook,verify-routes}.js  ./lib/loop-detector/{detector,index}.js
+./lib/git/{hunk-revert,hunk-routes}.js  ./lib/tool-limits/{tool-names,tool-args,mcp-apply}.js
+./public/js/context/{context-info,context-live,context-usage-view,context-warning,summarize-clear}.js  ./public/js/stall/{stall-clock,stall-note}.js  ./public/js/verify/{verify-panel,verify-item}.js
+./public/js/retry/{last-turn,retry-flow,retry-button}.js  ./public/js/compare/{compare-picker,compare-flow}.js  ./public/js/tool-limits/{tool-catalog,tool-limits-section,details-rows}.js
+./public/js/panes/{hunk-hash,hunk-revert}.js  ./public/js/open-tool.js  ./public/css/{context,stall,verify,retry}.css
+./test/*.test.js (15 files) + ./test/README.md
 ./lib/elicitation/elicitation-normalize.js  ./lib/elicitation/elicitation-validate.js  ./lib/elicitation/elicitation-reply.js
 ./lib/rewind/checkpoint-env.js  ./lib/rewind/rewind-points.js  ./lib/rewind/rewind-lock.js  ./lib/rewind/rewind-files.js  ./lib/rewind/rewind-conversation.js  ./lib/rewind/rewind-service.js  ./lib/rewind/rewind-routes.js
 ./lib/api-routes.js  ./lib/api-routes-tools.js  ./lib/catalog-service.js  ./lib/claude-files.js
@@ -84,7 +91,7 @@ _Last updated: 2026-10-30 — the D1–D16 files are in the tree below; the hist
 | `lib/runtime-events.js` | Moved out of `session-runtime.js` in D9: `createRuntimeEvents({ hooks, runtimes, scheduleIdle, permissions, spare })` -> `{ handleMessage, handleExit }`. `handleMessage` routes each CLI event (init, deltas, tasks, mode, items; first `noteEvent` for replays and a late resume via `onTurnResume`; at a `result` it asks `holdTurn` whether corrections keep the turn open, else `endTurn`: `turnActive` false, `onTurnEnd`, idle timer). `handleExit` clears the tracking, timers and pending prompts and calls `onExit`. Since D15 `handleMessage` also feeds the rewind hooks (`onUserReplay` for a replay, `onAssistantUuid` for a top-level assistant event with a uuid). Since 2026-10-30 both go through an `inOrder` chain (`runtime.waiting`): a result is emitted after its cost (`turnCost`), then `holdTurn` / `endTurn`, and later events wait behind it. |
 | `lib/runtime-cost.js` | 2026-10-30: the turn's cost from the CLI. `startCounting(runtime)` (a `get_usage` baseline after `initialize`, in `runtime.costBefore`), `turnCost(runtime, result)` (the growth of `session.total_cost_usd` since the last reading, rounded to 1e-8; the result's own `total_cost_usd` when a reading is missing; `null` when none); `USAGE_TIMEOUT_MS` 2000. |
 | `lib/runtime-permissions.js` | Moved out of `session-runtime.js` in D9: the `can_use_tool` prompts (`handleControlRequest`, `resolvePermission`) and `answerPermission`. D13: also routes the `elicitation` subtype into the same pending map (shared `waitFor`), `answerPermission` branches on `prompt.kind`, `cancelAll(runtime)` (used by `interrupt()`). |
-| `lib/elicitation/elicitation-normalize.js` | D13: `normalizeElicitation(request)`: untrusted request to a prompt `{ kind:'elicitation', serverName, message, mode, url?, fields[] }` with size limits, field types string / number / integer / boolean / select / multiselect / json, http(s)-only `openable` URL. |
+| `lib/elicitation/elicitation-normalize.js` | D13: `normalizeElicitation(request)`: untrusted request to a prompt `{ kind:'elicitation', serverName, message, mode, url?, fields[] }` with size limits, field types string / number / integer / boolean / select / multiselect / json, URL clamped to 2048 characters (the server sets no `openable` flag; the http(s)-only check is in `public/js/elicitation/elicitation-url.js`). |
 | `lib/elicitation/elicitation-validate.js` | D13: `validateContent(prompt, content)`: builds the accepted `content` from schema keys only (own properties), checks type / required / enum / ranges, 64 KB cap; errors name the field (400 / 413). |
 | `lib/elicitation/elicitation-reply.js` | D13: `replyFor(prompt, answer)` (accept / decline / cancel to the CLI's `{ action, content? }`) and `CANCEL_REPLY`. |
 | `dev/fake-elicitation.js` | D13: the fake CLI's elicitation simulation (keywords `elicit` form, `elicit-url`), prints the action and content it received. |
@@ -231,6 +238,25 @@ _Last updated: 2026-10-30 — the D1–D16 files are in the tree below; the hist
 | `lib/rewind/rewind-service.js` | D15: `preview` and `perform(mode)`: validate the cut, files, then conversation; refuses a running turn, pending prompts, archived sessions and missing folders; broadcasts `rewound`; returns the removed message for the composer. |
 | `lib/rewind/rewind-routes.js` | D15: `POST /api/sessions/:id/rewind` `{ uuid, mode }` and `.../rewind/preview` `{ uuid }`, registered in `api-routes.js`. No path in the body. |
 | `dev/fake-rewind.js` | D15: the fake CLI's rewind support: uuids on assistant events, a replay for every user message, per-session history and file checkpoints in `FAKE_STATE_DIR`, `--resume-session-at`, `rewind_files` with `dry_run`, keyword `write <file>` (confined to `cwd`); `FAKE_NO_REWIND_FILES`, `FAKE_NO_RESUME_AT`. |
+| `lib/safe-file.js` | 2026-11-16: `writeFileSafe` (temp + `.bak` + rename, retried, in-place fallback) and `readFileSafe` (corrupt file renamed `.corrupt-<ms>`, `.bak` tried); used by `session-store.js`. |
+| `lib/event-buffer.js`, `lib/event-hub.js` | 2026-11-16: the SSE hub (`createHub`): ids `<epoch>-<n>`, a ring of 300, `Last-Event-ID` replay, `resync`, `: ping` every 15 s, a blocked client dropped after 5 s or 4 MB. |
+| `lib/context/` | A: `ollama-window.js` (`POST /api/show`, `GET /api/ps`), `context-window.js` (source order, cache, aliases), `session-window.js` (`GET /api/sessions/:id/context-window`). |
+| `lib/stall/last-event.js` | B: the last CLI event time per session, SSE `alive`, `lastEventAt` in the meta. |
+| `lib/model-gate/` | B: `gate-state.js` (FIFO, places), `turn-gate.js` (acquire / release, stale holder check, `modelGate` config). |
+| `lib/verify/` | D1: the auto-verify Stop hook: `stop-hook.js` (the script the CLI runs), `verify-hook-settings.js` (hook entry merged into the `--settings` file), `verify-secrets.js`, `verify-store.js` (`<data>/verify-checks.json`), `verify-state.js` (attempts, `verifying`), `verify-runs.js` (check run through `terminal/shell-run.js`), `turn-edits.js` (did the turn change files), `verify-hook.js` (allow / block), `verify-routes.js` (check CRUD, hook POST). |
+| `lib/loop-detector/` | D2: `detector.js` (pure), `index.js` (`watch`, `take`; hook in `session-events.js` `onItem`). |
+| `lib/git/hunk-revert.js`, `lib/git/hunk-routes.js` | E1: `POST /api/sessions/:id/revert-hunk` (regenerate the diff, check the hunk hash, `git apply -R`). |
+| `lib/tool-limits/` | F: `tool-names.js` (validation, fixed built-in list), `tool-args.js` (`--tools` / `--disallowedTools`), `mcp-apply.js` (`mcp_toggle` after initialize). |
+| `public/js/context/` | A: `context-info.js` (the ONE `contextInfo(session)`), `context-live.js` (live `get_context_usage`), `context-usage-view.js`, `context-warning.js`, `summarize-clear.js`. |
+| `public/js/stall/` | B: `stall-clock.js`, `stall-note.js` (working-line text). |
+| `public/js/verify/` | D1: `verify-panel.js` (section "בדיקה אוטומטית" of the session options panel), `verify-item.js` (notice items). |
+| `public/js/retry/`, `public/js/compare/` | E2: `last-turn.js`, `retry-flow.js`, `retry-button.js`; `compare-picker.js`, `compare-flow.js`. |
+| `public/js/tool-limits/` | F: `tool-catalog.js`, `tool-limits-section.js` (in the session options panel), `details-rows.js` (rail rows). |
+| `public/js/panes/hunk-hash.js`, `hunk-revert.js` | E1: the hunk hash (shared with the server) and the revert button flow. |
+| `public/js/open-tool.js` | C: `openTool`, moved out of `thread.js` (kept under 150 lines). |
+| `public/css/context.css`, `stall.css`, `verify.css`, `retry.css` | Styles of the 2026-11-16 features. |
+| `dev/fake-context.js`, `fake-ollama.js`, `fake-stall.js`, `fake-stop-hook.js`, `fake-loop.js`, `fake-tools.js` | Fake CLI / model-server helpers for the 2026-11-16 features (usage and windows, a fake Ollama, a silent turn, a simulated Stop hook, a repeated tool call, tool names and `mcp_toggle`). |
+| `test/*.test.js`, `test/README.md` | T: 141 `node:test` cases (`node --test test/*.test.js`) for event-translator, history-build, jsonl-reader, transcripts, turn-results, cli-args, cli-capabilities, command-format, elicitation-normalize / -validate, model-health, model-list, session-options, text-format, worktree-paths. |
 | `public/js/rewind/rewind-button.js` | D15: the hover button "חזרה לנקודה זו" (`dataset.rewindUuid`), shown for user items with `cliUuid` in the main thread. |
 | `public/js/rewind/rewind-menu.js` | D15: one document-level `contextmenu` listener on `[data-rewind-uuid]` (`enableRewind`, wired in `main-composer.js`); skips a text selection. |
 | `public/js/rewind/rewind-dialog.js` | D15: preview, the available choices (radios), consequence lines and warnings, confirm; also the entry point of `/rewind` (last rewindable message). |
