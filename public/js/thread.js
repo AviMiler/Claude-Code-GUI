@@ -88,6 +88,7 @@ export function createThread({ scroller, messages, onOpenGit }) {
     else if (!item.parent && (item.kind === 'tool-result' || item.kind === 'text')) activeTool = null;
     if (item.kind === 'error' || (item.kind === 'result' && item.isError)) outcome = 'error';
     if (item.kind === 'notice' && item.stopped) outcome = 'stopped';
+    if (item.kind === 'notice' && item.loopStopped) outcome = 'error'; // the loop detector stopped it (lib/loop-detector/)
     keepPinned(() => {
       if (!item.parent && (item.kind === 'text' || item.kind === 'thinking')) dropLive(item.kind);
       // Thinking that streamed but arrives empty (redacted/summarized) never gets its own item; the next step ends it.
