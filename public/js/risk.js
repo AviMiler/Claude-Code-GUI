@@ -90,6 +90,12 @@ export const guardedApi = {
     await confirmRisk(`claude ${args.slice(0, 3).join(' ')}`, cliReasons(args));
     return api.cli(args, cwd);
   },
+  /** Like a hook: the command will run by itself at the end of Claude's turns. */
+  async saveVerifyCheck(id, check, folder) {
+    await confirmRisk('בדיקה אוטומטית', check.enabled ? [`הפקודה תרוץ מעצמה בסוף כל תור שבו Claude ערך קבצים, בכל סשן של התיקייה ${folder}: ${check.command}`,
+      'אם היא נכשלת, הפלט שלה נשלח ל-Claude כדי שימשיך לתקן.'] : [], 'שמירה');
+    return api.saveVerifyCheck(id, check);
+  },
 };
 
 /** Before sending a slash command that reaches the account or the cloud. */
