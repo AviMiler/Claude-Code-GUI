@@ -24,6 +24,7 @@ import { bindShortcuts } from './shortcuts/bind-shortcuts.js';
 import { enableFileMenus } from './context-menu/file-menu.js';
 import { viewModeLabel } from './transcript/view-mode.js';
 import { showLiveShells } from './terminal/shell-live.js';
+import { contextInfo } from './context/context-info.js'; import { refreshContext } from './context/context-live.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -78,7 +79,7 @@ function refresh() {
   }
   const settings = session || state.draft;
   composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), fallbackModel: settings.fallbackModel, modelSwitchable: peekModels()?.switchable ?? true, isRunning: session?.status === 'running',
-    contextPercent: session ? state.context.get(session.id) ?? -1 : -1, hasSession: Boolean(session), queue: session?.queue || [] });
+    contextPercent: contextInfo(session, refresh), hasSession: Boolean(session), queue: session?.queue || [] });
   const cardsBefore = els.cards.childElementCount;
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
@@ -126,10 +127,9 @@ async function loadState() {
   getModels().then(refresh).catch(() => {});
 }
 
-// ifRunning: the context ring must never start a CLI process by itself (e.g. right after one crashed).
-const eventView = { thread, refresh, selectSession, onTurnFailed: () => modelHealth.afterFailedTurn(), paneThread: id => split.threadFor(id), fetchContext: id => api.control({ sessionId: id }, 'get_context_usage', { ifRunning: true })
-  .then(usage => { if (!usage) return; state.context.set(id, usage.percentage ?? Math.round((usage.totalTokens / usage.maxTokens) * 100)); refresh(); })
-  .catch(() => {}) };
+// The context reading never starts a CLI process by itself (ifRunning, context/context-live.js).
+const eventView = { thread, refresh, selectSession, onTurnFailed: () => modelHealth.afterFailedTurn(), paneThread: id => split.threadFor(id),
+  fetchContext: id => refreshContext(id, refresh) };
 subscribe(event => handleEvent(event, eventView), () => loadState().catch(error => console.error('[app] cannot load state:', error)));
 
 byId('new-session').addEventListener('click', () => selectSession(null));
