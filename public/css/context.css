@@ -39,5 +39,7 @@
 .context-warning.is-over { border-inline-start-color: var(--danger); background: var(--danger-soft); }
 .context-warning-text { flex: 1 1 220px; min-width: 0; color: var(--text-2); }
 .context-warning-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
+.context-warning > .icon { width: 16px; height: 16px; color: var(--warning); } /* an icon has no size of its own */
+.context-warning.is-over > .icon { color: var(--danger); }
 .context-warning .icon-button { width: 26px; height: 26px; }
 @media (max-width: 480px) { .context-warning-actions { width: 100%; } .context-warning-actions .btn { flex: 1 1 auto; } }
