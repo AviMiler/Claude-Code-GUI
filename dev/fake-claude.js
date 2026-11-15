@@ -13,11 +13,11 @@ const args = process.argv.slice(2);
 const rewind = require('./fake-rewind');
 const out = rewind.uuidOut(require('./fake-transcript').recorder(rewind.sessionId)(message => process.stdout.write(`${JSON.stringify(message)}\n`)));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation');
+const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation'); const tools = require('./fake-tools');
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
-  console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}${process.env.FAKE_NO_SYSTEM_PROMPT_FILE ? '' : `\n  --append-system-prompt-file <file>${process.env.FAKE_NO_REPLACE_PROMPT ? '' : '\n  --system-prompt-file <file>'}`}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
+  console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}${process.env.FAKE_NO_SYSTEM_PROMPT_FILE ? '' : `\n  --append-system-prompt-file <file>${process.env.FAKE_NO_REPLACE_PROMPT ? '' : '\n  --system-prompt-file <file>'}`}${tools.help()}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
   --include-partial-messages\n  --replay-user-messages\n  --permission-prompts <target>\n  --fork-session\n  --settings <file-or-json>
   --permission-mode <mode>  Permission mode (choices: "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan")
 Commands:\n  mcp  Configure MCP\n  plugin|plugins  Manage plugins\n  doctor  Check health`);
@@ -54,7 +54,6 @@ function startTask() {
 const CONTROL = {
   initialize: () => CATALOG,
   get_skills_dialog: () => ({ skills: [{ name: 'hello-skill', description: 'Says hello', source: 'project', tokens: 13, state: 'on' }] }),
-  mcp_status: () => ({ mcpServers: [{ name: 'dummy', status: 'connected', scope: 'project', config: { type: 'stdio', command: 'node' }, tools: [{ name: 'ping' }] }] }),
   get_context_usage: () => ({ categories: [{ name: 'System prompt', tokens: 2600, kind: 'used' }, { name: 'Messages', tokens: 9000, kind: 'used' }, { name: 'Free space', tokens: 188400, kind: 'free' }], totalTokens: 11600, maxTokens: 200000, percentage: 6 }),
   get_status: () => ({ sections: [{ title: 'Session', rows: [{ label: 'Version', value: '2.1.308 (fake)' }, { label: 'Session ID', value: sessionId }] }] }),
   get_session_cost: () => ({ text: 'Total cost: $0.0000' }),
@@ -65,7 +64,7 @@ const CONTROL = {
   side_question: async request => { await sleep(600); return { response: `**תשובת צד מזויפת** ל: ${request.question} (היסטוריה: ${(request.history || []).length})`, synthetic: false }; },
   stop_task: request => { if (!endTask(request.task_id, 'stopped', 'Stopped by the user')) throw new Error(`No running task ${request.task_id}`); return {}; },
   get_task_output: request => ({ output: `> build\ncompiling ${request.task_id}...\ndone` }),
-  ...rewind.control, set_model: () => ({}), interrupt: () => { interrupted = true; corrections.sweep(); return {}; },
+  ...rewind.control, ...tools.control, set_model: () => ({}), interrupt: () => { interrupted = true; corrections.sweep(); return {}; },
   cancel_async_message: request => ({ cancelled: corrections.cancel(request.message_uuid) }),
   set_permission_mode: request => { mode = request.mode; return { mode }; },
 };
@@ -98,7 +97,7 @@ async function turn(prompt) {
   interrupted = false;
   running = true;
   const started = Date.now();
-  out({ type: 'system', subtype: 'init', session_id: sessionId, model: 'fake-model', permissionMode: mode, tools: ['Bash', 'Read'], mcp_servers: [{ name: 'dummy', status: 'connected' }], claude_code_version: '2.1.308' });
+  out({ type: 'system', subtype: 'init', session_id: sessionId, model: 'fake-model', permissionMode: mode, tools: tools.initTools(args), mcp_servers: tools.mcpServers(), claude_code_version: '2.1.308' });
   if (prompt.startsWith('/cost')) {
     out({ type: 'system', subtype: 'local_command_output', content: 'Total cost: $0.0123\nTotal duration: 3s', session_id: sessionId });
   } else if (/fail/.test(prompt)) {

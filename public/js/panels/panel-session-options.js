@@ -2,6 +2,7 @@
 import { h } from '../dom.js';
 import { section, button, empty } from './kit.js';
 import { COLORS } from '../session-color/palette.js';
+import { toolLimitsSection } from '../tool-limits/tool-limits-section.js';
 
 const checkbox = (label, checked, onChange) => {
   const box = h('input', { type: 'checkbox', checked });
@@ -39,7 +40,7 @@ export function renderSessionOptionsPanel(body, context) {
           onClick: () => apply({ color: color.key }) }, h('span', { class: 'color-dot', style: `background:${color.hex}` }), color.label))])),
     section('חשיבה', 'כיבוי החשיבה המורחבת (extended thinking) בסשן הזה: Claude עונה בלי לחשוב קודם. נכנס לתוקף בהודעה הבאה. אם המודל שלך לא משתמש בחשיבה מורחבת, אין לכך השפעה.',
       checkbox('כיבוי חשיבה', Boolean(session.thinkingOff), thinkingOff => apply({ thinkingOff }).catch(error => context.toast(error.message, 'error')))),
-    promptSection(session, flags, apply, context.toast),
+    promptSection(session, flags, apply, context.toast), toolLimitsSection(context),
     section('מצב בטוח', 'בסשן הזה תמיד אדם מאשר: אי אפשר לעבור למצב "הכול מותר" או למצב האוטומטי, והם מוסתרים מהתפריטים. זה לא מגביל את Claude בתוך המצבים האחרים, ולא את פקודות ה-! ועורך הקבצים שאתה מפעיל בעצמך.',
       checkbox('מצב בטוח', Boolean(session.safeMode), safeMode => apply({ safeMode }).catch(error => context.toast(error.message, 'error')))));
 }
