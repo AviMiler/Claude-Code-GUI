@@ -99,9 +99,15 @@ export const api = {
   createFolder: (path, name) => request('POST', '/api/folders', { path, name }),
 };
 
-/** Opens the live event stream. EventSource reconnects by itself; onOpen fires on every (re)connect. */
+/**
+ * Opens the live event stream. EventSource reconnects by itself and the server replays what was missed (lib/event-hub.js).
+ * onOpen (load the whole state) fires on the first connect, on a reconnect before any event was seen, and when the
+ * server says `resync` (the missed events are no longer available).
+ */
 export function subscribe(onEvent, onOpen) {
   const source = new EventSource('/api/events');
-  source.onmessage = message => onEvent(JSON.parse(message.data));
-  source.onopen = onOpen;
+  let seen = false;
+  source.onmessage = message => { seen = true; onEvent(JSON.parse(message.data)); };
+  source.onopen = () => { if (!seen) onOpen(); };
+  source.addEventListener('resync', () => { seen = true; onOpen(); });
 }
