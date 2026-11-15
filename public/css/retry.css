@@ -1,0 +1,8 @@
+/* Retry and compare (retry/, compare/): the two buttons under the last answer and the compare picker. */
+[data-split-session] .retry-button { display: none; }
+.compare-dialog { max-width: 460px; }
+.compare-dialog h2 { display: flex; gap: 8px; align-items: center; }
+.compare-dialog h2 .icon { flex: none; width: 18px; height: 18px; }
+.compare-note { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); }
+.compare-field { display: grid; gap: 4px; margin-bottom: 8px; font-size: 13px; }
+.compare-field select { width: 100%; }
