@@ -11,6 +11,7 @@ import { commentsOf, addComment, removeComment, clearComments, composeMessage } 
 import { createSessionFetch } from './session-fetch.js';
 import { notRepoText } from './pane-details.js';
 import { joinPath } from '../context-menu/paths.js';
+import { revertHunkButton } from './hunk-revert.js';
 
 /**
  * @param {{send:(text:string)=>Promise<boolean>, rerender:()=>void}} deps send: the normal send path (queues while
@@ -46,6 +47,7 @@ export function createChangesPane({ send, rerender }) {
       onAdd: comment => { addComment(session.id, comment); box = null; redrawFile(file.path); keepFocus(); },
       onCancel: () => { box = null; redrawFile(file.path); keepFocus(); },
       onRemove: id => { removeComment(session.id, id); redrawFile(file.path); keepFocus(); },
+      hunkAction: (hunk, index) => revertHunkButton(file, hunk, index, { sessionId: session.id, onDone: rerender }),
     });
   }
 

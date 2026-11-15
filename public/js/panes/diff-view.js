@@ -64,16 +64,17 @@ function fileHead(file, commentCount, collapsed, onToggle, fullPath) {
  * @param {import('./diff-parse.js').DiffFile} file
  * @param {{comments:object[], box:{anchor:object, draft:string, focus:boolean}|null, collapsed:boolean, onToggle:()=>void,
  *   onComment:(anchor:object)=>void, onInput:(text:string)=>void, onAdd:(comment:object)=>void, onCancel:()=>void,
- *   onRemove:(id:number)=>void}} options comments: this file's comments; box: the open comment box, if on this file
+ *   onRemove:(id:number)=>void, hunkAction?:(hunk:object, index:number)=>HTMLElement|null}} options comments: this file's
+ *   comments; box: the open comment box, if on this file; hunkAction: a control for a hunk's header row (the revert button)
  * @returns {HTMLElement}
  */
-export function renderDiffFile(file, { comments, box, collapsed, fullPath, onToggle, onComment, onInput, onAdd, onCancel, onRemove }) {
+export function renderDiffFile(file, { comments, box, collapsed, fullPath, onToggle, onComment, onInput, onAdd, onCancel, onRemove, hunkAction }) {
   const head = fileHead(file, comments.length, collapsed, onToggle, fullPath);
   if (collapsed) return h('section', { class: 'diff-file' }, head);
   const placed = new Set();
   const rows = [];
-  for (const hunk of file.hunks) {
-    rows.push(h('tr', { class: 'diff-hunk' }, h('td', { colspan: 3, dir: 'ltr' }, hunk.header)));
+  file.hunks.forEach((hunk, index) => {
+    rows.push(h('tr', { class: 'diff-hunk' }, h('td', { colspan: 3, dir: 'ltr' }, h('div', { class: 'diff-hunk-line' }, h('span', null, hunk.header), hunkAction?.(hunk, index)))));
     for (const line of hunk.lines) {
       const anchor = anchorOf(file, line);
       rows.push(h('tr', { class: `diff-row ${line.type}` },
@@ -87,7 +88,7 @@ export function renderDiffFile(file, { comments, box, collapsed, fullPath, onTog
       }
       if (box && sameAnchor(box.anchor, anchor)) rows.push(commentBox(box, { onInput, onAdd, onCancel }));
     }
-  }
+  });
   const status = file.binary ? 'קובץ בינארי.' : !file.hunks.length ? 'אין שינויי תוכן (הרשאות, שם, או קובץ ריק).' : null;
   return h('section', { class: 'diff-file' }, head,
     renderUnplacedComments(comments.filter(comment => !placed.has(comment.id)), 'הערות על שורות שהשתנו מאז:', onRemove),
