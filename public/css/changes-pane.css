@@ -21,6 +21,11 @@
 .diff-row.add { background: color-mix(in srgb, var(--success) 12%, transparent); }
 .diff-row.del { background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .diff-hunk td { padding: 2px 8px; background: var(--surface-2); color: var(--muted); }
+.diff-hunk-line { display: flex; gap: 8px; align-items: center; } .diff-hunk-line > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.diff-hunk-revert { display: inline-flex; flex: none; gap: 4px; align-items: center; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); color: var(--muted); font: 11.5px var(--font-ui); direction: rtl; cursor: pointer; }
+.diff-hunk-revert:hover, .diff-hunk-revert:focus-visible { border-color: var(--danger); color: var(--danger); }
+.diff-hunk-revert .icon { width: 12px; height: 12px; }
 .diff-add-comment { position: absolute; inset-block-start: 1px; left: -2px; display: none; place-items: center; width: 16px; height: 16px; padding: 0;
   border: 0; border-radius: 4px; background: var(--accent); color: var(--on-accent); }
 .diff-add-comment .icon { width: 11px; height: 11px; }
