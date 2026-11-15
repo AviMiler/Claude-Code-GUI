@@ -88,6 +88,8 @@ export function createActions(view) {
       view.refresh();
     },
     setMode: mode => actions.updateSettings({ mode }).catch(report),
+    /** updateSettings for a menu with no error handling of its own: a refused value (400) becomes a toast. */
+    trySettings: patch => actions.updateSettings(patch).catch(report),
     cycleMode() {
       const current = activeSession()?.mode || state.draft.mode;
       const cycle = MODE_CYCLE.filter(mode => availableModes(state.capabilities.permissionModes).some(item => item.value === mode));
