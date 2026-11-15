@@ -8,6 +8,7 @@ import { toast } from './ui.js';
 import { bangCommand, runBang } from './terminal/shell-command.js';
 import { createShellNote } from './terminal/shell-note.js';
 import { enableRewind } from './rewind/rewind-menu.js';
+import { enableRetry } from './retry/retry-button.js';
 
 /**
  * @param {HTMLElement} area the composer's container
@@ -38,6 +39,7 @@ export function createMainComposer(area, { actions, runCommand }) {
     ...createChipMenus({ actions, getComposer: () => composer }),
   });
   enableRewind({ restore: entries => composer.restore(entries) });
+  enableRetry(document.getElementById('messages'), { actions, composer: { restore: entries => composer.restore(entries) } });
   const note = createShellNote();
   area.prepend(note.node);
   const showNote = () => note.update(activeSession(), composer.textarea.value);

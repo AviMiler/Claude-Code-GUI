@@ -1,12 +1,14 @@
 /**
- * Session list: pinned sessions first, then grouped by date or by project folder (session-groups.js), with a search
- * over names, folders and the text of every conversation. Archived sessions have their own list (archive/).
+ * Session list: pinned sessions first, then grouped by date or by project folder (session-groups.js), with light rows
+ * for the CLI conversations no session holds (cli-list/light-rows.js) and a search in three modes (cli-list/search-modes.js).
+ * Archived sessions have their own list (archive/).
  */
 import { h, folderName } from './dom.js';
 import { icon } from './icons.js';
 import { colorDot } from './session-color/color-dot.js';
-import { searchSessions } from './session-search.js';
 import { groupSessions, groupingPreference, saveGrouping } from './session-groups.js';
+import { lightRows, lightRowNode, capNotice } from './cli-list/light-rows.js';
+import { applySearch, searchModeControl } from './cli-list/search-modes.js';
 import { projectFolder } from './worktree/project-folder.js';
 import { showingArchive, sessionsForList, archiveSwitch, restoreButton } from './archive/archive-list.js';
 import { sessionMenuButton, enableSessionMenus } from './context-menu/session-menu.js';
@@ -49,15 +51,21 @@ function groupingSwitch(current, onChange) {
 export function renderSidebar(container, { sessions, activeId, unread, filter, onSelect, actions, onRegroup }) {
   const query = filter.trim();
   const listed = sessionsForList([...sessions.values()]); // the search covers the list shown: sessions or the archive
-  const results = query ? searchSessions(listed, query) : null;
-  const visible = listed.filter(session => !results || results.has(session.id));
   const archive = showingArchive();
+  const light = archive ? { rows: [], total: 0 } : lightRows(sessions.values(), onRegroup);
+  const { results, rows } = applySearch(listed, light.rows, query, onRegroup);
+  const visible = [...listed.filter(session => !results || results.has(session.id)), ...rows];
   const grouping = groupingPreference();
-  const nodes = listed.length && !archive ? [groupingSwitch(grouping, onRegroup)] : [];
+  const nodes = query ? [searchModeControl(query, onRegroup)] : [];
+  if ((listed.length || light.rows.length) && !archive) nodes.push(groupingSwitch(grouping, onRegroup));
   const groups = archive ? [{ title: 'בארכיון', sessions: visible }] : groupSessions(visible, grouping);
   for (const group of groups) {
     nodes.push(h('div', { class: 'group-title', title: group.tooltip || null, dir: 'auto' }, group.title));
     for (const session of group.sessions) {
+      if (session.light) {
+        nodes.push(lightRowNode(session, { inProjectGroup: grouping === 'project', snippet: session.content ? snippetOf(session.content) : null, query, onSelect }));
+        continue;
+      }
       const status = statusOf(session, unread);
       const content = results?.get(session.id)?.content;
       const row = h('button', {
@@ -75,6 +83,7 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
   if (!visible.length) {
     nodes.push(h('div', { class: 'group-title' }, query ? 'אין סשנים או הודעות תואמים' : 'עדיין אין סשנים'));
   }
+  if (!query) nodes.push(capNotice(light.rows.length, light.total));
   nodes.push(archiveSwitch([...sessions.values()].filter(session => session.archived).length, onRegroup));
   container.replaceChildren(...nodes.filter(Boolean));
   enableSessionMenus(container, { sessions, activeId, actions, onSelect }); // right click / Shift+F10 on a row

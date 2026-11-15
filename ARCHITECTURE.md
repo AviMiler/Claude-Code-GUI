@@ -1,11 +1,11 @@
 # Architecture
-_Last updated: 2026-10-29 — the D1–D16 sections are below; the history of each change is in CHANGELOG.md._
+_Last updated: 2026-10-30 — the D1–D16 sections are below; the history of each change is in CHANGELOG.md._
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
 The server speaks Claude Code's control protocol (the one the Agent SDK uses) over the process's stdin/stdout:
 user turns, permission prompts, interrupt, model/mode switches, and read-only catalog queries. No database;
-sessions are kept in memory and saved to `data/sessions.json` (settings and the GUI's own items only; the conversation is read from the CLI's files, see Departures from the CLI); prompt templates are saved to `data/templates.json`.
+sessions are kept in memory and saved to `data/sessions.json` (settings and the GUI's own items only; the conversation is read from the CLI's files, see Departures from the CLI); prompt templates are the user's CLI custom commands (`<config home>/commands/*.md`), not saved by the GUI.
 
 ## Data Flow
 0. While the user types, `POST /api/warm` starts the CLI ahead of time: the session's own process, or (on the welcome
@@ -36,7 +36,9 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 ### The conversation history comes from the CLI (fixed 2026-10-29, DECISIONS.md)
 - The CLI's file `<config>/projects/<folder>/<claudeSessionId>.jsonl` is the conversation. `data/sessions.json` keeps
   no items: `session.items` exists only in memory and is built from the file (`lib/session-cli-sync.js` `refresh`).
-- Reading (`lib/transcripts.js`): `chainOf` walks from the file's latest line (or `resumeAt`, a GUI rewind not answered
+- Reading (`lib/transcripts/`, split 2026-10-30: `transcript-files.js` folders, lookup, titles, list, `readConversation`,
+  `readSubagents`, `conversationStamp`; `jsonl-reader.js` the cached read; `transcript-items.js` line to items;
+  `turn-results.js` results for terminal turns): `chainOf` walks from the file's latest line (or `resumeAt`, a GUI rewind not answered
   yet) back through `parentUuid`, and through a compaction boundary's `logicalParentUuid`. So what a terminal rewind
   left behind is not shown, and the history before a compaction is shown under the divider "השיחה נדחסה (compact)".
   `lineItems` turns a line into items (the shared `event-translator.js`); a `queued_command` attachment is a message
@@ -46,14 +48,33 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   file does not hold: turn results, `api_retry` / task / informational notices, errors, dividers, `!` output, a message
   that never reached the CLI. `anchors` are the uuids of the latest CLI lines when it was added (`session.anchors`,
   newest first, from the stream's `user` / `assistant` events and from each build); it is shown after the first one
-  still in the conversation, and dropped when none is. `session.sent[uuid]` keeps how the GUI showed a message it sent
+  still in the conversation, and not shown when none is. Such an extra is also deleted from `session.extras` by
+  `lib/history-prune.js` `keptExtras` (called by `refresh` after the build, `historyStamp` recomputed from the kept
+  extras): only when no anchor is on a shown chain but ALL are lines of the files read, every conversation file was
+  read, and no `resumeAt`, `forkPending` or missing `claudeSessionId` (a rewind or fork not answered yet could still bring
+  it back). An anchor no file holds (the CLI still writing it, a deleted file) keeps the extra; one with no anchors is
+  never dropped; deleting is final. `session.sent[uuid]` keeps how the GUI showed a message it sent
   (typed text, images, files; `sentText` when the CLI got more: `!` output in front, file paths); used only while the
   CLI's line holds exactly that text, otherwise the CLI's text is shown (two messages it joined into one). User items
   get `cliUuid`, `cliSession` and `afterUuid` (the answer before them; `false` before the last compaction, where the
   CLI cannot resume).
+- Turns another program ran (2026-10-30, `transcripts/turn-results.js` `fileResults`, used by `buildItems`): the CLI
+  writes no `result` line, so a `{ kind: 'result', fromFile: true, costUsd: null, durationApiMs: 0 }` item is built from
+  the chain and put after the turn's last line (before that line's extras). A turn starts at a non-meta user line that
+  is not only `tool_result` blocks and ends at the next one. Only a turn whose start line's `entrypoint` is not
+  `claude-code-gui` (the GUI's own turns have their result in `extras`), and only when no GUI `result` extra is anchored
+  on any line of the turn; the last turn only when its final assistant line has `stop_reason: 'end_turn'`. Time = the
+  start line to the turn's last user / assistant line; tokens = the last line of each distinct `message.id` summed;
+  rounds = the number of distinct ids; no model time, no cost. The item is not an extra and does not go through
+  `session-events.js` `onItem`. Subagents' tokens are not counted.
 - When (`session-cli-sync.js`): `start(config)` from `server.js` builds every session, then looks every second at the
   files' change times (`stampOf`: the files' mtimes, `resumeAt`, the number of extras and sent messages) and reads a
-  file only when it changed; also at each turn end, at `GET /api/state` and after a rewind (`force`). Never while a turn
+  file only when it changed, and then only the part appended since the last read (`transcripts/jsonl-reader.js`
+  `readLines`: per file the lines read so far, the offset after the last newline and the 64 bytes before it; when the
+  file is not smaller and those bytes are unchanged only the new bytes are read and parsed, else the whole file; a last
+  line with no newline yet is returned but not kept; the cache holds at most 32 MB of files, least recently read out
+  first, and a file over that is read whole every time; callers get a new array but share the line objects, so nothing
+  may change them); also at each turn end, at `GET /api/state` and after a rewind (`force`). Never while a turn
   runs (its items arrive live) and not while the file lacks an answer the stream already gave (`lastAssistantUuid`):
   the next look takes it. A different result is sent as SSE `history { sessionId, items }`; the browser replaces the
   items and redraws (`public/js/events.js`). Compared with sorted keys, so a turn whose live items match the file
@@ -66,7 +87,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   on 2.1.312) and adds the divider "ענף חדש מכאן". `/clear` moves the conversation into `conversations`. Import creates
   a session on the conversation and adds the divider "השיחה נטענה – אפשר להמשיך מכאן" after its last line.
 - Subagents (the Agent tool): the CLI keeps each in `<conversation>/subagents/agent-<id>.jsonl` with a `.meta.json`
-  whose `toolUseId` is the tool call that started it (checked on 2.1.312). `transcripts.readSubagents` reads them,
+  whose `toolUseId` is the tool call that started it (checked on 2.1.312). `transcript-files.js` `readSubagents` reads them (through the same cached reader),
   `history-build.withSubagents` puts their items (`parent` = that id, nested ones too) right after the tool item, as
   they arrive live. `conversationStamp` includes those files, so a background subagent's progress is read too.
 - Images in a CLI line are stored under an id from their bytes (`images.saveImages(..., { stable: true })`), so a
@@ -74,10 +95,13 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   `cliSync.start` built every session, so those images count as used.
 - A fork not answered yet shows the source conversation but does not take its name (`namePatch` is skipped while
   `forkPending`).
-- Not covered: a terminal rewind shows only once a message follows it (the CLI writes nothing before that); a turn run
-  in a terminal has no result item (no stats line, no changed-files card); every build reads the whole file; sessions
+- Not covered: a terminal rewind shows only once a message follows it (the CLI writes nothing before that); sessions
   saved before 2026-10-29 lose their stored items (not migrated, by the developer's decision); if the CLI deletes an
   old conversation file (`cleanupPeriodDays`, default not checked) the session shows only its GUI-only items.
+  Limits of the 2026-10-30 additions: the reader compares only the 64 bytes before its cached end, so an in-place
+  rewrite of the same size that keeps those bytes is not seen (the CLI only appends); a terminal turn that was
+  interrupted and followed by another prompt gets a stats line like a finished one (`end_turn` is checked for the last
+  turn only); an interrupted last turn gets none; `session.sent` also keeps entries for lines that no longer show.
 - Checked on 2.1.312: `claude -p` in stream-json mode writes the `.jsonl`; a uuid the GUI sends with a message becomes
   its line's uuid; a correction during a tool call is a `queued_command` attachment; one sent before the turn starts is
   joined into the first message (under the second uuid).
@@ -87,7 +111,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
   `-p` conversation `sdk-cli` and its `/resume` picker hides it.
 - `session-cli-sync.js` `pushName`: a name a person gave (`named: true`: rename, fork) goes to the CLI conversation
   with `rename_session` when its process runs (`session-runtime.js` `requestIfLive`, never starts one), else as a
-  `custom-title` line appended to the `.jsonl` (`transcripts.js` `appendTitle`). `cliName` is the name the current CLI
+  `custom-title` line appended to the `.jsonl` (`transcripts/transcript-files.js` `appendTitle`). `cliName` is the name the current CLI
   conversation has; `session-events.js` `onSessionId` resets it for a new conversation and pushes again. Each build
   takes a `custom-title` that is not `cliName` (a terminal rename) as the name, and gives a session nobody named the
   CLI's `ai-title` / summary / first prompt (`titlesOf`).
@@ -96,23 +120,23 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | Where | What the GUI does | What the CLI has |
 |---|---|---|
 | Session name (`/rename`, `action:rename`) | Fixed 2026-10-29: kept in `sessions.json` and synced both ways with the transcript's custom title (`session-cli-sync.js`) | A custom title in the transcript |
-| Cost (`costUsd`, `session-events.js`) | Adds each result's `total_cost_usd` | `/cost`; if `total_cost_usd` is cumulative per process the sum over-counts (UNVERIFIED) |
+| Cost (`costUsd` of a result item, `runtime-cost.js`) | Fixed 2026-10-30 (option B): taken from the CLI. A turn's cost is how much the CLI's running total for the process (`get_usage` `session.total_cost_usd`) grew, read after the process starts and after each result (2 s at most, the result waits for it). No session sum is kept or stored; the usage panel shows the CLI's own figure for the current process, which restarts with each new process | `/cost` and `get_usage`. UNVERIFIED: whether a result's `total_cost_usd` is per turn or a running total per process; it is used only when `get_usage` gives no reading, and as a running total it would overstate that turn |
 | Composer ↑ / ↓ history (`composer-history.js`) | The session's own items | The CLI's prompt history (UNVERIFIED location) |
-| Full-text search (`session-search.js`) | Scans `session.items` (built from the CLI's files) | Conversations that are not a GUI session are not searched |
-| Session settings: mode, model, effort, agent, folders, output style, fallback model | Stored per session and passed as flags on every restart; output style through a GUI-written `--settings` file (`cli-args.js`) | The CLI's own settings files and its live state; a CLI change is copied back (`onModeChange`) but the GUI wins on restart |
+| Full-text search (`session-search.js`) | Fixed 2026-10-30: three modes the user picks (names / open sessions' items / every CLI file through `transcripts/conversation-search.js`, on Enter); conversations that are not a GUI session are light rows (`transcripts/conversation-index.js`) | The CLI's files are the conversations; the all-files mode skips subagent files |
+| Session settings: mode, model, effort, agent, folders, output style, fallback model | Stored per session and passed as flags on every restart; output style through a GUI-written `--settings` file (`cli-args.js`) | The CLI's own settings files and its live state; a CLI change is copied back (`onModeChange`) but the GUI wins on restart. Accepted: run settings, per platform (DECISIONS.md) |
 
 ### The GUI reimplements a CLI feature
 | Feature | What the GUI does | Note |
 |---|---|---|
 | `/clear` (`clearConversation`) | Closes the CLI and drops `claudeSessionId`, adds a divider | Not the CLI's `/clear` |
-| `/fork` | Uses `--fork-session` (aligned) but copies `items` | Follows the history problem |
-| `/rewind` (D15) | GUI-minted uuids and GUI rewind points; cuts `items` | Uses the CLI's `--resume-session-at` and `rewind_files`; see DECISIONS.md |
-| `/export`, `/copy` | Built from `items` | The CLI has its own commands |
+| `/fork` | Uses `--fork-session` (aligned); copies only the GUI's own parts (`conversations`, `extras`, `sent`, `anchors`) and adds a divider | The history comes from the CLI's fork (see above) |
+| `/rewind` (D15) | The GUI's own rewind button; sets `resumeAt` and drops the extras after the point, then builds again from the CLI's file | Points are the CLI's line uuids (`afterUuid`); uses the CLI's `--resume-session-at` and `rewind_files`; a terminal `/rewind` is read from the file; see DECISIONS.md |
+| `/export`, `/copy` | Built from `items` (built from the CLI's file) | The CLI has its own commands |
 | `!` and the Terminal pane (D10) | Runs the shell itself and writes the CLI's bash-mode tags into the next message (`terminal/shell-context.js`) | The CLI's own `!` bash mode; output is not in the CLI transcript until the next message |
 | Safe mode (D16) | A GUI policy on permission modes | The CLI's permission settings (a bypass-disable setting, UNVERIFIED key) |
 | Custom system prompt (D16) | Text owned by the GUI (`data/session-settings/`), passed with the CLI's file flags | The CLI's own `CLAUDE.md` and output styles |
-| Worktree per session (D5) | Runs `git worktree` itself | The CLI's own worktree option (UNVERIFIED on 2.1.246) |
-| Prompt templates | A GUI library (`data/templates.json`) | The CLI's custom slash commands and skills |
+| Worktree per session (D5) | Runs `git worktree` itself | The CLI's `--worktree`: checked by the developer to work in `-p` mode without a terminal; to move to it (DECISIONS.md) |
+| Prompt templates | Each is a CLI custom command file in the user's commands folder (since 2026-10-30; the fill form and insert-without-send are GUI additions) | Aligned: the terminal's `/name` uses the same files. Limit: `$1`/`$2` expansion by the real CLI UNVERIFIED |
 | `/color` | GUI-only color | The CLI's `/color` is cosmetic; decision recorded |
 | Model list (`model-list.js`) | Reads the model server, not the CLI | Decision recorded (custom base URL) |
 | Plan pane | Reads `items`, not `get_plan` | Decision recorded |
@@ -121,6 +145,19 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 Permission prompts (`can_use_tool`), elicitation, `/btw` (`side_question`), live model / mode switch (`set_model`,
 `set_permission_mode`), the settings, hooks, memory and permissions panels (they write the CLI's own files,
 `lib/claude-files.js`), skills and memory read from the CLI's folders, mid-turn corrections, background tasks.
+
+### Status of each departure (developer's decisions, 2026-10-29, DECISIONS.md)
+- Accepted, stays as is: session settings (per platform), `!` output kept by the GUI, composer ↑ / ↓ history,
+  `/color`, `/clear` (one GUI session over several CLI conversations), `/export` / `/copy`, the Plan pane.
+- Done 2026-10-30: cost is taken from the CLI instead of the GUI's sum (the developer chose to show only the CLI's figure, no session total across processes; DECISIONS.md).
+- Done 2026-10-30: prompt templates are stored as CLI custom commands
+  (`~/.claude/commands`, the form and insert-without-send stay GUI additions; DECISIONS.md).
+- Done 2026-10-30: the session list shows every CLI conversation of every project folder (a terminal conversation is a
+  light row, built into a session only when opened; the newest 500; `--resume --all` itself not verified), with a
+  choice between three search modes and an explanation of each (DECISIONS.md).
+- To change: the worktree per session moves to the CLI's `--worktree`
+  (the developer checked that it works in `-p` mode without a terminal; the D5 reason no longer holds).
+- To check against the CLI first: that picking a model really switches the CLI's model (`set_model`, `--model`).
 
 ### GUI-only on purpose (no CLI equivalent)
 Pins, archive, split view, notifications, the message queue, transcript view modes, focus, theme, the crab, the
@@ -131,7 +168,7 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   The browser shrinks them to ≤1568 px / ≤3.75 MB first (`public/js/attachments.js`)
 - Any other file: stored as `data/uploads/<uuid>/<name>`; the message ends with "[Attached files – read them with the
   Read tool]" and the full paths. Every session process gets `--add-dir <data/uploads>`, so Read needs no prompt
-- Imported CLI transcripts (`lib/transcripts.js`): the user's base64 images are stored through `saveImages` (same validation), one call per image, and referenced on the user item; failed or URL images keep a "[תמונה]" marker
+- Imported CLI transcripts (`lib/transcripts/transcript-items.js`): the user's base64 images are stored through `saveImages` (same validation), one call per image, and referenced on the user item; failed or URL images keep a "[תמונה]" marker
 - Items and queue entries hold references only; `sessions.json` never holds file bytes
 
 ## Side questions (/btw)
@@ -140,6 +177,11 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   on the session's process (started if needed; 10 min timeout). The answer is `{ response, notice }`
 - It never becomes a thread item or a queue entry and is never saved; follow-up history lives only in the open card.
   A CLI without `side_question` -> HTTP 501 -> neutral "not available" note. It calls the model, so it costs tokens
+
+## Turn cost (2026-10-30)
+- `lib/runtime-cost.js`: `startCounting(runtime)` (after `initialize`, a `get_usage` baseline into `runtime.costBefore`) and `turnCost(runtime, result)` (a new `get_usage` reading, the growth since the last one, rounded to 1e-8; the result's own `total_cost_usd` when a reading is missing; `null` when the CLI gives none). 2 s wait at most per reading.
+- Ordering: `runtime-events.js` runs `handleMessage` and `handleExit` through an `inOrder` chain on `runtime.waiting`, so a result is emitted after its cost, then `holdTurn` / `endTurn`; the process's later events (a queued next turn) wait behind it. Anything that is added to the handling of one event must keep that order.
+- A warm spare adopted by a session is its own process with its own baseline. Nothing is summed or stored for the session.
 
 ## Background tasks
 - `task_started` / `task_progress` / `task_notification` system events are normalized by `readTaskEvent` (event-translator);
@@ -150,11 +192,14 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   (`/control` whitelist), through the shared `tasks/task-actions.js`; a CLI without them gives a neutral "not available" note
 
 ## Prompt templates
-- `lib/templates.js` keeps the user's saved prompts in `data/templates.json` (next to `sessions.json`, `CLAUDE_GUI_DATA`; temp file + rename). Routes in
-  `lib/api-routes-tools.js`: `GET /api/templates` (newest first), `PUT /api/templates/:id` (upsert; id from the browser, `/^[\w-]{1,64}$/`), `DELETE` (404 if missing).
-  Limits: name 80, text 20000, 200 templates (409). Writes pass the Origin check; no model call
-- The browser (`public/js/templates.js`) parses `{{name}}` variables, shows the fill form and inserts the result into the composer (never sends); the
-  "+" menu (`chip-menus.js`) and the panel (`panel-templates.js`) both use it
+- A template is a CLI custom command: `lib/templates/template-store.js` lists, saves and removes `<configHome>/commands/<name>.md` (user scope, files only,
+  `NAME_PATTERN` names, temp file + rename). `lib/templates/command-format.js` reads and writes the file: `description` is the Hebrew name, the body is the text,
+  variables are `$1`…`$9` (a single one `$ARGUMENTS`) plus `argument-hint`; other front matter is kept. Routes in `lib/api-routes-tools.js`:
+  `GET /api/templates` (newest first by file mtime), `PUT /api/templates/:name` (`{ description, text, create, previous }`: create 409 when taken, rename when `previous` differs),
+  `DELETE` (404 if missing). Limits: description 80, text 20000, 200 listed (409 on create), at most 9 variables. Writes pass the Origin check; no model call
+- `lib/templates/template-migration.js` (`migrateTemplates`, called from `server.js` at startup) moves a leftover `data/templates.json` into command files once and renames it `.migrated`
+- The browser (`public/js/templates.js`) turns the file's arguments into `{{name}}` variables, shows the fill form and inserts the filled text into the composer (never sends); a command the CLI
+  expands (an inline `!` followed by a backtick command, or a line starting with `@`) inserts `/name ` instead. The "+" menu (`chip-menus.js`) and the panel (`panel-templates.js`) both use it
 
 ## File viewer
 - A click on the open button of a file tool row (Read, Edit, MultiEdit, Write, NotebookEdit) or a changed-files card row calls `GET /api/file-view?sessionId=&path=`
@@ -254,7 +299,10 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
 ## Models
 - `GET /api/models` (`lib/model-list.js`): with a custom `ANTHROPIC_BASE_URL` the list is the model server's
   `GET /v1/models` (Ollama: `/api/tags` as fallback) plus the names in `config.json` (`model`, `ANTHROPIC_*_MODEL`);
-  with Anthropic (or when nothing is known) the browser uses the CLI's own list from the catalog
+  with Anthropic (or when nothing is known) the browser uses the CLI's own list from the catalog. The request, the error text and
+  the startup log use `displayUrl(baseUrl)` (exported from `model-list.js`, shared with `model-health.js`): no user:password, no query,
+  and '' for anything that is not http(s), so credentials in `ANTHROPIC_BASE_URL` never reach the browser or the console and are not
+  turned into a Basic auth header
 - One model -> the composer's model chip is a plain label; several -> a menu. Picking one sets the session's model
   (`--model` on start, `set_model` live)
 - Fallback model (D14): `session.fallbackModel`, per session, set from the `/model` panel through `PATCH` (no route, no draft
@@ -266,6 +314,16 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
   (model, effort, agent, outputStyle, fallbackModel) and `optionArgs(session, config, supports)` returns flags whose values are
   separate argv items. `cli-args.js` calls it once. A new option is an entry there plus a store field and a restart key in
   `session-runtime.js` `applySettings`. Not yet moved in: the other flags that `cli-args.js` builds itself (`--effort`, `--agent`, ...)
+- Value rules for the four text options (2026-10-30, `checkText(key, value)`, exported): `model` and `agent` must match `MODEL_ID` (the same
+  pattern as `fallbackModel`: `^[A-Za-z0-9][A-Za-z0-9._:/@+[\]-]{0,127}$`, because both go into argv through the `.cmd` shim, where `%` and a
+  leading dash are a problem; plugin agents are `plugin:name`); `effort` is `''` or `low|medium|high|xhigh|max` (synced by hand with
+  `public/js/modes.js` `EFFORT_LEVELS`: a level a newer CLI adds is refused until it is added in `session-options.js`); `outputStyle` is `''`
+  or up to 128 characters without control characters (spaces allowed; it goes only into the `--settings` JSON file, never argv). A value is
+  trimmed; `undefined` / `null` mean `''`; a non-string is 400; a bad value is 400 with a Hebrew message. Checked on the request paths only:
+  `textChanges` (PATCH; a non-string PATCH value is still ignored), `startSession` (`POST /api/sessions`) and the draft branch of `warm`.
+  `createSession` does not check, so a fork or import keeps the values already stored, and a stored value is not re-checked at CLI start.
+  Known: a model the model server lists but `MODEL_ID` refuses (for example a vLLM id that is a path, or a name with a space) can be shown as a
+  card and then refused when picked; `model` in `config.json` is the user's own file and is not checked
 - D16 added four more, each in its own small module that `session-options.js` delegates to (the table stays ~150 lines):
   `thinkingOff` -> env `MAX_THINKING_TOKENS=0` (`session-env.js` `withSessionEnv`, applied by `startProcess` in `session-runtime.js`, so it
   covers a restart and a spare adoption path the same way; no flag); `systemPrompt` + `systemPromptMode` -> a file in
@@ -315,13 +373,13 @@ Changes pane comments, the Files editor, and storing attachments (`data/images/`
 | `/btw` on its own route, not in the `/control` whitelist | `side_question` calls the model (tokens) and needs a long timeout; the generic control routes are documented as no-token with short timeouts. See DECISIONS.md |
 | Background tasks in memory, idle shutdown blocked while they run | Tasks live inside the CLI process, so persisting them would show ghosts; retiring the process would kill a long job after `idleMinutes` |
 | Session search in the browser, no server index | The browser already holds every item (`/api/state` + SSE); no route or index to keep in sync. See DECISIONS.md |
-| Prompt templates on the server (`data/templates.json`), not localStorage | User content must survive a browser reset and be shared by every tab; preferences stay per browser. See DECISIONS.md |
+| Prompt templates are the user's CLI custom command files, not a GUI file or localStorage | The CLI is the source of truth: the terminal's `/name` shares them, they survive a browser reset and every tab sees them (was `data/templates.json` until 2026-10-30). See DECISIONS.md |
 | File viewer reads the current file through a session-scoped route | Tool items hold only partial content; roots come from the session on the server so the route is not an arbitrary-file reader. See DECISIONS.md |
 | Pane area for the main session only, hidden by a room rule | Desktop panes belong to the focused session; `/btw` and the search bar are already main-only; a width rule is simpler and safer than a special case for the split view. See DECISIONS.md |
 | Rail totals from a small `git-summary` route | `/api/git` returns up to 300000 characters of diff; the rail needs only counts and must not fetch that on every turn. See DECISIONS.md |
 | Changes pane has its own route against HEAD, untracked files synthesized in node | `/api/git` has no untracked files and shows staged and unstaged apart; Claude mostly creates new files, so the pane must show them. See DECISIONS.md |
 | Transcript view groups by wrapping the existing rows in the DOM | Rows keep their nodes, ids and listeners, so live tool results, subagent rows, search hits and the file-viewer buttons need no change; re-rendering from items per mode would duplicate that logic. See DECISIONS.md |
-| A worktree per session, made by the GUI with git (not `claude --worktree`), from the local HEAD | `--worktree` needs workspace trust accepted in an interactive terminal; the machine is offline, so no fetch; the GUI knows the path. Hooks run, the branch is never reset or deleted, removal never forces. See DECISIONS.md |
+| A worktree per session, made by the GUI with git (not `claude --worktree`), from the local HEAD | `--worktree` was thought to need workspace trust accepted in an interactive terminal (no longer holds: it works in `-p` mode, checked by the developer 2026-10-29; to move to it); the machine is offline, so no fetch; the GUI knows the path. Hooks run, the branch is never reset or deleted, removal never forces. See DECISIONS.md |
 | A worktree session belongs to the folder it was opened from (`worktree.source`) | Grouping by project, search and the folder line would otherwise split one project into a group per worktree. See DECISIONS.md |
 | Archiving removes a clean worktree; restoring checks it out again at the same path (user decision, like Desktop) | Matches the Desktop Code tab; no `--force` and the branch stays, so dirty work is never lost; the same path keeps the CLI's per-folder conversation. See DECISIONS.md |
 | An archived session opens normally, sending restores it; its queue is kept, paused | No read-only concept to enforce at many entry points; one server rule at the send path; nothing typed is lost. See DECISIONS.md |
@@ -356,6 +414,7 @@ the right to run commands as that user.
 - `POST /api/sessions/:id/shell` (D10) is the first route that runs a command WITHOUT Claude and without a permission prompt. Rules: POST only, so the Host / Origin check applies (cross-site POST blocked); the folder is the session's own `cwd` from the server; the request carries only a command string (max 8000 characters), a `source` and a `shell` enum, never a folder, program or environment; `spawn` runs without a request-chosen executable; archived sessions and missing folders are refused (409); one run per session; output is capped (64 KB per stream); runs are killed on session delete, archive, stop and server exit. Output goes to every tab over SSE like all events (a cross-site page cannot read it). Commands see the server's environment including the model token, as Claude's own Bash does. The user types the command on purpose, so there is no confirmation (as in the terminal)
 - `PUT /api/sessions/:id/file` (D11) is the second route that changes things WITHOUT Claude and without a permission prompt (it overwrites a file's text), and `GET /api/sessions/:id/tree` and `GET .../file` list and read. Rules: PUT, so the Host / Origin check applies; the session, its `cwd` and `addDirs` come from the server and the request carries only a path (never a folder); real paths with a separator boundary, case-insensitive on win32 and darwin, written at the resolved path; existing regular files only (no create, rename or delete); writes refuse `..`, NUL, a `:` in the name on win32 (alternate data streams), any `.git` segment (a hook is code execution), the server's own `data/` folder and `config.json`, and uploads; content up to 1 MB in bytes; archived sessions 409 on writes, missing folder 409; the conflict check (hash, HTTP 412) stops a blind overwrite. The two GETs return no CORS headers, so other sites cannot read them (the same position as `/api/file-view`). Known: a hard link planted inside the folder to a file under `.git` or the data folder would bypass the write refusal; the write is in place, so a crash mid-write can truncate. Windows aliases (8.3 names, trailing-dot `.git.`) are unverified
 - `claude` subcommands: whitelist of commands *and* options (`lib/cli-commands.js`); `mcp add` passes through only after `--`
+- The light rows (2026-10-30) read the CLI's conversations of EVERY project folder, wider than `/api/transcripts?cwd=`. `GET /api/cli-conversations` takes no parameters (so it adds no `cwd` to the accepted cross-site-GET issue), returns id, `cwd`, title, time and size only (the internal file path is removed), no CORS headers, so other sites cannot read it. `POST /api/cli-conversations/search` returns snippets of the conversations' text, so it is a POST on purpose (the Origin check applies, as for the worktree probe); the body is a query string only (never a path), the files come from the server's own index, and it is bounded (200 conversations, 99 matches each, 8 s). Reading uses no cache shared with the sessions. `POST /api/transcripts/import` now answers 200 with the session that already holds the conversation instead of creating a second one
 - git runs with repository-configured programs disabled (`core.fsmonitor=false`, `core.untrackedCache=false`, `diff.external=`, `--no-ext-diff`, `--no-textconv`, `--no-pager`; `GIT_OPTIONAL_LOCKS=0`, `GIT_TERMINAL_PROMPT=0`, stdin closed); every git command goes through `lib/git/run.js`. The views are read-only; the one exception is the worktree write (next bullets), where the repository's own hooks and filters DO run
 - `GET /api/sessions/:id/git-summary` (the session details rail): read-only, the folder is the session's own (taken from the server; there is no `cwd` parameter, so it does not widen the accepted cross-site-GET issue that `/api/git?cwd=` already has), unknown session 404, same git flags
 - `GET /api/sessions/:id/diff` (the Changes pane): read-only, the folder is the session's own (from the server; no `cwd` parameter), unknown session 404, same git flags. It returns TEXT OF FILES like `/api/file-view`, but with a wider reach: the whole repository from its top level (a session in a subfolder sees the files outside that folder),
@@ -385,7 +444,7 @@ the right to run commands as that user.
 
 **Outside this computer**
 - The GUI server makes one kind of network call: GET {ANTHROPIC_BASE_URL}/v1/models (read-only, with the configured
-  token), only when the base URL is not Anthropic's. It serves the model list (`lib/model-list.js`, cached 5 min) and the
+  token; the URL is used without user:password and query), only when the base URL is not Anthropic's. It serves the model list (`lib/model-list.js`, cached 5 min) and the
   health dot (`GET /api/model-health`, `lib/model-health.js`, cached 15 s, polled by each visible tab every 60 s and after
   a failed turn). The cloud is never pinged. Claude Code talks to the model server only through the messages API, which
   cannot change the server's configuration.
@@ -403,8 +462,8 @@ the right to run commands as that user.
   every request, routes load only at startup, so after an update a new screen may call a route the old server lacks
 - Item kinds: user, text, thinking, tool, tool-result, result, command-output, shell (D10: a finished `!` run), divider, notice (`stopped: true` when a
   stop ended the turn), error
-- Result item: `{ kind: 'result', isError, subtype, text, durationMs, durationApiMs?, costUsd, turns, usage: { input, output, cacheRead?, cacheWrite? } | null }`; the `?` fields are missing in older saved items
-- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `costUsd`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks; ignored for an archived session), `archived` (boolean) and `archivedAt` (ms, null after a restore) (persisted; set only by `POST .../archive` / `.../unarchive`, never by PATCH; not inherited by forks; the queue is kept while archived), `worktree` (`{ path, branch, root, source }` or null, persisted; set only by the server when the session is made, inherited by forks, not settable through PATCH), `shellContext` (D10: `[{ command, stdout, stderr, exitCode }]`, max 10, persisted; set only by the server when a `!` run ends, cleared when a message carries it to the CLI and by `/clear`, not inherited by forks, not settable through PATCH)
+- Result item: `{ kind: 'result', isError, subtype, text, durationMs, durationApiMs?, costUsd (number, or null when unknown), turns, usage: { input, output, cacheRead?, cacheWrite? } | null }`; the `?` fields are missing in older saved items
+- Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks; ignored for an archived session), `archived` (boolean) and `archivedAt` (ms, null after a restore) (persisted; set only by `POST .../archive` / `.../unarchive`, never by PATCH; not inherited by forks; the queue is kept while archived), `worktree` (`{ path, branch, root, source }` or null, persisted; set only by the server when the session is made, inherited by forks, not settable through PATCH), `shellContext` (D10: `[{ command, stdout, stderr, exitCode }]`, max 10, persisted; set only by the server when a `!` run ends, cleared when a message carries it to the CLI and by `/clear`, not inherited by forks, not settable through PATCH)
 - Sidebar grouping: `session-groups.js` (pure: sessions + mode -> groups: pinned first, then by date or by project folder) feeds `sidebar.js`;
   the mode is per browser in localStorage `claude-gui.sidebar-grouping`. Frontend only
 - User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`

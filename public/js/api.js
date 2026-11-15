@@ -61,7 +61,12 @@ export const api = {
   openFile: (sessionId, path) => request('GET', `/api/sessions/${sessionId}/file?${query({ path })}`),
   /** Saves an edit; status 412 (error.status) when the file changed on disk since it was opened. @returns {Promise<{hash, size, mtimeMs}>} */
   saveFile: (sessionId, edit) => request('PUT', `/api/sessions/${sessionId}/file`, edit),
-  /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */
+  /** Reverts one hunk of the Changes pane: { path, index, hash } (hunk-hash.js); 409 when it changed since or is refused. */
+  revertHunk: (sessionId, hunk) => request('POST', `/api/sessions/${sessionId}/revert-hunk`, hunk),
+  /**
+   * Prompt templates = the user's CLI commands: [{ id (command name), name, text ({{variables}}), expands, updatedAt }],
+   * newest first. saveTemplate(name, { description, text, create, previous }): previous = the name it had (a rename).
+   */
   templates: () => request('GET', '/api/templates'),
   saveTemplate: (id, template) => request('PUT', `/api/templates/${id}`, template),
   deleteTemplate: id => request('DELETE', `/api/templates/${id}`),
@@ -86,15 +91,25 @@ export const api = {
 
   transcripts: scope => request('GET', `/api/transcripts?${query(scope)}`),
   importTranscript: (cwd, id, mode) => request('POST', '/api/transcripts/import', { cwd, id, mode }),
+  /** Every CLI conversation no session holds: { rows: [{ id, cwd, title, updatedAt, sizeBytes }], total } (newest 500). */
+  cliConversations: () => request('GET', '/api/cli-conversations'),
+  /** Full text over those conversations: { hits: [{ id, cwd, title, updatedAt, count, snippet }], scanned, total, partial }. */
+  searchCliConversations: query => request('POST', '/api/cli-conversations/search', { query }),
   files: (scope, q) => request('GET', `/api/files?${query({ ...scope, q })}`),
   git: scope => request('GET', `/api/git?${query(scope)}`),
   folders: (path, hidden) => request('GET', `/api/folders?${query({ path, hidden: hidden ? '1' : '' })}`),
   createFolder: (path, name) => request('POST', '/api/folders', { path, name }),
 };
 
-/** Opens the live event stream. EventSource reconnects by itself; onOpen fires on every (re)connect. */
+/**
+ * Opens the live event stream. EventSource reconnects by itself and the server replays what was missed (lib/event-hub.js).
+ * onOpen (load the whole state) fires on the first connect, on a reconnect before any event was seen, and when the
+ * server says `resync` (the missed events are no longer available).
+ */
 export function subscribe(onEvent, onOpen) {
   const source = new EventSource('/api/events');
-  source.onmessage = message => onEvent(JSON.parse(message.data));
-  source.onopen = onOpen;
+  let seen = false;
+  source.onmessage = message => { seen = true; onEvent(JSON.parse(message.data)); };
+  source.onopen = () => { if (!seen) onOpen(); };
+  source.addEventListener('resync', () => { seen = true; onOpen(); });
 }

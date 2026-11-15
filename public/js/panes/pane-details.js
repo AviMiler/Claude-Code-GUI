@@ -11,6 +11,7 @@ import { toast } from '../ui.js';
 import { renderContextUsage } from '../panels/panel-usage.js';
 import { createSessionFetch } from './session-fetch.js';
 import { projectFolder } from '../worktree/project-folder.js';
+import { toolLimitRows } from '../tool-limits/details-rows.js';
 
 // The git summary of the shown session, fetched again when a turn starts or ends, or another session is shown.
 const summaries = createSessionFetch(id => api.gitSummary(id), error => ({ isRepo: false, error: error.message }));
@@ -43,7 +44,7 @@ function environmentCard(session, summary, modelLabel) {
     session.fallbackModel ? row('מודל גיבוי', session.fallbackModel) : null,
     session.thinkingOff ? row('חשיבה', 'כבויה') : null,
     session.systemPrompt ? row('הנחיית מערכת', session.systemPromptMode === 'replace' ? 'מחליפה' : 'נוספת', session.systemPrompt.slice(0, 300)) : null,
-    session.safeMode ? row('מצב בטוח', 'פעיל') : null,
+    session.safeMode ? row('מצב בטוח', 'פעיל') : null, ...toolLimitRows(session, row),
     row('הרשאות', mode?.label || session.mode));
 }
 

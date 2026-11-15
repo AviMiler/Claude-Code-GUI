@@ -9,21 +9,11 @@ import { settleTools } from './render-tools.js';
 import { createWorkingLine } from './working-line.js';
 import { turnChanges, renderTurnChanges } from './turn-changes.js';
 import { countToolCalls } from './turn-stats.js';
+import { openTool } from './open-tool.js';
 import { enableMessageCopy } from './message-copy.js';
 import { createTranscriptView } from './transcript/transcript-view.js';
 
 const NEAR_BOTTOM_PX = 140;
-
-/** The tool a running turn is in (top level only), from its items: the last tool call without a result yet. */
-function openTool(items) {
-  let tool = null;
-  for (const item of items) {
-    if (item.parent) continue;
-    if (item.kind === 'tool') tool = item;
-    else if (item.kind === 'tool-result' || item.kind === 'text') tool = null;
-  }
-  return tool;
-}
 
 /**
  * @param {{scroller:HTMLElement, messages:HTMLElement, onOpenGit:()=>void}} elements onOpenGit: the Changes pane (a turn card's "all changes" button)
@@ -48,8 +38,10 @@ export function createThread({ scroller, messages, onOpenGit }) {
     action();
     if (stick) scrollToEnd();
   };
-  /** New content goes above the working line so it always stays last. */
-  const place = node => (working.node() ? messages.insertBefore(node, working.node()) : messages.append(node));
+  /** The first live element (streaming thinking / text, then the working line) in the thread: new content goes above it. */
+  const liveAnchor = (...elements) => elements.find(element => element?.parentElement === messages) || null;
+  /** The live elements and the working line are never moved (moving the line restarts the crab's animation). */
+  const place = (node, anchor = liveAnchor(working.node())) => messages.insertBefore(node, anchor);
   function dropLive(kind) {
     live[kind]?.remove();
     live[kind] = null;
@@ -96,17 +88,18 @@ export function createThread({ scroller, messages, onOpenGit }) {
     else if (!item.parent && (item.kind === 'tool-result' || item.kind === 'text')) activeTool = null;
     if (item.kind === 'error' || (item.kind === 'result' && item.isError)) outcome = 'error';
     if (item.kind === 'notice' && item.stopped) outcome = 'stopped';
+    if (item.kind === 'notice' && item.loopStopped) outcome = 'error'; // the loop detector stopped it (lib/loop-detector/)
     keepPinned(() => {
       if (!item.parent && (item.kind === 'text' || item.kind === 'thinking')) dropLive(item.kind);
       // Thinking that streamed but arrives empty (redacted/summarized) never gets its own item; the next step ends it.
       if (!item.parent && (item.kind === 'text' || item.kind === 'tool')) dropLive('thinking');
       const node = tag(appendItem(messages, item, resultContext(item, items, index)), index);
       node?.classList.add('fresh'); // animates only what arrives live, not a re-rendered history
+      const anchor = liveAnchor(live.thinking, live.text, working.node());
+      if (node?.parentElement === messages) place(node, anchor); // appendItem added it at the end: move it above the live elements
       const changes = item.kind === 'result' && items ? changesCard(items, index) : null;
-      if (changes) messages.append(changes);
-      // Live elements and the working line always stay after the newest item.
-      [live.thinking, live.text, working.node()].filter(Boolean).forEach(element => messages.append(element));
-      view.appended(item, node); // after the live elements moved: the node's neighbours are items again
+      if (changes) place(changes, anchor);
+      view.appended(item, node); // the node's neighbours are items (the live elements are below it)
     });
     working.render();
   }
@@ -117,7 +110,7 @@ export function createThread({ scroller, messages, onOpenGit }) {
     live[`${kind}Value`] += text;
     if (!live[kind]) {
       live[kind] = kind === 'text' ? renderAssistantText('', true) : renderThinking('', true);
-      keepPinned(() => place(live[kind]));
+      keepPinned(() => place(live[kind], liveAnchor(kind === 'thinking' && live.text, working.node())));
     }
     if (frame) return;
     frame = requestAnimationFrame(() => {

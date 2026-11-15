@@ -5,6 +5,7 @@
  * MAX_THINKING_TOKENS=0 -> no thinking item; FAKE_NO_SYSTEM_PROMPT_FILE / FAKE_NO_REPLACE_PROMPT hide the system prompt flags from --help
  * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
+ * "loop [n]", "editloop [n]", "subloop", "pollloop" -> repeated tool calls (fake-loop.js).
  * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
  * The conversation is written where the real CLI keeps it (fake-transcript.js); set CLAUDE_CONFIG_DIR in experiments.
  */
@@ -13,11 +14,11 @@ const args = process.argv.slice(2);
 const rewind = require('./fake-rewind');
 const out = rewind.uuidOut(require('./fake-transcript').recorder(rewind.sessionId)(message => process.stdout.write(`${JSON.stringify(message)}\n`)));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation'); const { stall } = require('./fake-stall');
+const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation'); const tools = require('./fake-tools'); const { stall } = require('./fake-stall');
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
-  console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}${process.env.FAKE_NO_SYSTEM_PROMPT_FILE ? '' : `\n  --append-system-prompt-file <file>${process.env.FAKE_NO_REPLACE_PROMPT ? '' : '\n  --system-prompt-file <file>'}`}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
+  console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}${process.env.FAKE_NO_SYSTEM_PROMPT_FILE ? '' : `\n  --append-system-prompt-file <file>${process.env.FAKE_NO_REPLACE_PROMPT ? '' : '\n  --system-prompt-file <file>'}`}${tools.help()}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
   --include-partial-messages\n  --replay-user-messages\n  --permission-prompts <target>\n  --fork-session\n  --settings <file-or-json>
   --permission-mode <mode>  Permission mode (choices: "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan")
 Commands:\n  mcp  Configure MCP\n  plugin|plugins  Manage plugins\n  doctor  Check health`);
@@ -29,11 +30,10 @@ if (args[0] === 'doctor' || args[0] === 'auth') { console.log('Claude Code docto
 
 const { sessionId } = rewind;
 let mode = args.includes('--permission-mode') ? args[args.indexOf('--permission-mode') + 1] : 'default';
-let interrupted = false;
-let running = false;
+let interrupted = false; let running = false;
 const corrections = createCorrections(out, sessionId);
 const waiting = new Map();
-let counter = 0;
+let counter = 0; let totalCost = 0; // the process's running cost, like the CLI's (FAKE_CLAUDE_NO_USAGE: per turn, no get_usage)
 
 const CATALOG = fakeCatalog(mode);
 const tasks = new Map(); // task id -> timer of a running background task
@@ -54,10 +54,10 @@ function startTask() {
 const CONTROL = {
   initialize: () => CATALOG,
   get_skills_dialog: () => ({ skills: [{ name: 'hello-skill', description: 'Says hello', source: 'project', tokens: 13, state: 'on' }] }),
-  mcp_status: () => ({ mcpServers: [{ name: 'dummy', status: 'connected', scope: 'project', config: { type: 'stdio', command: 'node' }, tools: [{ name: 'ping' }] }] }),
   get_context_usage: () => ({ categories: [{ name: 'System prompt', tokens: 2600, kind: 'used' }, { name: 'Messages', tokens: 9000, kind: 'used' }, { name: 'Free space', tokens: 188400, kind: 'free' }], totalTokens: 11600, maxTokens: 200000, percentage: 6 }),
   get_status: () => ({ sections: [{ title: 'Session', rows: [{ label: 'Version', value: '2.1.308 (fake)' }, { label: 'Session ID', value: sessionId }] }] }),
-  get_session_cost: () => ({ text: 'Total cost: $0.0000' }),
+  get_session_cost: () => ({ text: `Total cost: ${totalCost.toFixed(4)}` }),
+  ...(!process.env.FAKE_CLAUDE_NO_USAGE && { get_usage: () => ({ session: { total_cost_usd: totalCost, total_api_duration_ms: 0, total_duration_ms: 0, total_lines_added: 0, total_lines_removed: 0, model_usage: {} } }) }),
   list_permission_rules: () => ({ state: { rules: [{ behavior: 'allow', source: 'localSettings', rule: 'Bash(git status)' }] } }),
   get_hooks_listing: () => ({ hooks: [], eventCatalog: [{ name: 'PreToolUse', summary: 'Before tool execution' }] }),
   get_memory_dialog: () => ({ files: [], folders: [], memories: [] }),
@@ -65,7 +65,7 @@ const CONTROL = {
   side_question: async request => { await sleep(600); return { response: `**תשובת צד מזויפת** ל: ${request.question} (היסטוריה: ${(request.history || []).length})`, synthetic: false }; },
   stop_task: request => { if (!endTask(request.task_id, 'stopped', 'Stopped by the user')) throw new Error(`No running task ${request.task_id}`); return {}; },
   get_task_output: request => ({ output: `> build\ncompiling ${request.task_id}...\ndone` }),
-  ...rewind.control, set_model: () => ({}), interrupt: () => { interrupted = true; corrections.sweep(); return {}; },
+  ...rewind.control, ...tools.control, set_model: () => ({}), interrupt: () => { interrupted = true; corrections.sweep(); return {}; },
   cancel_async_message: request => ({ cancelled: corrections.cancel(request.message_uuid) }),
   set_permission_mode: request => { mode = request.mode; return { mode }; },
 };
@@ -98,7 +98,7 @@ async function turn(prompt) {
   interrupted = false;
   running = true;
   const started = Date.now();
-  out({ type: 'system', subtype: 'init', session_id: sessionId, model: 'fake-model', permissionMode: mode, tools: ['Bash', 'Read'], mcp_servers: [{ name: 'dummy', status: 'connected' }], claude_code_version: '2.1.308' });
+  out({ type: 'system', subtype: 'init', session_id: sessionId, model: 'fake-model', permissionMode: mode, tools: tools.initTools(args), mcp_servers: tools.mcpServers(), claude_code_version: '2.1.308' });
   if (prompt.startsWith('/cost')) {
     out({ type: 'system', subtype: 'local_command_output', content: 'Total cost: $0.0123\nTotal duration: 3s', session_id: sessionId });
   } else if (/fail/.test(prompt)) {
@@ -111,20 +111,20 @@ async function turn(prompt) {
     if (/plan/.test(prompt)) await toolTurn('ExitPlanMode', { plan: '## התוכנית\n1. לקרוא קבצים\n2. לערוך את `app.js`\n3. להריץ בדיקות' }, () => 'Plan approved');
     if (/elicit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'text', text: `תשובת ה-GUI לבקשת MCP: ${JSON.stringify(await elicit(out, waiting, `elic-${++counter}`, /elicit-url/.test(prompt) ? 'url' : 'form'))}` }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/task/.test(prompt)) startTask(); if (/stall/.test(prompt)) await stall(out, sessionId, () => interrupted);
-    if (/edit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_edit', name: 'Edit', input: { file_path: 'C:\\repo\\app.js', old_string: 'const a = 1;\nconst b = 2;', new_string: 'const a = 1;\nconst b = 3;\nconst c = 4;' } }] }, parent_tool_use_id: null, session_id: sessionId });
+    await require('./fake-loop').run(prompt, out, sessionId, () => interrupted, sleep); // loop keywords
+    if (/edit(?!loop)/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_edit', name: 'Edit', input: { file_path: 'C:\\repo\\app.js', old_string: 'const a = 1;\nconst b = 2;', new_string: 'const a = 1;\nconst b = 3;\nconst c = 4;' } }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/todo/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_todo', name: 'TodoWrite', input: { todos: [{ content: 'Read code', status: 'completed', activeForm: 'Reading' }, { content: 'Write fix', status: 'in_progress', activeForm: 'Writing fix' }, { content: 'Run tests', status: 'pending', activeForm: 'Running tests' }] } }] }, parent_tool_use_id: null, session_id: sessionId });
     const heard = corrections.drain(); // the step before the answer: corrections that came during the tools join here
     const seen = heard.length ? ` (תיקון שהתקבל באמצע: ${heard.join(' | ')})` : '';
     await stream(`**תשובה מזויפת** ל: ${prompt}${seen}. זה טקסט שמוזרם מילה אחרי מילה כדי לבדוק את הממשק \`code\` וגם רשימה.`, /slow/.test(prompt) ? 400 : 25);
   }
-  out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: 0.0012, usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
+  out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: process.env.FAKE_CLAUDE_NO_USAGE ? 0.0012 : (totalCost += 0.0012), usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
   running = false;
   // Too late for this turn (it was already answering): the waiting corrections start the next one, like the real CLI.
   if (corrections.size()) { const late = corrections.drain(); queue = queue.then(() => turn(`תיקון: ${late.join(' | ')}`)); }
 }
 
-const ready = sleep(Number(process.env.FAKE_CLAUDE_STARTUP_MS || 0));
-let queue = ready;
+const ready = sleep(Number(process.env.FAKE_CLAUDE_STARTUP_MS || 0)); let queue = ready;
 readline.createInterface({ input: process.stdin }).on('line', line => { ready.then(() => handle(line)); })
   .on('close', () => ready.then(() => queue).then(() => process.exit(0))); // after the lines read before close
 
