@@ -9,10 +9,13 @@ const { handleApi } = require('./lib/api-routes');
 const { serveStatic } = require('./lib/static-files');
 const cliSync = require('./lib/session-cli-sync');
 const { sweepAttachments } = require('./lib/session-service');
+const { envOf, displayUrl } = require('./lib/model-list');
+const { migrateTemplates } = require('./lib/templates/template-migration');
 
 const config = loadConfig();
 cliSync.start(config); // sessions show their CLI conversations, kept up to date
 sweepAttachments(); // after the first build: the items now show what they refer to
+migrateTemplates(config); // data/templates.json (before 2026-10-30) -> the user's CLI commands
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -34,6 +37,7 @@ server.on('error', error => {
 // Bound to loopback only: this server can run commands on the machine.
 server.listen(config.port, '127.0.0.1', () => {
   console.log(`Claude GUI is running: http://127.0.0.1:${config.port}`);
-  const baseUrl = config.env.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_BASE_URL || '(not set)';
+  const rawUrl = envOf(config, 'ANTHROPIC_BASE_URL'); // printed without user:password or query
+  const baseUrl = rawUrl ? displayUrl(rawUrl) || '(invalid URL)' : '(not set)';
   console.log(`claudePath: ${config.claudePath} | model: ${config.model || '(CLI default)'} | ANTHROPIC_BASE_URL: ${baseUrl}`);
 });

@@ -7,6 +7,7 @@ import { toast, ask } from './ui.js';
 import { worktreeChoice } from './worktree/worktree-toggle.js';
 import { confirmWorktreeRemoval, reportWorktreeRemoval } from './worktree/worktree-delete.js';
 import { projectFolder } from './worktree/project-folder.js';
+import { refreshLightRows } from './cli-list/light-rows.js';
 
 /**
  * @param {{selectSession:(id:string|null)=>void, openInSplit:(id:string)=>void}} view
@@ -62,10 +63,11 @@ export function createSessionActions(view, report) {
     /** Deletes a session (the open one by default); one in a worktree is also asked about its worktree folder. */
     async remove(id = state.activeId) {
       const session = state.sessions.get(id);
-      if (!session || !await ask({ title: `למחוק את "${session.name}"?`, text: 'השיחה תימחק מהממשק. ב-Claude Code היא נשארת וניתן לפתוח אותה שוב מ"שיחות קודמות".', confirmLabel: 'מחיקה', danger: true })) return;
+      if (!session || !await ask({ title: `למחוק את "${session.name}"?`, text: 'הסשן יימחק מהממשק. השיחה נשארת ב-Claude Code ותופיע ברשימה כשיחה מהטרמינל.', confirmLabel: 'מחיקה', danger: true })) return;
       const removeWorktree = await confirmWorktreeRemoval(session);
       const result = await api.deleteSession(session.id, { removeWorktree }).catch(report);
       if (removeWorktree && result) reportWorktreeRemoval(session, result);
+      refreshLightRows(); // its conversation is a light row now
     },
     /** Archives a session (the open one by default); asks first only when it would stop running background tasks. */
     async archive(id = state.activeId) {

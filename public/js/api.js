@@ -63,7 +63,10 @@ export const api = {
   openFile: (sessionId, path) => request('GET', `/api/sessions/${sessionId}/file?${query({ path })}`),
   /** Saves an edit; status 412 (error.status) when the file changed on disk since it was opened. @returns {Promise<{hash, size, mtimeMs}>} */
   saveFile: (sessionId, edit) => request('PUT', `/api/sessions/${sessionId}/file`, edit),
-  /** Prompt templates: [{ id, name, text, createdAt, updatedAt }], newest first. */
+  /**
+   * Prompt templates = the user's CLI commands: [{ id (command name), name, text ({{variables}}), expands, updatedAt }],
+   * newest first. saveTemplate(name, { description, text, create, previous }): previous = the name it had (a rename).
+   */
   templates: () => request('GET', '/api/templates'),
   saveTemplate: (id, template) => request('PUT', `/api/templates/${id}`, template),
   deleteTemplate: id => request('DELETE', `/api/templates/${id}`),
@@ -88,6 +91,10 @@ export const api = {
 
   transcripts: scope => request('GET', `/api/transcripts?${query(scope)}`),
   importTranscript: (cwd, id, mode) => request('POST', '/api/transcripts/import', { cwd, id, mode }),
+  /** Every CLI conversation no session holds: { rows: [{ id, cwd, title, updatedAt, sizeBytes }], total } (newest 500). */
+  cliConversations: () => request('GET', '/api/cli-conversations'),
+  /** Full text over those conversations: { hits: [{ id, cwd, title, updatedAt, count, snippet }], scanned, total, partial }. */
+  searchCliConversations: query => request('POST', '/api/cli-conversations/search', { query }),
   files: (scope, q) => request('GET', `/api/files?${query({ ...scope, q })}`),
   git: scope => request('GET', `/api/git?${query(scope)}`),
   folders: (path, hidden) => request('GET', `/api/folders?${query({ path, hidden: hidden ? '1' : '' })}`),

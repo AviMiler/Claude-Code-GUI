@@ -26,14 +26,14 @@ export function createChipMenus({ actions, getComposer }) {
       const current = settings.model || state.config.model || systemCurrent || 'default';
       const effort = h('div', { class: 'segmented' }, EFFORT_LEVELS.slice(0, 5).map(level => h('button', {
         type: 'button', class: (settings.effort || '') === level.value ? 'on' : '',
-        onClick: () => { actions.updateSettings({ effort: level.value }); document.querySelector('.popover')?.remove(); },
+        onClick: () => { actions.trySettings({ effort: level.value }); document.querySelector('.popover')?.remove(); },
       }, level.label)));
       showDropdown(anchor, [{ section: 'מודל' }, ...models.map(model => ({
         icon: 'cpu', title: model.displayName || model.value, desc: model.description, checked: model.value === current,
-        onSelect: () => actions.updateSettings({ model: model.value === 'default' ? '' : model.value }),
+        onSelect: () => actions.trySettings({ model: model.value === 'default' ? '' : model.value }),
       })), { icon: 'pencil', title: 'מודל מותאם…', onSelect: async () => {
         const value = await ask({ title: 'שם מודל', value: settings.model || '', placeholder: 'qwen3.8:27b / claude-sonnet-5-5', confirmLabel: 'שימוש' });
-        if (value !== null) actions.updateSettings({ model: value });
+        if (value !== null) actions.trySettings({ model: value });
       } }, { section: 'מאמץ (effort)' }, { node: effort },
       { icon: 'sliders', title: 'סגנון, סוכן ותיקיות…', hint: '/model', onSelect: () => actions.openPanel('model') }]);
     },

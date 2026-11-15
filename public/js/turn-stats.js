@@ -22,7 +22,7 @@ export function countToolCalls(items, resultIndex) {
 }
 
 /**
- * @param {{durationMs:number, durationApiMs?:number, turns:number, costUsd:number,
+ * @param {{durationMs:number, durationApiMs?:number, turns:number, costUsd:number|null,
  *   usage:{input:number, output:number, cacheRead?:number, cacheWrite?:number}|null}} result a `result` item
  * @param {number|null} toolCalls null when unknown
  * @returns {{text:string, details:string}} text for the line, details for its tooltip
@@ -53,6 +53,7 @@ export function turnStats(result, toolCalls) {
     `סבבים: ${result.turns || 1}`,
     toolCalls !== null ? `קריאות כלים: ${toolCalls}` : null,
     result.costUsd > 0 ? `עלות: $${result.costUsd.toFixed(4)}` : null,
+    result.fromFile ? 'מחושב מקובץ השיחה (הרצה מחוץ ל-GUI), ללא עלות' : null,
   ].filter(Boolean).join('\n');
   return { text: parts.join(' · '), details };
 }
