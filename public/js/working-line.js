@@ -6,6 +6,7 @@
 import { h } from './dom.js';
 import { crab, setCrabState } from './crab.js';
 import { toolMeta } from './render-tools.js';
+import { stallBox, gateVerb, renderStall } from './stall/stall-note.js';
 
 const VERBS = ['חושב', 'מעבד', 'מתכנן', 'בודק', 'מנתח', 'מגבש', 'מהרהר', 'מבשל רעיון'];
 const END_MOMENT_MS = 2200;
@@ -31,6 +32,7 @@ export function createWorkingLine(activity) {
 
   function currentState() {
     const now = activity();
+    const queued = gateVerb(element); if (queued) return { state: 'starting', verb: queued }; // waiting for the model server
     if (status.waiting) return { state: 'waiting', verb: 'ממתין לאישור שלך' };
     if (now.writing) return { state: 'writing', verb: 'כותב' };
     if (now.thinking) return { state: 'thinking', verb: 'חושב' };
@@ -53,6 +55,7 @@ export function createWorkingLine(activity) {
     setCrabState(element.querySelector('.crab'), state);
     verbNode.textContent = `${verb}…`;
     element.querySelector('.elapsed').textContent = `${seconds} שנ׳`;
+    renderStall(element, status.waiting); // stall/: time since the last token, the automatic check
   }
 
   function start(nextStatus) {
@@ -60,7 +63,7 @@ export function createWorkingLine(activity) {
     let created = null;
     if (!element) {
       created = element = h('div', { class: 'working', dataset: { verb: VERBS[Math.floor(Math.random() * VERBS.length)], state: 'starting' } },
-        crab(), h('span', { class: 'verb' }), h('span', { class: 'elapsed' }), h('kbd', null, 'Esc'));
+        crab(), h('span', { class: 'verb' }), h('span', { class: 'elapsed' }), h('kbd', null, 'Esc'), stallBox());
       clearInterval(tick);
       tick = setInterval(render, 1000);
     }
@@ -77,7 +80,7 @@ export function createWorkingLine(activity) {
       restartAnimation(node.querySelector('.verb'), 'swap');
       setCrabState(node.querySelector('.crab'), outcome);
       node.querySelector('.verb').textContent = END_TEXTS[outcome] || 'סיים';
-      node.querySelector('kbd')?.remove();
+      node.querySelectorAll('kbd, .stall-box').forEach(part => part.remove());
       node.classList.add('ending');
       setTimeout(() => node.remove(), END_MOMENT_MS);
     }
