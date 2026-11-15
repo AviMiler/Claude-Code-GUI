@@ -29,7 +29,7 @@ function turnOutcome(session) {
   while (start > 0 && !isTurnStart(items[start - 1])) start -= 1;
   const turn = items.slice(start);
   if (turn.some(item => item.kind === 'notice' && item.stopped)) return null;
-  return turn.some(item => item.kind === 'error' || (item.kind === 'result' && item.isError)) ? 'error' : 'done';
+  return turn.some(item => item.kind === 'error' || item.loopStopped || (item.kind === 'result' && item.isError)) ? 'error' : 'done';
 }
 
 /**

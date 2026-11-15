@@ -5,6 +5,7 @@
  * MAX_THINKING_TOKENS=0 -> no thinking item; FAKE_NO_SYSTEM_PROMPT_FILE / FAKE_NO_REPLACE_PROMPT hide the system prompt flags from --help
  * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
+ * "loop [n]", "editloop [n]", "subloop", "pollloop" -> repeated tool calls (fake-loop.js).
  * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
  * The conversation is written where the real CLI keeps it (fake-transcript.js); set CLAUDE_CONFIG_DIR in experiments.
  */
@@ -29,11 +30,9 @@ if (args[0] === 'doctor' || args[0] === 'auth') { console.log('Claude Code docto
 
 const { sessionId } = rewind;
 let mode = args.includes('--permission-mode') ? args[args.indexOf('--permission-mode') + 1] : 'default';
-let interrupted = false;
-let running = false;
+let interrupted = false; let running = false;
 const corrections = createCorrections(out, sessionId);
-const waiting = new Map();
-let counter = 0;
+const waiting = new Map(); let counter = 0;
 
 const CATALOG = fakeCatalog(mode);
 const tasks = new Map(); // task id -> timer of a running background task
@@ -111,7 +110,8 @@ async function turn(prompt) {
     if (/plan/.test(prompt)) await toolTurn('ExitPlanMode', { plan: '## התוכנית\n1. לקרוא קבצים\n2. לערוך את `app.js`\n3. להריץ בדיקות' }, () => 'Plan approved');
     if (/elicit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'text', text: `תשובת ה-GUI לבקשת MCP: ${JSON.stringify(await elicit(out, waiting, `elic-${++counter}`, /elicit-url/.test(prompt) ? 'url' : 'form'))}` }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/task/.test(prompt)) startTask();
-    if (/edit/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_edit', name: 'Edit', input: { file_path: 'C:\\repo\\app.js', old_string: 'const a = 1;\nconst b = 2;', new_string: 'const a = 1;\nconst b = 3;\nconst c = 4;' } }] }, parent_tool_use_id: null, session_id: sessionId });
+    await require('./fake-loop').run(prompt, out, sessionId, () => interrupted, sleep); // loop keywords
+    if (/edit(?!loop)/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_edit', name: 'Edit', input: { file_path: 'C:\\repo\\app.js', old_string: 'const a = 1;\nconst b = 2;', new_string: 'const a = 1;\nconst b = 3;\nconst c = 4;' } }] }, parent_tool_use_id: null, session_id: sessionId });
     if (/todo/.test(prompt)) out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_todo', name: 'TodoWrite', input: { todos: [{ content: 'Read code', status: 'completed', activeForm: 'Reading' }, { content: 'Write fix', status: 'in_progress', activeForm: 'Writing fix' }, { content: 'Run tests', status: 'pending', activeForm: 'Running tests' }] } }] }, parent_tool_use_id: null, session_id: sessionId });
     const heard = corrections.drain(); // the step before the answer: corrections that came during the tools join here
     const seen = heard.length ? ` (תיקון שהתקבל באמצע: ${heard.join(' | ')})` : '';
@@ -123,8 +123,7 @@ async function turn(prompt) {
   if (corrections.size()) { const late = corrections.drain(); queue = queue.then(() => turn(`תיקון: ${late.join(' | ')}`)); }
 }
 
-const ready = sleep(Number(process.env.FAKE_CLAUDE_STARTUP_MS || 0));
-let queue = ready;
+const ready = sleep(Number(process.env.FAKE_CLAUDE_STARTUP_MS || 0)); let queue = ready;
 readline.createInterface({ input: process.stdin }).on('line', line => { ready.then(() => handle(line)); })
   .on('close', () => ready.then(() => queue).then(() => process.exit(0))); // after the lines read before close
 
