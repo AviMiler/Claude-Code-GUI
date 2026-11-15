@@ -10,6 +10,7 @@ import { notify } from './notify.js';
 import { isTurnStart } from './turn-stats.js';
 import { applyShellEvent, forgetShellSession } from './terminal/shell-store.js';
 import { applyRewound } from './rewind/rewind-apply.js';
+import { noteStallEvent } from './stall/stall-clock.js';
 
 /** Window event fired when a session's background tasks change (panels/panel-tasks.js listens while open). */
 export const TASKS_EVENT = 'claude-gui:tasks';
@@ -39,6 +40,7 @@ function turnOutcome(session) {
  *   when it shows this session (split-view.js)
  */
 export function handleEvent(event, view) {
+  noteStallEvent(event); // the session heard from its CLI (stall/)
   const session = event.sessionId ? state.sessions.get(event.sessionId) : null;
   const isActive = event.sessionId && event.sessionId === state.activeId;
   // Every thread on screen that shows this session: the main one and/or the split pane.
