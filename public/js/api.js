@@ -43,6 +43,10 @@ export const api = {
   /** Runs a shell command in the session's folder (output arrives as `shell` events): source 'terminal' (the pane) or 'bang' (a `!` line). */
   runShell: (id, command, source, shell) => request('POST', `/api/sessions/${id}/shell`, { command, source, ...(shell && { shell }) }),
   stopShell: id => request('POST', `/api/sessions/${id}/shell/stop`),
+  /** The automatic check of the session's project folder (verify loop, run by the CLI's Stop hook). */
+  verifyCheck: id => request('GET', `/api/sessions/${id}/verify-check`),
+  saveVerifyCheck: (id, check) => request('PUT', `/api/sessions/${id}/verify-check`, check),
+  clearVerifyCheck: id => request('DELETE', `/api/sessions/${id}/verify-check`),
   /** What going back to a user message (its cliUuid) would do: { text, conversation, code: { available, reason, files, insertions, deletions }, runningTasks }. */
   rewindPreview: (id, uuid) => request('POST', `/api/sessions/${id}/rewind/preview`, { uuid }),
   /** mode: 'conversation' | 'code' | 'both'. @returns {Promise<{text:string, images:object[], files:object[], mode:string}>} the message, for the composer */

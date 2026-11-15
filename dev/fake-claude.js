@@ -2,24 +2,23 @@
  * Fake `claude` CLI for developing the GUI without an API key. Speaks the stream-json + control protocol.
  * Prompt keywords (whole words where they overlap): "bash" -> tool + permission prompt, "ask" -> AskUserQuestion, "plan" -> ExitPlanMode,
  * "slow" -> long streaming (to test stop), "fail" -> crash, "task" -> a background task that ends 8 s later, "elicit" / "elicit-url" -> an MCP elicitation, "write <file>" -> changes a file (rewind, fake-rewind.js)
- * MAX_THINKING_TOKENS=0 -> no thinking item; FAKE_NO_SYSTEM_PROMPT_FILE / FAKE_NO_REPLACE_PROMPT hide the system prompt flags from --help
+ * MAX_THINKING_TOKENS=0 -> no thinking item; FAKE_NO_SYSTEM_PROMPT_FILE / FAKE_NO_REPLACE_PROMPT / FAKE_NO_SETTINGS hide those flags from --help
  * (FAKE_TASK_MS changes it; stop_task / get_task_output answer for it). Anything else -> streamed echo.
  * FAKE_CLAUDE_STARTUP_MS delays the first answer, like the real CLI's startup (seconds on Windows).
  * "loop [n]", "editloop [n]", "subloop", "pollloop" -> repeated tool calls (fake-loop.js).
  * A message with a uuid sent while a turn runs is a correction (fake-corrections.js).
  * The conversation is written where the real CLI keeps it (fake-transcript.js); set CLAUDE_CONFIG_DIR in experiments.
  */
-const readline = require('readline');
-const args = process.argv.slice(2);
+const readline = require('readline'); const args = process.argv.slice(2);
 const rewind = require('./fake-rewind');
 const out = rewind.uuidOut(require('./fake-transcript').recorder(rewind.sessionId)(message => process.stdout.write(`${JSON.stringify(message)}\n`)));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation'); const tools = require('./fake-tools');
+const { createCorrections } = require('./fake-corrections'); const { fakeCatalog } = require('./fake-catalog'); const { elicit } = require('./fake-elicitation'); const tools = require('./fake-tools'); const { stopHookRounds } = require('./fake-stop-hook');
 
 if (args.includes('--version')) { console.log('2.1.308 (Claude Code)'); process.exit(0); }
 if (args.includes('--help')) {
   console.log(`Usage: claude [options]\n  --model <model>${process.env.FAKE_NO_FALLBACK ? '' : '\n  --fallback-model <model>'}${process.env.FAKE_NO_SYSTEM_PROMPT_FILE ? '' : `\n  --append-system-prompt-file <file>${process.env.FAKE_NO_REPLACE_PROMPT ? '' : '\n  --system-prompt-file <file>'}`}${tools.help()}\n  --effort <level>\n  --agent <agent>\n  --add-dir <directories...>
-  --include-partial-messages\n  --replay-user-messages\n  --permission-prompts <target>\n  --fork-session\n  --settings <file-or-json>
+  --include-partial-messages\n  --replay-user-messages\n  --permission-prompts <target>\n  --fork-session${process.env.FAKE_NO_SETTINGS ? '' : '\n  --settings <file-or-json>'}
   --permission-mode <mode>  Permission mode (choices: "acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan")
 Commands:\n  mcp  Configure MCP\n  plugin|plugins  Manage plugins\n  doctor  Check health`);
   process.exit(0);
@@ -27,12 +26,10 @@ Commands:\n  mcp  Configure MCP\n  plugin|plugins  Manage plugins\n  doctor  Che
 if (args[0] === 'mcp') { console.log('dummy: node server.js - ✓ Connected'); process.exit(0); }
 if (args[0] === 'plugin') { console.log(args.includes('--json') ? '[]' : 'No plugins installed'); process.exit(0); }
 if (args[0] === 'doctor' || args[0] === 'auth') { console.log('Claude Code doctor (fake)\nAll good'); process.exit(0); }
-
 const { sessionId } = rewind;
 let mode = args.includes('--permission-mode') ? args[args.indexOf('--permission-mode') + 1] : 'default';
 let interrupted = false; let running = false;
-const corrections = createCorrections(out, sessionId);
-const waiting = new Map();
+const corrections = createCorrections(out, sessionId); const waiting = new Map();
 let counter = 0; let totalCost = 0; // the process's running cost, like the CLI's (FAKE_CLAUDE_NO_USAGE: per turn, no get_usage)
 
 const CATALOG = fakeCatalog(mode);
@@ -118,6 +115,7 @@ async function turn(prompt) {
     const seen = heard.length ? ` (תיקון שהתקבל באמצע: ${heard.join(' | ')})` : '';
     await stream(`**תשובה מזויפת** ל: ${prompt}${seen}. זה טקסט שמוזרם מילה אחרי מילה כדי לבדוק את הממשק \`code\` וגם רשימה.`, /slow/.test(prompt) ? 400 : 25);
   }
+  await stopHookRounds({ args, sessionId, out, stream, prompt, stopped: () => interrupted }); // Stop hooks of --settings (fake-stop-hook.js)
   out({ type: 'result', subtype: interrupted ? 'error_during_execution' : 'success', is_error: interrupted, duration_ms: Date.now() - started, num_turns: 1, total_cost_usd: process.env.FAKE_CLAUDE_NO_USAGE ? 0.0012 : (totalCost += 0.0012), usage: { input_tokens: 120, output_tokens: 48 }, session_id: sessionId });
   running = false;
   // Too late for this turn (it was already answering): the waiting corrections start the next one, like the real CLI.

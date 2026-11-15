@@ -7,6 +7,7 @@ import { turnStats } from './turn-stats.js';
 import { imageUrl, fileUrl, formatSize } from './attachments.js';
 import { renderShellItem, shellItemMarkdown } from './terminal/shell-item.js';
 import { rewindButton } from './rewind/rewind-button.js';
+import { renderVerifyItem } from './verify/verify-item.js';
 
 const LOOKS_LIKE_MARKDOWN = /(^|\n)(#{1,4} |\|.*\||[-*] |\*\*)/;
 const copySources = new WeakMap(); // copy button -> the message's original text (Markdown for Claude's answers)
@@ -79,6 +80,7 @@ function renderCommandOutput(item) {
 }
 
 function build(item, context) {
+  if (item.verify) return renderVerifyItem(item); // a failed automatic check, with its output tail (verify/)
   switch (item.kind) {
     case 'user': return renderUser(item);
     case 'text': return item.parent ? renderAssistantText(item.text) : withCopy(renderAssistantText(item.text), item.text);
