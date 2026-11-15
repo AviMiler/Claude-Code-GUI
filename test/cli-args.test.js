@@ -99,13 +99,14 @@ describe('buildArgs: resuming and forking', () => {
 
 describe('buildArgs: settings file', () => {
   test('an output style is written to a settings file that the flag points to', () => {
-    const args = buildArgs({ id: 'style-session', mode: 'default', addDirs: [], outputStyle: 'Explanatory' }, { model: '' }, caps());
+    const args = buildArgs({ id: 'style-session', mode: 'default', addDirs: [], outputStyle: 'Explanatory' }, { model: '' }, caps(['--settings']));
     const file = args[args.indexOf('--settings') + 1];
     assert.ok(file.startsWith(dataDir));
-    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { outputStyle: 'Explanatory' });
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).outputStyle, 'Explanatory'); // the verify loop's Stop hook sits beside it
+    assert.ok(!buildArgs({ id: 'style-session', mode: 'default', addDirs: [], outputStyle: 'Explanatory' }, { model: '' }, caps()).includes('--settings'));
   });
 
-  test('no settings flag when the session has no extra settings', () => {
+  test('no settings flag when the CLI does not list it', () => {
     assert.ok(!buildArgs({ id: 'plain', mode: 'default', addDirs: [] }, { model: '' }, caps()).includes('--settings'));
   });
 });
