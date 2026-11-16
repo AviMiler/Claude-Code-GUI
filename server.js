@@ -7,6 +7,7 @@ const { loadConfig } = require('./lib/config');
 const { isAllowedRequest, sendJson } = require('./lib/http-utils');
 const { handleApi } = require('./lib/api-routes');
 const { serveStatic } = require('./lib/static-files');
+const { isPreviewPath, sendPreviewError } = require('./lib/preview/preview-routes');
 const cliSync = require('./lib/session-cli-sync');
 const { sweepAttachments } = require('./lib/session-service');
 const { envOf, displayUrl } = require('./lib/model-list');
@@ -19,7 +20,11 @@ migrateTemplates(config); // data/templates.json (before 2026-10-30) -> the user
 
 const server = http.createServer(async (request, response) => {
   try {
-    if (!isAllowedRequest(request, config.port)) return sendJson(response, 403, { error: 'forbidden' });
+    if (!isAllowedRequest(request, config.port)) {
+      // A preview URL keeps its sandbox CSP on a refusal too (an opaque-origin page's CORS request carries Origin: null)
+      if (isPreviewPath(new URL(request.url, 'http://localhost').pathname)) return sendPreviewError(response, 403, 'forbidden');
+      return sendJson(response, 403, { error: 'forbidden' });
+    }
     if (request.url.startsWith('/api/')) return await handleApi(request, response, config);
     serveStatic(request, response);
   } catch (error) {

@@ -15,6 +15,7 @@ const PANES = [
   { id: 'tasks', icon: 'list', name: 'חלונית משימות הרקע', key: '' },
   { id: 'changes', icon: 'diff', name: 'חלונית השינויים', key: 'Ctrl+Shift+D' },
   { id: 'files', icon: 'folder', name: 'חלונית הקבצים', key: '' },
+  { id: 'preview', icon: 'globe', name: 'התצוגה המקדימה', key: '' },
   { id: 'terminal', icon: 'terminal', name: 'הטרמינל', key: 'Ctrl+`' },
   { id: 'details', icon: 'panel-right', name: 'פרטי הסשן', key: '' },
 ];

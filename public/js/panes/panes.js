@@ -1,6 +1,6 @@
 /**
  * The workspace panes of the main session: creates the pane host and registers each pane (session details, Changes,
- * Terminal, Files, Plan, Background tasks). app.js talks only to this module.
+ * Terminal, Files, Plan, Background tasks, Preview). app.js talks only to this module.
  */
 import { createPaneHost } from './pane-host.js';
 import { createDetailsPane } from './pane-details.js';
@@ -9,6 +9,7 @@ import { createTerminalPane } from '../terminal/terminal-pane.js';
 import { createFilesPane } from '../files/files-pane.js';
 import { createPlanPane } from '../plan/plan-pane.js';
 import { createTasksPane } from '../tasks/tasks-pane.js';
+import { createPreviewPane } from '../preview/preview-pane.js';
 
 /**
  * @param {{workspace:HTMLElement, area:HTMLElement, modelLabel:(session:object)=>string,
@@ -26,5 +27,6 @@ export function createPanes({ workspace, area, modelLabel, getSession, send, onC
   host.register(createFilesPane({ rerender: refresh, openPane: id => host.open(id) }));
   host.register(createPlanPane());
   host.register(createTasksPane({ rerender: refresh }));
+  host.register(createPreviewPane({ rerender: refresh, openPane: id => host.open(id) }));
   return { refresh, toggle: host.toggle, open: host.open, isOpen: host.isOpen, isActive: host.isActive, closeFocused: host.closeFocused };
 }
