@@ -1,20 +1,23 @@
 /**
- * The topbar's pane buttons and the pane entries of the "עוד" menu. Each shows the pane's state: closed, open in a
- * background tab ("on"), or the shown tab ("active"). A click opens a closed pane, shows a background one, hides the shown one.
+ * The top bar's pane buttons: one icon button per pane, pressed (aria-pressed) while the pane is on screen, its tooltip
+ * naming the shortcut. Plan and Background tasks appear only when the session has something there (pane-attention.js).
+ * When the top bar has no room the buttons collapse into one "חלוניות" button with a menu (pane-overflow.js measures).
+ * A click opens a closed pane, shows a background one, hides the shown one.
  */
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
+import { openContextMenu } from '../context-menu/menu.js';
+import { hasContent, noteContent, hasDot, clearDot } from './pane-attention.js';
 
-/** id, icon, the name used inside a sentence, shortcut. Order = the "עוד" menu order. */
+/** id, icon, the name used inside a sentence, shortcut. Order = the top bar order (details last, at the edge the area opens on). */
 const PANES = [
-  { id: 'details', icon: 'panel-right', name: 'פרטי הסשן', key: '' },
+  { id: 'plan', icon: 'map', name: 'חלונית התוכנית', key: '' },
+  { id: 'tasks', icon: 'list', name: 'חלונית משימות הרקע', key: '' },
   { id: 'changes', icon: 'diff', name: 'חלונית השינויים', key: 'Ctrl+Shift+D' },
   { id: 'files', icon: 'folder', name: 'חלונית הקבצים', key: '' },
   { id: 'terminal', icon: 'terminal', name: 'הטרמינל', key: 'Ctrl+`' },
-  { id: 'plan', icon: 'map', name: 'חלונית התוכנית', key: '' },
-  { id: 'tasks', icon: 'list', name: 'חלונית משימות הרקע', key: '' },
+  { id: 'details', icon: 'panel-right', name: 'פרטי הסשן', key: '' },
 ];
-const TOPBAR = ['changes', 'files', 'terminal', 'details']; // details last: it sits at the edge the area opens on
 
 /** @param {{paneOpen:(id:string)=>boolean, paneActive:(id:string)=>boolean}} handlers */
 function stateOf(handlers, id) {
@@ -27,30 +30,42 @@ function actionText(pane, state) {
   return state === 'open' ? `מעבר אל ${pane.name}` : `הצגת ${pane.name}`;
 }
 
-/**
- * @param {{paneOpen:(id:string)=>boolean, paneActive:(id:string)=>boolean, onTogglePane:(id:string)=>void}} handlers
- * @returns {HTMLElement} the group of topbar toggles
- */
-export function paneButtons(handlers) {
-  return h('div', { class: 'pane-toggles', role: 'group', 'aria-label': 'חלוניות' }, TOPBAR.map(id => {
-    const pane = PANES.find(item => item.id === id);
-    const state = stateOf(handlers, id);
-    const title = `${actionText(pane, state)}${pane.key ? ` (${pane.key})` : ''}`;
-    return h('button', { type: 'button', class: `icon-button pane-toggle${state === 'closed' ? '' : ' on'}${state === 'active' ? ' active' : ''}`,
-      'aria-pressed': String(state === 'active'), title, 'aria-label': title, dataset: { paneToggle: id }, onClick: () => handlers.onTogglePane(id) },
-    icon(pane.icon, id === 'details' ? 'mirror' : ''));
-  }));
+/** The panes the session offers now: an open tab stays offered when its content is gone (it shows its empty state). */
+function offered(handlers, session) {
+  noteContent(session);
+  return PANES.filter(pane => handlers.paneOpen(pane.id) || hasContent(pane.id, session)).map(pane => {
+    const state = stateOf(handlers, pane.id);
+    if (state === 'active') clearDot(session.id, pane.id);
+    return { pane, state, dot: hasDot(session.id, pane.id) };
+  });
+}
+
+const dotNode = () => h('span', { class: 'pane-dot', 'aria-hidden': 'true' });
+
+/** @returns {object[]} popover.js entries of the offered panes (the overflow menu) */
+function menuEntries(list, handlers) {
+  // The shown pane carries a check mark; a background tab says so; a new one says "חדש".
+  return list.map(({ pane, state, dot }) => ({ icon: pane.icon, title: actionText(pane, state), checked: state === 'active',
+    tag: dot && state !== 'active' ? 'חדש' : '', hint: state === 'open' ? 'פתוחה ברקע' : pane.key, onSelect: () => handlers.onTogglePane(pane.id) }));
 }
 
 /**
  * @param {{paneOpen:(id:string)=>boolean, paneActive:(id:string)=>boolean, onTogglePane:(id:string)=>void}} handlers
- * @returns {object[]} dropdown entries, under their own section title
+ * @param {object} session the main session
+ * @returns {HTMLElement} the group of top bar toggles plus its overflow button
  */
-export function paneMenuEntries(handlers) {
-  return [{ section: 'חלוניות' }, ...PANES.map(pane => {
-    const state = stateOf(handlers, pane.id);
-    // The shown pane carries a check mark; a background tab says so (the title already says what a click does).
-    return { icon: pane.icon, title: actionText(pane, state), checked: state === 'active', hint: state === 'open' ? 'פתוחה ברקע' : pane.key,
-      onSelect: () => handlers.onTogglePane(pane.id) };
-  })];
+export function paneButtons(handlers, session) {
+  const list = offered(handlers, session);
+  const buttons = list.map(({ pane, state, dot }) => {
+    const title = `${actionText(pane, state)}${pane.key ? ` (${pane.key})` : ''}${dot ? ' · חדש' : ''}`;
+    return h('button', { type: 'button', class: `icon-button pane-toggle${state === 'closed' ? '' : ' on'}${state === 'active' ? ' active' : ''}`,
+      'aria-pressed': String(state === 'active'), title, 'aria-label': title, dataset: { paneToggle: pane.id }, onClick: () => handlers.onTogglePane(pane.id) },
+    icon(pane.icon, pane.id === 'details' ? 'mirror' : ''), dot ? dotNode() : null);
+  });
+  const anyShown = list.some(item => item.state === 'active');
+  const anyDot = list.some(item => item.dot);
+  const overflow = h('button', { type: 'button', class: `icon-button pane-overflow${anyShown ? ' on' : ''}`, title: 'חלוניות', 'aria-label': 'חלוניות',
+    'aria-haspopup': 'menu', onClick: event => openContextMenu(event, menuEntries(offered(handlers, session), handlers)) },
+  icon('panel-right', 'mirror'), anyDot ? dotNode() : null);
+  return h('div', { class: 'pane-toggles', role: 'group', 'aria-label': 'חלוניות' }, ...buttons, overflow);
 }

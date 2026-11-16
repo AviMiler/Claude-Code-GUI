@@ -11,7 +11,8 @@ import { viewModeEntries } from './transcript/view-mode.js';
 import { toggleShortcutsDialog } from './shortcuts/shortcuts-dialog.js';
 import { createWorktreeToggle } from './worktree/worktree-toggle.js';
 import { projectFolder } from './worktree/project-folder.js';
-import { paneButtons, paneMenuEntries } from './panes/pane-toggles.js';
+import { paneButtons } from './panes/pane-toggles.js';
+import { fitPaneToggles } from './panes/pane-overflow.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -35,7 +36,7 @@ function greeting() {
  * @param {object|null} session
  * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit,
  *   onTogglePane:(id:string)=>void, paneOpen:(id:string)=>boolean, paneActive:(id:string)=>boolean, viewMode:()=>string, onViewMode,
- *   onArchive, onUnarchive, onNewSession}} handlers paneOpen / paneActive: a pane's tab is open / shown (panes/pane-toggles.js);
+ *   onArchive, onUnarchive, onNewSession}} handlers paneOpen / paneActive: a pane's tab is open / on screen (panes/pane-toggles.js; the panes are not in "עוד");
  *   viewMode: the transcript's current mode
  */
 export function renderTopbar(bar, session, handlers) {
@@ -66,7 +67,6 @@ export function renderTopbar(bar, session, handlers) {
   const more = h('button', { type: 'button', class: 'icon-button', title: 'עוד' }, icon('more'));
   more.addEventListener('click', () => showDropdown(more, [
     ...viewModeEntries(session, handlers.viewMode(), handlers.onViewMode),
-    ...paneMenuEntries(handlers),
     { section: 'סשן' },
     { icon: 'pencil', title: 'שינוי שם', hint: '/rename', onSelect: () => handlers.onRename() },
     { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', disabled: Boolean(session.archived), onSelect: handlers.onPin },
@@ -85,8 +85,9 @@ export function renderTopbar(bar, session, handlers) {
     h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
     h('button', { type: 'button', class: 'icon-button', title: 'הקשר ושימוש (/context)', onClick: () => handlers.onOpenPanel('usage') }, icon('gauge')),
     h('button', { type: 'button', class: 'icon-button', title: 'הגדרות (Ctrl+,)', onClick: () => handlers.onOpenPanel('model') }, icon('settings')),
-    paneButtons(handlers),
+    paneButtons(handlers, session),
     more].filter(Boolean));
+  fitPaneToggles(bar); // no room: the pane buttons collapse into one "חלוניות" menu
 }
 
 /**

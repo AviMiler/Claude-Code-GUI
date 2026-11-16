@@ -3,11 +3,12 @@
  * and one pane is shown at a time. Opening a pane from anywhere adds or activates its tab; closing the last tab hides the
  * area. Inactive panes stay in the DOM (hidden), so a terminal's output, an editor's unsaved text or a half-typed comment
  * survive a tab switch. Which panes are open, the active one and the width are remembered per browser. Main session only.
+ * Without room beside the chat the same area becomes an overlay drawer (pane-drawer.js).
  */
 import { h } from '../dom.js';
-import { toast } from '../ui.js';
 import { createPaneTabs } from './pane-tabs.js';
 import { createPaneResizer } from './pane-resize.js';
+import { createPaneDrawer } from './pane-drawer.js';
 
 const OPEN_KEY = 'claude-gui.panes-open';
 const ACTIVE_KEY = 'claude-gui.panes-active';
@@ -16,7 +17,6 @@ const FIRST = 'details'; // Desktop shows the session details rail by default; i
 const MIN_CHAT = 560;
 const MIN_PANE = 280;
 const DEFAULT_WIDTH = 340;
-const NO_ROOM = 'אין מקום לחלונית ליד השיחה. הרחב את החלון, הסתר את סרגל הצד או סגור את הפיצול.';
 
 function recall(key, fallback) {
   try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; } catch { return fallback; }
@@ -55,6 +55,7 @@ export function createPaneHost({ workspace, area, onChange }) {
   const resizer = createPaneResizer({ workspace, area, minPane: MIN_PANE, minChat: MIN_CHAT,
     onResize: value => { width = value; }, onDone: value => remember(WIDTH_KEY, value) });
   area.append(resizer, h('div', { class: 'pane-frame' }, strip, views));
+  const drawer = createPaneDrawer({ workspace, area, onToggle: () => { refresh(); onChange(); } });
 
   const hasRoom = () => workspace.clientWidth >= MIN_CHAT + Math.max(MIN_PANE, width);
   const visible = () => open.filter(id => definitions.has(id));
@@ -74,15 +75,18 @@ export function createPaneHost({ workspace, area, onChange }) {
   function refresh(session = lastSession) {
     lastSession = session;
     const ids = visible();
-    area.hidden = !session || !ids.length || !hasRoom();
+    drawer.setNarrow(!hasRoom());
+    if (!session || !ids.length) drawer.close(); // the last tab closed inside the drawer, or the session went
+    area.hidden = !session || !ids.length || (drawer.narrow() && !drawer.isOpen());
     if (area.hidden) return;
-    area.style.width = `${Math.max(MIN_PANE, width)}px`;
+    area.style.width = drawer.narrow() ? drawer.width(Math.max(MIN_PANE, width)) : `${Math.max(MIN_PANE, width)}px`;
     const current = shownActive();
     tabs.update(ids.map(id => definitions.get(id)), current);
     for (const [id, { section }] of sections) section.hidden = id !== current;
     const { section, body } = sectionFor(current);
     section.hidden = false;
     definitions.get(current).render(body, session); // inactive panes keep their last drawing until shown again
+    drawer.shown();
   }
 
   function save() { remember(OPEN_KEY, open); remember(ACTIVE_KEY, active); }
@@ -109,24 +113,38 @@ export function createPaneHost({ workspace, area, onChange }) {
     if (hadFocus) strip.querySelector('.pane-tab.active .pane-tab-main')?.focus();
   }
 
-  /** A topbar / menu / shortcut toggle: opens a closed pane, shows an open but hidden one, closes the shown one. */
-  function toggle(id) {
-    // Without room the area is hidden anyway; changing the saved choice then would silently lose it.
-    if (!hasRoom()) return toast(NO_ROOM);
-    return open.includes(id) && shownActive() === id ? close(id) : activate(id);
+  const isShown = id => open.includes(id) && shownActive() === id && (!drawer.narrow() || drawer.isOpen());
+
+  /** Opens or shows a pane; without room it opens the drawer on that pane. */
+  function show(id) {
+    if (drawer.narrow() && !drawer.isOpen()) drawer.open(id);
+    activate(id);
   }
 
-  new ResizeObserver(() => refresh()).observe(workspace);
+  /**
+   * A topbar / menu / shortcut toggle: opens a closed pane, shows an open but hidden one, closes the shown one.
+   * In the drawer the shown pane's toggle closes the drawer and keeps the tab (its state comes back with it).
+   */
+  function toggle(id) {
+    if (!isShown(id)) return show(id);
+    return drawer.narrow() ? drawer.close() : close(id);
+  }
+
+  // Crossing the room threshold docks or undocks the area; the top bar's pressed buttons follow.
+  new ResizeObserver(() => { const before = drawer.narrow(); refresh(); if (drawer.narrow() !== before) onChange(); }).observe(workspace);
 
   return {
     register(pane) { definitions.set(pane.id, pane); },
     toggle,
     /** Opens or shows a pane (a button that "opens the diff" must never close it). */
-    open(id) { return hasRoom() ? activate(id) : toast(NO_ROOM); },
-    isOpen: id => open.includes(id), // the user's choice (the area may still be hidden for lack of room)
-    isActive: id => open.includes(id) && shownActive() === id,
-    /** Closes the active tab (Desktop: Ctrl+\); nothing while the area is hidden. */
-    closeFocused() { if (!area.hidden && shownActive()) close(shownActive()); },
+    open: show,
+    isOpen: id => open.includes(id), // the user's choice (the area may still be hidden: a closed drawer)
+    isActive: isShown, // on screen now
+    /** Closes the active tab (Desktop: Ctrl+\), or the drawer when the area is one; nothing while the area is hidden. */
+    closeFocused() {
+      if (area.hidden || !shownActive()) return;
+      if (drawer.narrow()) drawer.close(); else close(shownActive());
+    },
     refresh,
   };
 }
