@@ -28,3 +28,6 @@
 .editor-note.conflict { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--danger-soft); color: var(--danger); }
 .file-editor { flex: 1; min-height: 200px; padding: 8px 10px; border: 0; resize: none; background: var(--code-block); color: var(--text); font: 12.5px/1.55 var(--font-mono); tab-size: 4; white-space: pre; overflow: auto; outline: 0; }
 .editor-status { padding: 3px 10px; border-top: 1px solid var(--border); background: var(--bg-sidebar); color: var(--muted); font-size: 11.5px; text-align: left; }
+.editor-save-state { color: var(--muted); font-size: 12px; }
+.editor-save-state.error { color: var(--danger); }
+.editor-auto { display: inline-flex; gap: 4px; align-items: center; color: var(--muted); font-size: 12px; cursor: pointer; }
