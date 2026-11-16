@@ -1,17 +1,19 @@
 /**
  * The sidebar search's three modes (the developer's decision, 2026-10-29), each saying what it covers and what it costs:
- * names and folders (instant), the text of the GUI's sessions (the browser already holds it; the default, as before),
+ * names and folders (instant), the text of the GUI's sessions (searched on the server, lib/sync/session-search.js: the browser
+ * holds only the sessions it opened; the default, as before),
  * and the text of every CLI conversation (the server reads every file: on Enter only, within a time budget).
  * The mode is remembered per browser.
  */
 import { api } from '../api.js';
 import { h } from '../dom.js';
 import { searchSessions } from '../session-search.js';
+import { contentHits } from '../sync/content-search.js';
 
 const KEY = 'claude-gui.search-mode';
 const MODES = [
   { value: 'names', label: 'שמות', explain: 'שמות ותיקיות של כל הסשנים והשיחות. מיידי.' },
-  { value: 'open', label: 'תוכן הסשנים', explain: 'גם תוכן הסשנים שבממשק (כבר טעונים בדפדפן). מהיר. שיחות מהטרמינל – לפי שם בלבד.' },
+  { value: 'open', label: 'תוכן הסשנים', explain: 'גם תוכן הסשנים שבממשק (חיפוש בשרת). מהיר. שיחות מהטרמינל – לפי שם בלבד.' },
   { value: 'all', label: 'כל השיחות', explain: 'גם תוכן כל שיחות הטרמינל: השרת קורא כל קובץ, ולכן רק ב-Enter ועלול לקחת כמה שניות.' },
 ];
 let server = { query: '', running: false, hits: [], scanned: 0, total: 0, partial: false };
@@ -52,8 +54,7 @@ export function applySearch(sessions, rows, query, onChange) {
   redraw = onChange;
   if (!query) return { results: null, rows };
   const mode = searchMode();
-  const results = searchSessions(sessions, query);
-  if (mode === 'names') [...results].forEach(([id, found]) => (found.byName ? results.set(id, { byName: true, content: null }) : results.delete(id)));
+  const results = searchSessions(sessions, query, mode === 'names' ? null : contentHits(query, onChange));
   const byName = searchSessions(rows, query);
   const shown = rows.filter(row => byName.has(row.id)).map(row => ({ ...row, content: null }));
   if (mode === 'all' && server.query === query) {

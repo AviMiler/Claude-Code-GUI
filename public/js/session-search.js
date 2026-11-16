@@ -1,4 +1,8 @@
-/** Full-text search over every session's messages (user messages, Claude's answers, shell commands) for the sidebar. */
+/**
+ * Search over sessions for the sidebar: names and folders here; the messages (user messages, Claude's answers, shell
+ * commands) of one item list here (searchItems: an opened conversation), of every session on the server
+ * (lib/sync/session-search.js, the same rules).
+ */
 import { projectFolder } from './worktree/project-folder.js';
 
 const SNIPPET_BEFORE = 28;
@@ -75,15 +79,17 @@ export function searchItems(items, query) {
  * Searches every session. Name/folder matches are reported too, so the sidebar keeps its old filter.
  * @param {Iterable<object>} sessions
  * @param {string} query
+ * @param {Map<string, SearchResult>|null} [hits] the content matches by session id, found on the server
+ *   (sync/content-search.js: the browser holds the items of the sessions it opened only); none: names only
  * @returns {Map<string, {byName:boolean, content:SearchResult|null}>} only sessions that match
  */
-export function searchSessions(sessions, query) {
+export function searchSessions(sessions, query, hits = null) {
   const needle = query.trim();
   const results = new Map();
   if (!needle) return results;
   for (const session of sessions) {
     const byName = Boolean(findIn(`${session.name} ${projectFolder(session)} ${session.worktree?.branch || ''}`, needle));
-    const content = searchItems(session.items || [], needle);
+    const content = hits?.get(session.id) || null;
     if (byName || content) results.set(session.id, { byName, content });
   }
   return results;
