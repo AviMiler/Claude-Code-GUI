@@ -9,13 +9,14 @@ import { createTerminalPane } from '../terminal/terminal-pane.js';
 import { createFilesPane } from '../files/files-pane.js';
 import { createPlanPane } from '../plan/plan-pane.js';
 import { createTasksPane } from '../tasks/tasks-pane.js';
+import { createSidePane } from '../side/side-pane.js';
 
 /**
  * @param {{workspace:HTMLElement, area:HTMLElement, modelLabel:(session:object)=>string,
  *   getSession:()=>object|null, send:(text:string)=>Promise<boolean>, onChange:()=>void}} options send: the normal send path
  *   of the main session; onChange: a pane opened or closed
  * @returns {{refresh:()=>void, toggle:(id:string)=>void, open:(id:string)=>void, isOpen:(id:string)=>boolean,
- *   isActive:(id:string)=>boolean, closeFocused:()=>void}}
+ *   isActive:(id:string)=>boolean, closeFocused:()=>void, side:{ask:Function, focusInput:Function}}} side: the side question tab
  */
 export function createPanes({ workspace, area, modelLabel, getSession, send, onChange }) {
   const host = createPaneHost({ workspace, area, onChange });
@@ -26,5 +27,7 @@ export function createPanes({ workspace, area, modelLabel, getSession, send, onC
   host.register(createFilesPane({ rerender: refresh, openPane: id => host.open(id) }));
   host.register(createPlanPane());
   host.register(createTasksPane({ rerender: refresh }));
-  return { refresh, toggle: host.toggle, open: host.open, isOpen: host.isOpen, isActive: host.isActive, closeFocused: host.closeFocused };
+  const side = createSidePane({ open: id => host.open(id), isActive: host.isActive, rerender: onChange }); // onChange redraws the top bar (its dot)
+  host.register(side.pane);
+  return { refresh, toggle: host.toggle, open: host.open, isOpen: host.isOpen, isActive: host.isActive, closeFocused: host.closeFocused, side };
 }

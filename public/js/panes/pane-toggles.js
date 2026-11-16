@@ -16,6 +16,7 @@ const PANES = [
   { id: 'changes', icon: 'diff', name: 'חלונית השינויים', key: 'Ctrl+Shift+D' },
   { id: 'files', icon: 'folder', name: 'חלונית הקבצים', key: '' },
   { id: 'terminal', icon: 'terminal', name: 'הטרמינל', key: 'Ctrl+`' },
+  { id: 'side', icon: 'message', name: 'חלונית שאלת הצד', key: 'Ctrl+;' },
   { id: 'details', icon: 'panel-right', name: 'פרטי הסשן', key: '' },
 ];
 
