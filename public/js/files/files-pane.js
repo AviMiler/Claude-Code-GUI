@@ -6,8 +6,9 @@ import { api } from '../api.js';
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
 import { ask, toast } from '../ui.js';
-import { invalidateSessionFetches } from '../panes/session-fetch.js';
-import { filesState, isDirty, anyDirty } from './editor-store.js';
+import { filesState, stateIds, isDirty, anyDirty } from './editor-store.js';
+import { createSaver } from './file-saver.js';
+import { createAutoSave, autoSaveEnabled, setAutoSaveEnabled } from './auto-save.js';
 import { createTreeView } from './tree-view.js';
 import { createTreeFilter } from './tree-filter.js';
 import { createEditorView } from './editor-view.js';
@@ -28,17 +29,23 @@ export function createFilesPane({ rerender, openPane }) {
   let treeNode = null;
   const treeView = createTreeView({ onChange: () => { if (drawnFor && !state().file) drawTree(); } });
   const filter = createTreeFilter({ getSessionId: () => session.id, onResults: paths => { filtered = paths; drawTree(); } });
+  const saver = createSaver({ onChange: (id, finished) => { if (session?.id === id) { editor.sync(filesState(id)); if (finished) rerender(); } } });
+  const autoSave = createAutoSave({ getState: filesState, sessionIds: stateIds, save: (id, options) => saver.save(id, options) });
   const editor = createEditorView({
-    onInput: text => { state().draft = text; editor.sync(state()); },
-    onSave: () => save(false), onOverwrite: () => save(true), onBack: () => leaveFile(),
+    onInput: text => { const st = state(); st.draft = text; st.saved = false; autoSave.touch(session.id); editor.sync(st); },
+    onSave: () => (autoSaveEnabled() ? autoSave.flush(session.id) : saver.save(session.id)),
+    onOverwrite: () => saver.save(session.id, { overwrite: true }), onBack: () => leaveFile(), onBlur: () => autoSave.flush(session.id),
     onReload: () => openFile(state().file.path, { force: true }),
+    onToggleAuto: on => { setAutoSaveEnabled(on); if (on) autoSave.flush(session.id); else autoSave.cancel(session.id); editor.sync(state()); },
+    onCancel: async () => { if (await confirmDiscard()) { Object.assign(state(), { draft: state().file.content, error: null }); editor.show(state()); } },
   });
-  window.addEventListener('beforeunload', event => { if (anyDirty()) { event.preventDefault(); event.returnValue = ''; } });
+  window.addEventListener('beforeunload', event => { if (anyDirty()) { autoSave.flushAll({ keepalive: true }); event.preventDefault(); event.returnValue = ''; } });
 
   const state = () => filesState(session.id);
 
-  /** Asks before an edit that was not saved is thrown away. @returns {Promise<boolean>} go on */
+  /** Saves a pending auto-save edit first; asks before an edit that still is not saved is thrown away. @returns {Promise<boolean>} go on */
   async function confirmDiscard() {
+    await autoSave.flush(session.id);
     if (!isDirty(state())) return true;
     return ask({ title: 'שינויים שלא נשמרו', text: 'הקובץ נערך ולא נשמר. להשליך את השינויים?', confirmLabel: 'השלכה', danger: true });
   }
@@ -50,7 +57,7 @@ export function createFilesPane({ rerender, openPane }) {
     try {
       const file = await api.openFile(id, path);
       const st = filesState(id);
-      Object.assign(st, { file, draft: file.content, conflict: false, saving: false });
+      Object.assign(st, { file, draft: file.content, conflict: false, saving: null, error: null, saved: false });
     } catch (error) {
       toast(error.message, 'error');
       return;
@@ -60,30 +67,8 @@ export function createFilesPane({ rerender, openPane }) {
 
   async function leaveFile() {
     if (!await confirmDiscard()) return;
-    Object.assign(state(), { file: null, draft: '', conflict: false });
+    Object.assign(state(), { file: null, draft: '', conflict: false, error: null, saved: false });
     draw(true);
-  }
-
-  async function save(overwrite) {
-    const st = state();
-    const id = session.id;
-    if (!st.file?.writable || st.saving) return;
-    st.saving = true;
-    editor.sync(st);
-    try {
-      const { path, hash, eol, bom } = st.file;
-      const sent = st.draft; // typing while the request is out stays an unsaved edit
-      const saved = await api.saveFile(id, { path, content: sent, baseHash: hash, eol, bom, overwrite });
-      Object.assign(st.file, saved, { content: sent });
-      st.conflict = false;
-      invalidateSessionFetches(id); // the Changes pane and the rail show the edit
-      toast('נשמר');
-    } catch (error) {
-      if (error.status === 412) st.conflict = true;
-      else toast(error.message, 'error');
-    }
-    st.saving = false;
-    if (session.id === id) { editor.sync(st); rerender(); }
   }
 
   function drawTree() {
@@ -121,6 +106,7 @@ export function createFilesPane({ rerender, openPane }) {
       const sameBody = body === element;
       body = element;
       const switched = !sameBody || !session || session.id !== current.id;
+      if (session && session.id !== current.id) autoSave.flush(session.id); // a pending edit of the session we leave
       session = current;
       if (wanted?.sessionId === current.id) { const { path } = wanted; wanted = null; openFile(path); }
       const st = state();

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+process.env.CLAUDE_GUI_DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'gui-hooks-data-')); // backups go here, not into the repo
 const store = require('../lib/hooks/hooks-store');
 
 const setup = () => {

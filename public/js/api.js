@@ -1,5 +1,5 @@
 /** Thin client for the server API. All user-facing errors come back as Error(message in Hebrew). */
-async function request(method, url, body) {
+async function request(method, url, body, { keepalive = false } = {}) {
   const response = await fetch(url, {
     method,
     headers: body ? { 'Content-Type': 'application/json' } : {},
@@ -73,7 +73,7 @@ export const api = {
   /** A file for the editor: { path, rel, content (LF), eol, bom, hash, size, mtimeMs, writable, readOnlyReason }. */
   openFile: (sessionId, path) => request('GET', `/api/sessions/${sessionId}/file?${query({ path })}`),
   /** Saves an edit; status 412 (error.status) when the file changed on disk since it was opened. @returns {Promise<{hash, size, mtimeMs}>} */
-  saveFile: (sessionId, edit) => request('PUT', `/api/sessions/${sessionId}/file`, edit),
+  saveFile: (sessionId, edit, options) => request('PUT', `/api/sessions/${sessionId}/file`, edit, options),
   /** Shows a file of the session in the system file manager / opens it in the editor chosen by config.editor (lib/files/reveal.js). */
   revealFile: (sessionId, path) => request('POST', `/api/sessions/${sessionId}/reveal`, { path }),
   openInEditor: (sessionId, path) => request('POST', `/api/sessions/${sessionId}/open-in-editor`, { path }),
