@@ -20,7 +20,7 @@ import { createModelHealth } from './model-health.js';
 import { createSplitView } from './split-view.js';
 import { prefetchCatalog } from './warm-up.js';
 import { createPanes } from './panes/panes.js';
-import { bindShortcuts } from './shortcuts/bind-shortcuts.js';
+import { bindShortcuts } from './shortcuts/bind-shortcuts.js'; import { extraShortcuts } from './shortcuts/extra-actions.js'; import { chooseDraftFolder } from './folder-defaults.js';
 import { enableFileMenus } from './context-menu/file-menu.js';
 import { viewModeLabel } from './transcript/view-mode.js';
 import { showLiveShells } from './terminal/shell-live.js';
@@ -71,7 +71,7 @@ function refresh() {
   if (!session && !editing(els.welcome)) {
     renderWelcome(els.welcome, {
       cwd: state.draft.cwd, defaultCwd: state.config.defaultCwd,
-      onFolder: cwd => { state.draft.cwd = cwd; prefetchCatalog(); },
+      onFolder: cwd => { chooseDraftFolder(cwd); prefetchCatalog(); setTimeout(refresh); },
       onSuggestion: async text => { const command = findCommand(await getCommands(), text.slice(1)); if (command) runCommand(command, '', { fromMenu: true }); },
     });
   }
@@ -116,7 +116,7 @@ async function loadState() {
   state.sessions = new Map(sessions.map(session => [session.id, session]));
   state.config = config;
   state.capabilities = capabilities;
-  state.draft.cwd ||= config.defaultCwd;
+  if (!state.draft.cwd) chooseDraftFolder(config.defaultCwd);
   els.version.textContent = capabilities.version ? `Claude Code ${capabilities.version}` : 'Claude Code לא זוהה';
   if (capabilities.error) els.version.title = capabilities.error;
   let remembered = null;
@@ -147,5 +147,6 @@ bindShortcuts({
   toggleChanges: () => panes.toggle('changes'), toggleTerminal: () => panes.toggle('terminal'), closePane: () => panes.closeFocused(),
   cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
   stop: () => actions.stop(), isRunning: () => activeSession()?.status === 'running',
+  ...extraShortcuts({ actions, side: id => sideQuestions.openInput(id) }),
 });
 els.scroller.addEventListener('scroll', () => els.topbar.classList.toggle('scrolled', els.scroller.scrollTop > 4));

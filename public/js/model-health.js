@@ -4,6 +4,7 @@
  */
 import { api } from './api.js';
 import { toast } from './ui.js';
+import { setLocalModel } from './local-model.js';
 import { STALL_EVENT } from './stall/stall-clock.js';
 
 const POLL_MS = 60000;
@@ -27,6 +28,7 @@ export function createModelHealth(dot) {
     if (announce) { dot.dataset.state = 'checking'; dot.title = LABELS.checking; }
     inFlight = api.modelHealth(refresh).then(health => {
       dot.dataset.state = health.state;
+      setLocalModel(Boolean(health.url)); // a custom base URL: the model is local (no auto permission mode)
       dot.title = describe(health);
       dot.setAttribute('aria-label', LABELS[health.state] || LABELS.unknown);
       if (announce) toast(describe(health).split('\n').slice(0, 1).concat(health.error || []).join(' – '), health.state === 'down' ? 'error' : 'info');

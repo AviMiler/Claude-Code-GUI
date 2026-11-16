@@ -69,6 +69,8 @@ export function createSideQuestions(host) {
 
   return {
     ask,
+    /** Ctrl+; : shows the card of a session (or just focuses it) with the cursor in its input. */
+    openInput(sessionId) { open(sessionId).input.focus(); },
     close,
     /** The card belongs to one session; another session on screen hides it. */
     sessionChanged(sessionId) { if (card && card.sessionId !== sessionId) close(); },

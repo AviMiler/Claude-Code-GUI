@@ -1,5 +1,6 @@
 /** Page-wide keyboard shortcuts (shortcut-list.js names them); the composer, the panes and the dialogs handle their own keys. */
 import { shortcutFor } from './shortcut-list.js';
+import { pickByDigit } from './menu-digits.js';
 import { toggleShortcutsDialog } from './shortcuts-dialog.js';
 
 /**
@@ -11,6 +12,7 @@ import { toggleShortcutsDialog } from './shortcuts-dialog.js';
 export function bindShortcuts(run) {
   const actions = { ...run, shortcuts: toggleShortcutsDialog };
   document.addEventListener('keydown', event => {
+    if (pickByDigit(event)) return;
     const shortcut = shortcutFor(event);
     if (shortcut) {
       event.preventDefault(); // also for a held key: the browser's own Ctrl+O / Ctrl+K never opens
