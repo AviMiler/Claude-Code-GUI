@@ -33,13 +33,14 @@ export function hookForm(context, { hook, onDone, onCancel }) {
   };
   const save = async () => {
     const body = values();
-    if (editing) await context.api.updateHook(context.scope.sessionId, { ...body, from: { scope: hook.scope, event: hook.event, groupIndex: hook.groupIndex, hookIndex: hook.hookIndex } });
-    else await context.api.addHook(context.scope.sessionId, body);
+    const from = editing && { scope: hook.scope, event: hook.event, groupIndex: hook.groupIndex, hookIndex: hook.hookIndex, command: hook.command, matcher: hook.matcher };
+    await (editing ? context.api.updateHook(context.scope.sessionId, { ...body, from }) : context.api.addHook(context.scope.sessionId, body));
     context.toast('ה-hook נשמר. השינוי חל על סשנים חדשים או אחרי הפעלה מחדש של הסשן.');
     onDone();
   };
   const saveButton = button('שמירה', () => {}, { variant: 'primary', small: false, iconName: 'check' });
-  saveButton.onclick = busy(saveButton, save, error => context.toast(error.message, 'error'));
+  // 409: the file changed since the list was read; the message is shown and the list is reloaded
+  saveButton.onclick = busy(saveButton, save, error => { context.toast(error.message, 'error'); if (error.status === 409) onDone(); });
   eventSelect.addEventListener('change', refresh);
   [matcherInput, commandArea, timeoutInput, scopeSelect].forEach(control => control.addEventListener('input', () => { preview.textContent = hookPreview(values()); }));
   refresh();

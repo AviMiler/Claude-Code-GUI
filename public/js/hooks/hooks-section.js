@@ -16,7 +16,7 @@ export function hooksSection(context) {
     const edit = hook => box.replaceChildren(hookForm(context, { hook, onDone: show, onCancel: show }));
     const remove = async hook => {
       if (!await context.ask({ title: 'למחוק את ה-hook?', text: `${hook.event}${hook.matcher ? ` (${hook.matcher})` : ''}: ${hook.command}`, confirmLabel: 'מחיקה', danger: true })) return;
-      await context.api.deleteHook(sessionId, hook).then(() => { context.toast('ה-hook נמחק. השינוי חל על סשנים חדשים או אחרי הפעלה מחדש.'); show(); }, error => context.toast(error.message, 'error'));
+      await context.api.deleteHook(sessionId, hook).then(() => { context.toast('ה-hook נמחק. השינוי חל על סשנים חדשים או אחרי הפעלה מחדש.'); show(); }, error => { context.toast(error.message, 'error'); if (error.status === 409) show(); });
     };
     return [
       ...data.files.filter(file => file.error).map(file => errorBox(new Error(file.error))),

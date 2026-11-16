@@ -99,7 +99,7 @@ export const api = {
   hooks: id => request('GET', `/api/sessions/${id}/hooks`),
   addHook: (id, hook) => request('POST', `/api/sessions/${id}/hooks`, hook),
   updateHook: (id, hook) => request('PUT', `/api/sessions/${id}/hooks`, hook),
-  deleteHook: (id, { scope, event, groupIndex, hookIndex }) => request('DELETE', `/api/sessions/${id}/hooks?${new URLSearchParams({ scope, event, groupIndex, hookIndex })}`),
+  deleteHook: (id, { scope, event, groupIndex, hookIndex, command, matcher }) => request('DELETE', `/api/sessions/${id}/hooks?${new URLSearchParams({ scope, event, groupIndex, hookIndex, command, matcher })}`),
 
   transcripts: scope => request('GET', `/api/transcripts?${query(scope)}`),
   importTranscript: (cwd, id, mode) => request('POST', '/api/transcripts/import', { cwd, id, mode }),

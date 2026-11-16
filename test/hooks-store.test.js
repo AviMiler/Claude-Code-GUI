@@ -42,7 +42,7 @@ test('invalid JSON is refused and the file stays byte for byte', () => {
   fs.writeFileSync(t.user, '{ "a": ');
   assert.throws(() => store.addHook(t.config, t.cwd, hook()), error => error.status === 400 && /JSON/.test(error.message));
   assert.equal(fs.readFileSync(t.user, 'utf8'), '{ "a": ');
-  assert.throws(() => store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'Stop', groupIndex: 0, hookIndex: 0 }), error => error.status === 400);
+  assert.throws(() => store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'Stop', groupIndex: 0, hookIndex: 0, command: 'x' }), error => error.status === 400);
   assert.equal(store.listHooks(t.config, t.cwd).files.find(file => file.scope === 'user').error.includes('JSON'), true);
 });
 
@@ -61,27 +61,57 @@ test('delete removes only the chosen hook and cleans up empty arrays and objects
   store.addHook(t.config, t.cwd, hook());
   store.addHook(t.config, t.cwd, hook({ command: 'second' }));
   store.addHook(t.config, t.cwd, hook({ event: 'Stop', matcher: '' }));
-  store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'PreToolUse', groupIndex: 0, hookIndex: 0 });
+  store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'PreToolUse', groupIndex: 0, hookIndex: 0, command: 'echo hi', matcher: 'Bash' });
   assert.deepEqual(readJson(t.user).hooks.PreToolUse[0].hooks.map(item => item.command), ['second']);
-  store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'PreToolUse', groupIndex: 0, hookIndex: 0 });
+  store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'PreToolUse', groupIndex: 0, hookIndex: 0, command: 'second', matcher: 'Bash' });
   assert.equal(readJson(t.user).hooks.PreToolUse, undefined);
-  store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'Stop', groupIndex: 0, hookIndex: 0 });
+  store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'Stop', groupIndex: 0, hookIndex: 0, command: 'echo hi' });
   assert.deepEqual(readJson(t.user), { env: { A: '1' } });
-  assert.throws(() => store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'Stop', groupIndex: 0, hookIndex: 0 }), error => error.status === 404);
+  assert.throws(() => store.deleteHook(t.config, t.cwd, { scope: 'user', event: 'Stop', groupIndex: 0, hookIndex: 0, command: 'echo hi' }), error => error.status === 409);
 });
 
 test('update edits in place, or moves the hook when event or matcher change, keeping extra fields', () => {
   const t = setup();
   fs.writeFileSync(t.user, JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'a', extra: 1 }, { type: 'command', command: 'b' }] }] } }));
-  const from = { scope: 'user', event: 'PreToolUse', groupIndex: 0, hookIndex: 0 };
+  const from = { scope: 'user', event: 'PreToolUse', groupIndex: 0, hookIndex: 0, command: 'a', matcher: 'Bash' };
   store.updateHook(t.config, t.cwd, { ...hook({ command: 'a2', timeout: 5 }), from });
   assert.deepEqual(readJson(t.user).hooks.PreToolUse[0].hooks[0], { type: 'command', command: 'a2', extra: 1, timeout: 5 });
-  store.updateHook(t.config, t.cwd, { ...hook({ command: 'a2', event: 'PostToolUse', matcher: 'Edit|Write' }), from });
+  store.updateHook(t.config, t.cwd, { ...hook({ command: 'a2', event: 'PostToolUse', matcher: 'Edit|Write' }), from: { ...from, command: 'a2' } });
   const saved = readJson(t.user).hooks;
   assert.deepEqual(saved.PreToolUse[0].hooks.map(item => item.command), ['b']);
   assert.equal(saved.PostToolUse[0].matcher, 'Edit|Write');
   assert.equal(saved.PostToolUse[0].hooks[0].extra, 1);
   assert.throws(() => store.updateHook(t.config, t.cwd, { ...hook({ scope: 'project' }), from }), error => error.status === 400);
+});
+
+test('a stale address (the file changed after the list) is a 409 and nothing is written', () => {
+  const t = setup();
+  store.addHook(t.config, t.cwd, hook());
+  const address = { scope: 'user', event: 'PreToolUse', groupIndex: 0, hookIndex: 0, command: 'echo hi', matcher: 'Bash' };
+  const before = fs.readFileSync(t.user, 'utf8');
+  for (const stale of [{ command: 'other' }, { matcher: 'Edit' }, { hookIndex: 3 }]) {
+    assert.throws(() => store.deleteHook(t.config, t.cwd, { ...address, ...stale }), error => error.status === 409 && /רענן/.test(error.message));
+    assert.throws(() => store.updateHook(t.config, t.cwd, { ...hook(), from: { ...address, ...stale } }), error => error.status === 409);
+  }
+  assert.equal(fs.readFileSync(t.user, 'utf8'), before);
+});
+
+test('a matcher is dropped for events that take none, and kept for the ones that do', () => {
+  const t = setup();
+  store.addHook(t.config, t.cwd, hook({ event: 'Stop', matcher: 'Bash' }));
+  assert.equal(readJson(t.user).hooks.Stop[0].matcher, undefined);
+  assert.equal(store.validateHook(hook({ event: 'SessionStart', matcher: 'startup' })).matcher, 'startup');
+});
+
+test('editing a non-command hook is a 400 and the file is not changed; deleting it is allowed', () => {
+  const t = setup();
+  const text = JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: 'prompt', prompt: 'p' }] }] } });
+  fs.writeFileSync(t.user, text);
+  const from = { scope: 'user', event: 'Stop', groupIndex: 0, hookIndex: 0, command: '', matcher: '' };
+  assert.throws(() => store.updateHook(t.config, t.cwd, { ...hook({ event: 'Stop' }), from }), error => error.status === 400 && /command/.test(error.message));
+  assert.equal(fs.readFileSync(t.user, 'utf8'), text);
+  store.deleteHook(t.config, t.cwd, from);
+  assert.deepEqual(readJson(t.user), {});
 });
 
 test('the list shows scope, event, matcher and command of every file', () => {

@@ -45,6 +45,7 @@ export function createPaneHost({ workspace, area, onChange }) {
   const sections = new Map(); // id -> { section, body }
   let open = recall(OPEN_KEY, [FIRST]);
   open = Array.isArray(open) ? open.filter(id => typeof id === 'string') : [FIRST];
+  if (open.includes(FIRST)) open = [FIRST, ...open.filter(id => id !== FIRST)]; // a saved order from before may hold it later
   let active = String(recall(ACTIVE_KEY, '') || '');
   let width = Number(recall(WIDTH_KEY, DEFAULT_WIDTH)) || DEFAULT_WIDTH;
   let lastSession = null;
