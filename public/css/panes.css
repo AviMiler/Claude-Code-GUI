@@ -70,7 +70,7 @@ button.detail-card-head:hover { background: var(--surface-2); }
 .detail-context .legend { font-size: 12px; }
 .topbar .icon-button.on { background: var(--surface-2); color: var(--text); }
 /* Topbar pane toggles: "on" = a tab is open in the area, "active" = that tab is shown (pane-toggles.js) */
-.pane-toggles { display: inline-flex; gap: 2px; align-items: center; }
+.pane-toggles { display: contents; } /* its buttons shrink with the other topbar buttons on a narrow window */
 .topbar .pane-toggle.active { position: relative; background: var(--surface-3); color: var(--text); }
 .topbar .pane-toggle.active::after { content: ""; position: absolute; inset-inline: 9px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--accent); }
 [dir="rtl"] .icon.mirror svg { transform: scaleX(-1); } /* panel icons whose bar sits on the side the pane opens */

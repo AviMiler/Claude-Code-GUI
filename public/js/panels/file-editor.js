@@ -1,6 +1,6 @@
 /** Inline editor for one of Claude's own files (skill, agent, command, CLAUDE.md, settings). */
 import { h } from '../dom.js';
-import { section, button, loading, errorBox } from './kit.js';
+import { section, button, loading, errorBox, badge } from './kit.js';
 
 /**
  * @param {object} context Panel context (api, scope, toast, ask).
@@ -9,7 +9,8 @@ import { section, button, loading, errorBox } from './kit.js';
  */
 export function fileEditor(context, { title, kind, name, template = '', json = false, onSaved, onClose, allowDelete = false }) {
   const area = h('textarea', { class: `code${json ? '' : ' markdown-editor'}`, spellcheck: false, dir: json ? 'ltr' : 'auto' });
-  const status = h('span', { class: 'lead', style: 'margin:0', dir: 'ltr' });
+  const path = h('code', { class: 'file-editor-path', dir: 'ltr' });
+  const status = h('div', { class: 'file-editor-status' }, path); // the Hebrew "new" badge stays outside the LTR path
   const box = h('div', null, loading());
   const wrapper = section(title, null, box);
 
@@ -23,7 +24,7 @@ export function fileEditor(context, { title, kind, name, template = '', json = f
   }
 
   async function remove() {
-    if (!await context.ask({ title: `למחוק את ${name}?`, text: status.textContent, confirmLabel: 'מחיקה', danger: true })) return;
+    if (!await context.ask({ title: `למחוק את ${name}?`, text: path.textContent, confirmLabel: 'מחיקה', danger: true })) return;
     await context.api.deleteClaudeFile(context.scope, kind, name);
     context.toast('נמחק');
     onSaved?.();
@@ -31,7 +32,8 @@ export function fileEditor(context, { title, kind, name, template = '', json = f
 
   context.api.readClaudeFile(context.scope, kind, name).then(file => {
     area.value = file.exists ? file.content : template;
-    status.textContent = `${file.exists ? '' : '(קובץ חדש) '}${file.path}`;
+    path.textContent = file.path;
+    if (!file.exists) status.prepend(badge('קובץ חדש', 'info'));
     const run = action => () => action().catch(error => context.toast(error.message, 'error'));
     box.replaceChildren(status, area, h('div', { class: 'panel-toolbar', style: 'margin-top:8px' },
       button('שמירה', run(save), { variant: 'primary', small: false, iconName: 'check' }),

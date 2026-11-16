@@ -7,4 +7,4 @@
 .verify-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .verify-row .verify-command { flex: 1 1 200px; min-width: 0; font-family: var(--font-mono); }
 .verify-notes { margin: 10px 0 0; padding-inline-start: 18px; font-size: 12.5px; }
-.verify-notes li { margin: 2px 0; }
+.verify-notes li { margin: 2px 0; overflow-wrap: anywhere; } /* a long folder path wraps on a narrow window */

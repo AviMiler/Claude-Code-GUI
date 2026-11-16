@@ -17,7 +17,7 @@ function promptSection(session, flags, apply, toast) {
     return section('הנחיית מערכת', lead, h('p', { class: 'detail-muted' }, 'הגרסה המותקנת של Claude Code לא תומכת בכך (אין --append-system-prompt-file).'));
   }
   const replace = session.systemPromptMode === 'replace';
-  const area = h('textarea', { rows: 6, dir: 'auto', maxLength: 20000, placeholder: 'ההנחיות שלך…' }, session.systemPrompt || '');
+  const area = h('textarea', { class: 'code prompt-editor', rows: 6, dir: 'auto', maxLength: 20000, placeholder: 'ההנחיות שלך…' }, session.systemPrompt || '');
   const mode = value => h('label', { class: 'option-check' }, h('input', { type: 'radio', name: 'prompt-mode', value, checked: (value === 'replace') === replace,
     disabled: value === 'replace' && !flags.includes('--system-prompt-file') }), value === 'replace' ? 'החלפה של הנחיית המערכת (מסיר גם את ההנחיות של Claude Code לכלים)' : 'הוספה להנחיית המערכת (מומלץ)');
   const modes = h('div', { class: 'option-group' }, mode('append'), mode('replace'));

@@ -35,10 +35,18 @@ export function renderStatusPanel(body, context) {
 
 export function renderAppearancePanel(body, context) {
   const current = themePreference();
-  const options = [{ value: 'system', label: 'לפי המערכת', icon: 'monitor' }, { value: 'light', label: 'בהיר', icon: 'sun' }, { value: 'dark', label: 'כהה', icon: 'moon' }];
-  body.append(section('ערכת נושא (/theme)', null, h('div', { class: 'radio-cards' }, options.map(option => h('button', {
-    type: 'button', class: `radio-card${option.value === current ? ' on' : ''}`, onClick: () => { applyTheme(option.value); context.rerender(); },
-  }, icon(option.icon), h('b', null, option.label), option.value === current ? badge('נבחר', 'accent') : h('span'))))));
+  const shown = document.documentElement.dataset.theme === 'dark' ? 'כהה' : 'בהיר';
+  const options = [
+    { value: 'system', label: 'לפי המערכת', icon: 'monitor', desc: `עוקב אחרי הגדרת מערכת ההפעלה (כרגע: ${shown}).` },
+    { value: 'light', label: 'בהיר', icon: 'sun', desc: 'רקע בהיר תמיד.' },
+    { value: 'dark', label: 'כהה', icon: 'moon', desc: 'רקע כהה תמיד.' },
+  ];
+  body.append(section('ערכת נושא (/theme)', 'נשמר בדפדפן הזה בלבד.', h('div', { class: 'radio-cards', role: 'group', 'aria-label': 'ערכת נושא' }, options.map(option => h('button', {
+    type: 'button', class: `radio-card${option.value === current ? ' on' : ''}`, 'aria-pressed': String(option.value === current),
+    onClick: () => { applyTheme(option.value); context.rerender(); },
+  }, icon(option.icon), h('b', null, option.label), option.value === current ? badge('נבחר', 'accent') : h('span'), h('span', null, option.desc))))));
+  const focused = context.focusView();
   body.append(section('תצוגה ממוקדת (/focus)', 'מסתיר קריאות כלים, חשיבה והודעות מערכת – רק השיחה עצמה.',
-    button(context.focusView() ? 'כיבוי תצוגה ממוקדת' : 'הפעלת תצוגה ממוקדת', () => { context.toggleFocus(); context.rerender(); }, { small: false, iconName: 'focus' })));
+    h('div', { class: 'panel-toolbar' }, badge(focused ? 'פעילה' : 'כבויה', focused ? 'accent' : ''),
+      button(focused ? 'כיבוי תצוגה ממוקדת' : 'הפעלת תצוגה ממוקדת', () => { context.toggleFocus(); context.rerender(); }, { iconName: 'focus' }))));
 }
