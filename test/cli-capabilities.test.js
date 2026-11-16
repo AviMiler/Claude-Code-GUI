@@ -25,6 +25,11 @@ describe('parseHelp', () => {
     assert.ok(parsed.flags.includes('--permission-mode'));
   });
 
+  test('understands the --name[-file] notation of 2.1.314', () => {
+    const flags = parseHelp('via: --system-prompt[-file],\n --append-system-prompt[-file], --add-dir', '').flags;
+    for (const flag of ['--system-prompt-file', '--append-system-prompt-file', '--system-prompt']) assert.ok(flags.includes(flag), flag);
+  });
+
   test('reads the permission mode choices from the help text', () => {
     assert.deepEqual(parseHelp(HELP, '2.1.0').permissionModes, ['default', 'acceptEdits', 'plan']);
   });
