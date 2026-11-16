@@ -1,6 +1,6 @@
 /** Frontend entry point: receives live events, keeps the views in sync, and wires the composer and menus. */
-import { api, subscribe } from './api.js';
-import { state, activeSession, getCommands, getModels, peekModels, modelLabel } from './state.js';
+import { subscribe } from './api.js';
+import { state, activeSession, getCommands, peekModels, modelLabel } from './state.js';
 import { createThread } from './thread.js';
 import { createMainComposer } from './main-composer.js';
 import { renderSidebar } from './sidebar.js';
@@ -25,6 +25,8 @@ import { enableFileMenus } from './context-menu/file-menu.js';
 import { viewModeLabel } from './transcript/view-mode.js';
 import { showLiveShells } from './terminal/shell-live.js';
 import { contextInfo } from './context/context-info.js'; import { refreshContext } from './context/context-live.js';
+import { createItemSync } from './sync/item-sync.js';
+import { createStateLoader, rememberActive } from './sync/load-state.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -40,6 +42,7 @@ enableFileLinks(els.messages, () => state.activeId);
 showLiveShells(els);
 const modelHealth = createModelHealth(byId('model-health'));
 const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh() });
+const itemSync = createItemSync({ viewed: () => [state.activeId, split.sessionId()], threadsFor: id => [id === state.activeId ? thread : null, split.threadFor(id)].filter(Boolean) });
 const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), modelLabel,
   getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
@@ -84,20 +87,19 @@ function refresh() {
   renderPageStatus(els.brand);
   split.refresh();
   panes.refresh();
+  itemSync.watch(); // a session that came on screen (main, split, compare): subscribe to it and load its items
 }
 watchPageVisibility(refresh);
 
-const ACTIVE_KEY = 'claude-gui.active-session';
-
-/** A sidebar click; a search result also jumps to the matching messages. */
+/** A sidebar click; a search result also jumps to the matching messages, once the session's items are loaded. */
 function openFromSidebar(id, hit) {
   selectSession(id);
-  if (hit) searchHits.show(hit.indexes, hit.query);
+  if (hit) itemSync.whenLoaded(id).then(() => { if (state.activeId === id) searchHits.show(hit.indexes, hit.query); });
 }
 
 function selectSession(id) {
   state.activeId = state.sessions.has(id) ? id : null;
-  try { localStorage.setItem(ACTIVE_KEY, state.activeId || ''); } catch { /* storage may be blocked */ }
+  rememberActive(state.activeId);
   state.unread.delete(id);
   sideQuestions.sessionChanged(state.activeId);
   searchHits.clear();
@@ -111,24 +113,12 @@ function toggleSidebar() {
   els.app.classList.toggle('sidebar-collapsed');
 }
 
-async function loadState() {
-  const { sessions, config, capabilities } = await api.state();
-  state.sessions = new Map(sessions.map(session => [session.id, session]));
-  state.config = config;
-  state.capabilities = capabilities;
-  if (!state.draft.cwd) chooseDraftFolder(config.defaultCwd);
-  els.version.textContent = capabilities.version ? `Claude Code ${capabilities.version}` : 'Claude Code לא זוהה';
-  if (capabilities.error) els.version.title = capabilities.error;
-  let remembered = null;
-  try { remembered = localStorage.getItem(ACTIVE_KEY); } catch { /* storage may be blocked */ }
-  selectSession(state.activeId || remembered);
-  getModels().then(refresh).catch(() => {});
-}
+const loadState = createStateLoader({ versionLabel: els.version, selectSession, refresh, itemSync });
 
 // The context reading never starts a CLI process by itself (ifRunning, context/context-live.js).
 const eventView = { thread, refresh, selectSession, onTurnFailed: () => modelHealth.afterFailedTurn(), paneThread: id => split.threadFor(id),
-  fetchContext: id => refreshContext(id, refresh) };
-subscribe(event => handleEvent(event, eventView), () => loadState().catch(error => console.error('[app] cannot load state:', error)));
+  fetchContext: id => refreshContext(id, refresh), items: itemSync };
+subscribe(event => handleEvent(event, eventView), () => loadState().catch(error => console.error('[app] cannot load state:', error)), itemSync.connected, itemSync.client);
 
 byId('new-session').addEventListener('click', () => selectSession(null));
 byId('open-settings').addEventListener('click', () => actions.openPanel('model'));

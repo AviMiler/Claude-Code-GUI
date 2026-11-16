@@ -13,7 +13,14 @@ async function request(method, url, body) {
 const query = params => new URLSearchParams(Object.entries(params).filter(([, value]) => value)).toString();
 
 export const api = {
+  /** Every session's metadata (no items), the config and the CLI's capabilities. */
   state: () => request('GET', '/api/state'),
+  /** A session's items: all, or with rev + since only the new ones: { rev, from, items, total, full } (lib/sync/item-revision.js). */
+  items: (id, rev, since) => request('GET', `/api/sessions/${id}/items?${query({ rev, since: rev ? String(since) : '' })}`),
+  /** The sessions this tab views: the event stream sends their item-level events only. */
+  subscribeEvents: (client, sessions) => request('POST', '/api/events/subscribe', { client, sessions }),
+  /** The text of every GUI session: { query, hits: { [sessionId]: { count, indexes, snippet } } }. */
+  searchSessions: query => request('POST', '/api/search/sessions', { query }),
   /** Starts the CLI ahead of the message being typed: { sessionId } or the draft { cwd, mode, model, effort }. */
   warm: target => request('POST', '/api/warm', target),
   /** Models of the system: { source: 'cli'|'server', models, current, error }. */
@@ -119,12 +126,14 @@ export const api = {
 /**
  * Opens the live event stream. EventSource reconnects by itself and the server replays what was missed (lib/event-hub.js).
  * onOpen (load the whole state) fires on the first connect, on a reconnect before any event was seen, and when the
- * server says `resync` (the missed events are no longer available).
+ * server says `resync` (the missed events are no longer available). onConnect fires on every (re)connect: the tab
+ * subscribes to the sessions it views again and fetches what it may have missed of them (sync/item-sync.js).
+ * @param {string} client this tab's id, so the server knows which sessions it views
  */
-export function subscribe(onEvent, onOpen) {
-  const source = new EventSource('/api/events');
+export function subscribe(onEvent, onOpen, onConnect = () => {}, client = '') {
+  const source = new EventSource(`/api/events${client ? `?client=${encodeURIComponent(client)}` : ''}`);
   let seen = false;
   source.onmessage = message => { seen = true; onEvent(JSON.parse(message.data)); };
-  source.onopen = () => { if (!seen) onOpen(); };
+  source.onopen = () => { if (!seen) onOpen(); else onConnect(); };
   source.addEventListener('resync', () => { seen = true; onOpen(); });
 }
