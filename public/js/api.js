@@ -1,4 +1,6 @@
 /** Thin client for the server API. All user-facing errors come back as Error(message in Hebrew). */
+import { scheduleApi } from './schedule/schedule-api.js';
+
 async function request(method, url, body) {
   const response = await fetch(url, {
     method,
@@ -124,6 +126,7 @@ export const api = {
   searchCliConversations: query => request('POST', '/api/cli-conversations/search', { query }),
   files: (scope, q) => request('GET', `/api/files?${query({ ...scope, q })}`),
   git: scope => request('GET', `/api/git?${query(scope)}`),
+  schedule: scheduleApi(request), // local scheduled tasks (schedule/schedule-api.js)
   folders: (path, hidden) => request('GET', `/api/folders?${query({ path, hidden: hidden ? '1' : '' })}`),
   createFolder: (path, name) => request('POST', '/api/folders', { path, name }),
 };

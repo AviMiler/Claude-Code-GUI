@@ -75,7 +75,7 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
         type: 'button', class: 'session-row', title: session.cwd,
         onClick: event => (event.altKey && onSplit && !archive ? onSplit(session.id) : onSelect(session.id, content ? { indexes: content.indexes, query } : undefined)),
       }, h('span', { class: `dot ${status}`, title: STATUS_TITLES[status] }),
-      h('span', null, h('strong', { dir: 'auto' }, colorDot(session), session.name), placeLine(session, grouping === 'project' && !session.pinned),
+      h('span', null, h('strong', { dir: 'auto' }, colorDot(session), session.scheduled ? icon('clock', 'schedule-badge') : null, session.name), placeLine(session, grouping === 'project' && !session.pinned),
         content ? snippetOf(content) : null));
       const pin = archive ? null : h('button', { type: 'button', class: `pin-button${session.pinned ? ' pinned' : ''}`,
         title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה', 'aria-pressed': String(Boolean(session.pinned)),
