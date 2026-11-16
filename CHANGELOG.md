@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-16 (tabbed pane area, settings layout fixes, hook editor)
+User-requested; verify-agent PASS with notes, findings fixed, 155 unit tests pass.
+- Changed: the side pane area is ONE tabbed area (`public/js/panes/pane-tabs.js`, `pane-resize.js`, `pane-toggles.js`): a tab per open pane, one shown at a time, the others hidden not destroyed (comment drafts, terminal output, unsaved edits survive), only the shown pane redrawn; "פרטי סשן" first; the toggle opens, switches or closes; closing a tab activates its neighbour, the last one hides the area; Ctrl+\ closes the active tab; arrows (RTL-mirrored), Home / End, Delete on the strip; icon-only background tabs when narrow. New `claude-gui.panes-active`; `panes-open`, the resizable edge and the room rule unchanged. `public/css/folder-browser.css` split from `panels.css`. Why: the panes were unclear and some opened as a separate pane below
+- Fixed: settings modal layout: radio cards no longer break titles, appearance cards have descriptions and show the current theme under "system", mirrored commands like `/theme`, long paths wrap, the system prompt box is full width, at 420 px the selected panel scrolls into view
+- Added: hook editor in the settings Hooks panel (`lib/hooks/hooks-store.js`, `hooks-routes.js`, `hooks-validate.js`; `public/js/hooks/hook-info.js`, `hook-form.js`, `hooks-section.js`; `test/hooks-store.test.js`): add / edit / delete over nine events, matcher, command, timeout, scope, JSON preview; routes `GET` / `POST` / `PUT` / `DELETE /api/sessions/:id/hooks`; other keys kept, invalid JSON refused, atomic write with `.bak`, 409 when the file changed, the GUI's verify hook never listed; applies to new sessions or after a restart
+- Not verified: an independent visual check (only the builder looked in a browser), a real CLI reading the written hooks, the event list against the installed CLI, a symlinked `.claude` directory
+
 ## 2026-11-16 (fixes found against the real Claude Code 2.1.314)
 - Fixed: `lib/cli-capabilities.js` `parseHelp` understands the `--name[-file]` help notation (2.1.314 lists `--system-prompt[-file]` and `--append-system-prompt[-file]` only inside a description), so the `-file` flags are detected again
 - Fixed: `lib/session-events.js` `onItem` drops a CLI notice that starts "Stop hook error" while the session has a verify failure in the current turn (the verify Stop hook exits 2 on purpose and shows its own notice). Limits: a user's own Stop-hook error in the same turn is hidden too; the wording on 2.1.246 is unverified

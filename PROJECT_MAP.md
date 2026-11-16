@@ -257,6 +257,11 @@ _Last updated: 2026-11-16 — the D1–D16 files and the local-model batch (A–
 | `public/css/context.css`, `stall.css`, `verify.css`, `retry.css` | Styles of the 2026-11-16 features. |
 | `dev/fake-context.js`, `fake-ollama.js`, `fake-stall.js`, `fake-stop-hook.js`, `fake-loop.js`, `fake-tools.js` | Fake CLI / model-server helpers for the 2026-11-16 features (usage and windows, a fake Ollama, a silent turn, a simulated Stop hook, a repeated tool call, tool names and `mcp_toggle`). |
 | `test/*.test.js`, `test/README.md` | T: 141 `node:test` cases (`node --test test/*.test.js`) for event-translator, history-build, jsonl-reader, transcripts, turn-results, cli-args, cli-capabilities, command-format, elicitation-normalize / -validate, model-health, model-list, session-options, text-format, worktree-paths. |
+| `public/js/panes/pane-tabs.js`, `pane-resize.js`, `pane-toggles.js` | 2026-11-16: the tabbed pane area (tab strip and keys, the resizable edge, the open / switch / close toggles). |
+| `public/css/folder-browser.css` | 2026-11-16: the folder browser styles, split from `panels.css`. |
+| `lib/hooks/` | 2026-11-16: the hook editor: `hooks-store.js` (read / merge / atomic write), `hooks-validate.js` (events, matcher, scope), `hooks-routes.js` (`/api/sessions/:id/hooks`). |
+| `public/js/hooks/` | 2026-11-16: `hook-info.js` (events with Hebrew hints), `hook-form.js`, `hooks-section.js` (in the Hooks panel). |
+| `test/hooks-store.test.js` | 2026-11-16: the hook store cases (155 `node:test` cases in all). |
 | `public/js/rewind/rewind-button.js` | D15: the hover button "חזרה לנקודה זו" (`dataset.rewindUuid`), shown for user items with `cliUuid` in the main thread. |
 | `public/js/rewind/rewind-menu.js` | D15: one document-level `contextmenu` listener on `[data-rewind-uuid]` (`enableRewind`, wired in `main-composer.js`); skips a text selection. |
 | `public/js/rewind/rewind-dialog.js` | D15: preview, the available choices (radios), consequence lines and warnings, confirm; also the entry point of `/rewind` (last rewindable message). |
