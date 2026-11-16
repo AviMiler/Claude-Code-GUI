@@ -1,6 +1,7 @@
 /**
  * The menu of a file path (an element with data-file-path: the open-file buttons of tool rows and changed-files cards,
- * the file headers of the Changes pane): open in the viewer, copy the full or relative path, add it as an @ reference.
+ * the file headers of the Changes pane): open in the viewer, preview (html, image, pdf), copy the full or relative path,
+ * add it as an @ reference.
  */
 import { api } from '../api.js';
 import { copyText } from '../dom.js';
@@ -8,6 +9,7 @@ import { toast } from '../ui.js';
 import { state } from '../state.js';
 import { openFileViewer } from '../file-viewer.js';
 import { canOpenInFiles, openInFiles } from '../files/open-in-files.js';
+import { canPreview, openPreview } from '../preview/open-preview.js';
 import { openContextMenu, hasSelection } from './menu.js';
 import { relativePath } from './paths.js';
 
@@ -35,6 +37,7 @@ export function enableFileMenus({ insert }) {
     openContextMenu(event, [
       { icon: 'eye', title: 'פתיחה בצופה', onSelect: () => openFileViewer(session.id, path, null) },
       canOpenInFiles(session.id) && !element.closest('[data-split-session]') && { icon: 'pencil', title: 'עריכה בחלונית הקבצים', onSelect: () => openInFiles(session.id, path) },
+      inMain && canPreview(session.id, path) && { icon: 'globe', title: 'תצוגה מקדימה', onSelect: () => openPreview(session.id, path) },
       { icon: 'folder', title: 'הצג בסייר הקבצים', onSelect: () => outside(api.revealFile(session.id, path)) },
       { icon: 'external', title: 'פתח בעורך', onSelect: () => outside(api.openInEditor(session.id, path)) },
       { icon: 'copy', title: 'העתקת הנתיב המלא', onSelect: () => copy(path) },

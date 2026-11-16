@@ -2,6 +2,8 @@
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
 import { isDirty } from './editor-store.js';
+import { state as appState } from '../state.js';
+import { canPreview, openPreview } from '../preview/open-preview.js';
 
 /** Line and column (1-based) of the caret. */
 function caretPosition(textarea) {
@@ -19,11 +21,13 @@ export function createEditorView({ onInput, onSave, onBack, onOverwrite, onReloa
   const name = h('code', { class: 'editor-name', dir: 'ltr' });
   const mark = h('span', { class: 'editor-dirty', title: 'שינויים שלא נשמרו', hidden: true }, '●');
   const save = h('button', { type: 'button', class: 'btn small primary', title: 'שמירה (Ctrl+S)', onClick: onSave }, icon('check'), 'שמירה');
+  // The Files pane is the main session's, so its file is the active session's (the Preview pane shows the saved file)
+  const preview = h('button', { type: 'button', class: 'icon-button', title: 'תצוגה מקדימה', onClick: () => file && openPreview(appState.activeId, file.path) }, icon('globe'));
   const notes = h('div', { class: 'editor-notes' });
   const textarea = h('textarea', { class: 'file-editor', dir: 'ltr', wrap: 'off', spellcheck: false, 'aria-label': 'עורך הקובץ' });
   const status = h('div', { class: 'editor-status', dir: 'ltr' });
   const node = h('div', { class: 'file-editor-view' },
-    h('div', { class: 'editor-head' }, h('button', { type: 'button', class: 'icon-button', title: 'חזרה לעץ הקבצים', onClick: onBack }, icon('arrow-up', 'back')), name, mark, h('span', { class: 'spacer' }), save),
+    h('div', { class: 'editor-head' }, h('button', { type: 'button', class: 'icon-button', title: 'חזרה לעץ הקבצים', onClick: onBack }, icon('arrow-up', 'back')), name, mark, h('span', { class: 'spacer' }), preview, save),
     notes, textarea, status);
   let file = null;
 
@@ -45,6 +49,7 @@ export function createEditorView({ onInput, onSave, onBack, onOverwrite, onReloa
     name.textContent = file.rel || file.path;
     name.title = file.path;
     mark.hidden = !isDirty(state);
+    preview.style.display = canPreview(appState.activeId, file.path) ? '' : 'none';
     save.disabled = !file.writable || state.saving || !isDirty(state);
     textarea.readOnly = !file.writable;
     const conflict = state.conflict ? h('div', { class: 'editor-note conflict' }, 'הקובץ השתנה בדיסק מאז שנפתח (אולי על ידי Claude). ',
