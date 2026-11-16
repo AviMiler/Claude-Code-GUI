@@ -2,6 +2,7 @@
 import { h } from '../dom.js';
 import { section, list, row, badge, button, load, empty, tabs, kv, isUnsupported, readAllSettings } from './kit.js';
 import { fileEditor } from './file-editor.js';
+import { hooksSection } from '../hooks/hooks-section.js';
 
 const HOOK_EVENTS = ['PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Notification', 'Stop', 'SubagentStop', 'PreCompact', 'SessionStart', 'SessionEnd']
   .map(name => ({ name }));
@@ -23,14 +24,8 @@ export function renderHooksPanel(body, context) {
   const box = h('div');
   body.append(box);
   load(box, () => fetchHooks(context), listing => {
-    const hooks = listing.hooks || [];
     return [
-      section('Hooks מוגדרים', 'פקודות ש-Claude Code מריץ באירועים. מוגדרים בקובצי ההגדרות (לשונית "קובצי הגדרות").',
-        hooks.length ? list(hooks.map(hook => row({
-          title: h('span', null, hook.event || hook.hookEventName || 'hook'),
-          badges: [hook.matcher ? badge(hook.matcher, 'info') : null, hook.source ? badge(hook.source) : null, hook.type ? badge(hook.type) : null].filter(Boolean),
-          sub: hook.command || hook.prompt || JSON.stringify(hook), mono: true,
-        }))) : empty('אין hooks מוגדרים')),
+      hooksSection(context), // the user's own hooks from the settings files (the GUI's verify hook is not among them)
       section('אירועים זמינים', null, list((listing.eventCatalog || []).map(event => row({
         title: h('code', { dir: 'ltr' }, event.name), badges: event.supportsMatcher ? [badge('matcher')] : [], sub: event.summary,
       })))),

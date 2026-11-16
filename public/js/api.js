@@ -95,6 +95,12 @@ export const api = {
   writeClaudeFile: (scope, kind, name, content) => request('PUT', '/api/claude-file', { ...scope, kind, name, content }),
   deleteClaudeFile: (scope, kind, name) => request('DELETE', `/api/claude-file?${query({ ...scope, kind, name })}`),
 
+  /** Hooks of the three settings files of a session's folder: { files, hooks }; add / update / delete write one hook (lib/hooks). */
+  hooks: id => request('GET', `/api/sessions/${id}/hooks`),
+  addHook: (id, hook) => request('POST', `/api/sessions/${id}/hooks`, hook),
+  updateHook: (id, hook) => request('PUT', `/api/sessions/${id}/hooks`, hook),
+  deleteHook: (id, { scope, event, groupIndex, hookIndex }) => request('DELETE', `/api/sessions/${id}/hooks?${new URLSearchParams({ scope, event, groupIndex, hookIndex })}`),
+
   transcripts: scope => request('GET', `/api/transcripts?${query(scope)}`),
   importTranscript: (cwd, id, mode) => request('POST', '/api/transcripts/import', { cwd, id, mode }),
   /** Every CLI conversation no session holds: { rows: [{ id, cwd, title, updatedAt, sizeBytes }], total } (newest 500). */
