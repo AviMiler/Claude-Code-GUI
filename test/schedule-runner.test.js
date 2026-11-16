@@ -74,12 +74,15 @@ test('catch-up at start: one run for several missed, none older than 7 days, non
   const old = env.store.create(daily());
   env.store.update(old.id, { since: local(12, 0) - 30 * DAY, checkedAt: local(12, 0) - 8 * DAY });
   const fresh = env.store.create(daily()); // since = now: nothing to catch up
+  const justMissed = env.store.create(daily('11:59')); // due 1 minute before the start: still a catch-up
+  env.store.update(justMissed.id, { since: local(11, 0) });
   env.runner.start();
   await env.clock.advance(10);
   assert.equal(env.launched.filter(id => id === task.id).length, 1);
   assert.equal(env.store.get(task.id).runs[0].catchUp, true);
   assert.equal(env.launched.filter(id => id === old.id).length, 1); // its latest missed run (today 08:05) is recent
   assert.equal(env.launched.filter(id => id === fresh.id).length, 0);
+  assert.equal(env.store.get(justMissed.id).runs[0].catchUp, true);
 });
 
 test('a run missed more than 7 days ago is not caught up', async () => {
