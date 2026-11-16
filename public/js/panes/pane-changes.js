@@ -12,6 +12,7 @@ import { createSessionFetch } from './session-fetch.js';
 import { notRepoText } from './pane-details.js';
 import { joinPath } from '../context-menu/paths.js';
 import { revertHunkButton } from './hunk-revert.js';
+import { createCommitBox } from './commit-box.js';
 
 /**
  * @param {{send:(text:string)=>Promise<boolean>, rerender:()=>void}} deps send: the normal send path (queues while
@@ -21,6 +22,7 @@ import { revertHunkButton } from './hunk-revert.js';
 export function createChangesPane({ send, rerender }) {
   const diffs = createSessionFetch(id => api.sessionDiff(id).then(result => ({ ...result, files: parseDiff(result.diff || '') })),
     error => ({ error: error.message, files: [] }));
+  const commitBox = createCommitBox({ rerender });
   const collapsed = new Set(); // "session|path"
   const fileNodes = new Map(); // path -> its <section> on screen
   let body = null;
@@ -73,7 +75,7 @@ export function createChangesPane({ send, rerender }) {
   function redrawFrame() {
     const paths = new Set(data.files.map(file => file.path));
     const next = {
-      toolbar: changesToolbar(data, commentsHere().length, () => diffs.get(session, rerender, true)),
+      toolbar: changesToolbar(data, commentsHere().length, () => { commitBox.reload(session); diffs.get(session, rerender, true); }),
       unplaced: renderUnplacedComments(commentsHere().filter(comment => !paths.has(comment.path)), 'הערות על קבצים שכבר אינם בשינויים:', id => {
         removeComment(session.id, id);
         redrawFrame();
@@ -95,7 +97,7 @@ export function createChangesPane({ send, rerender }) {
     frame = { toolbar: h('div'), unplaced: h('div'), footer: h('div') };
     const files = data.files.map(file => { const node = fileNode(file); fileNodes.set(file.path, node); return node; });
     body.replaceChildren(frame.toolbar, ...changesNotes(data), frame.unplaced,
-      files.length ? h('div', { class: 'diff-files' }, files) : h('p', { class: 'detail-muted' }, 'אין שינויים שלא נשמרו ב-commit.'), frame.footer);
+      files.length ? h('div', { class: 'diff-files' }, files) : h('p', { class: 'detail-muted' }, 'אין שינויים שלא נשמרו ב-commit.'), commitBox.element(session), frame.footer);
     return redrawFrame();
   }
 
@@ -130,6 +132,7 @@ export function createChangesPane({ send, rerender }) {
       session = current;
       data = diffs.get(current, rerender);
       const key = data ? `${data.isRepo}|${data.error ?? ''}|${data.diff ?? ''}` : 'loading';
+      commitBox.sync(current, key);
       if (shown.id === current.id && shown.key === key) return;
       shown = { id: current.id, key };
       const typing = body.contains(document.activeElement) && document.activeElement.tagName === 'TEXTAREA';

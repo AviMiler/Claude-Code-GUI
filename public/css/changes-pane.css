@@ -11,7 +11,7 @@
 .diff-file-head .icon { flex: none; width: 13px; height: 13px; color: var(--muted); transition: transform .12s; }
 .diff-file-head .icon.collapsed { transform: rotate(90deg); }
 [dir="rtl"] .diff-file-head .icon.collapsed { transform: rotate(-90deg); }
-.diff-path { flex: 1; min-width: 0; overflow: hidden; font: 12px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.diff-path { flex: 1; min-width: 0; overflow: hidden; font: 12px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 .diff-status { flex: none; padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 11px; line-height: 18px; }
 .diff-status.added { background: var(--success-soft); color: var(--success); } .diff-status.deleted { background: var(--danger-soft); color: var(--danger); }
 .diff-table { width: 100%; border-collapse: collapse; font: 12px/1.5 var(--font-mono); direction: ltr; }
@@ -45,3 +45,17 @@
 .changes-footer .spacer { flex: 1; }
 .pane-body:focus { outline: none; }
 .pane-body:has(> .changes-footer:not([hidden])) { padding-bottom: 0; } /* the sticky footer sits on the pane's edge */
+.commit-box { display: grid; gap: 8px; margin-top: 10px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-size: 13px; }
+.commit-box[hidden] { display: none; }
+.commit-box > div:first-child { display: grid; gap: 8px; }
+.commit-branch, .commit-files-head, .commit-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.commit-branch > .icon { width: 16px; height: 16px; color: var(--muted); }
+.commit-branch .spacer, .commit-files-head .spacer { flex: 1; }
+.commit-files { display: grid; max-height: 180px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.commit-file { display: flex; gap: 8px; align-items: center; padding: 3px 8px; cursor: pointer; }
+.commit-file:hover { background: var(--hover, var(--warning-soft)); }
+.commit-file-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.commit-message { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-sidebar); color: var(--text); font: 13px var(--font-ui); resize: vertical; }
+.commit-message:focus { outline: none; border-color: var(--accent); }
+.commit-notice { padding: 6px 10px; border-radius: var(--radius-sm); white-space: pre-wrap; }
+.commit-notice.ok { background: var(--success-soft); color: var(--success); } .commit-notice.warn { background: var(--warning-soft); color: var(--warning); }

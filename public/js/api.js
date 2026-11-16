@@ -79,6 +79,11 @@ export const api = {
   openInEditor: (sessionId, path) => request('POST', `/api/sessions/${sessionId}/open-in-editor`, { path }),
   /** Reverts one hunk of the Changes pane: { path, index, hash } (hunk-hash.js); 409 when it changed since or is refused. */
   revertHunk: (sessionId, hunk) => request('POST', `/api/sessions/${sessionId}/revert-hunk`, hunk),
+  /** Commit box data: { isRepo, branch, upstream, ahead, files, canCommit, commitReason, canPush, pushReason, canPushNewUpstream, … } (lib/git/commit-status.js). */
+  commitStatus: sessionId => request('GET', `/api/sessions/${sessionId}/git/status`),
+  /** { message, paths, push?, setUpstream? } -> { hash, branch, pushed, pushOutput?, pushError? }; a 409 carries git's text in error.message. */
+  commitChanges: (sessionId, commit) => request('POST', `/api/sessions/${sessionId}/git/commit`, commit),
+  pushBranch: (sessionId, push) => request('POST', `/api/sessions/${sessionId}/git/push`, push),
   /**
    * Prompt templates = the user's CLI commands: [{ id (command name), name, text ({{variables}}), expands, updatedAt }],
    * newest first. saveTemplate(name, { description, text, create, previous }): previous = the name it had (a rename).
