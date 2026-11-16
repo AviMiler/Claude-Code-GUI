@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { h, copyText } from './dom.js';
 import { icon } from './icons.js';
 import { toast } from './ui.js';
-import { canOpenInFiles, openInFiles } from './files/open-in-files.js';
+import { canOpenInFiles, openInFiles, tryOpenInFiles } from './files/open-in-files.js';
 
 const MAX_RENDERED_LINES = 20000;
 const targets = new WeakMap(); // open button -> { path, highlight }
@@ -108,6 +108,8 @@ export function enableFileLinks(container, getSessionId) {
     event.preventDefault(); // the button sits in a <summary>: do not also open/close the tool row
     event.stopPropagation();
     const sessionId = getSessionId();
-    if (sessionId) openFileViewer(sessionId, target.path, target.highlight);
+    if (!sessionId) return;
+    // The Files pane first (Desktop); the read-only viewer when the pane cannot take the file (no room, split pane, outside the roots, too big)
+    tryOpenInFiles(sessionId, target.path).then(opened => { if (!opened) openFileViewer(sessionId, target.path, target.highlight); });
   });
 }

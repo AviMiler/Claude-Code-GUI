@@ -67,6 +67,9 @@ export const api = {
   openFile: (sessionId, path) => request('GET', `/api/sessions/${sessionId}/file?${query({ path })}`),
   /** Saves an edit; status 412 (error.status) when the file changed on disk since it was opened. @returns {Promise<{hash, size, mtimeMs}>} */
   saveFile: (sessionId, edit) => request('PUT', `/api/sessions/${sessionId}/file`, edit),
+  /** Shows a file of the session in the system file manager / opens it in the editor chosen by config.editor (lib/files/reveal.js). */
+  revealFile: (sessionId, path) => request('POST', `/api/sessions/${sessionId}/reveal`, { path }),
+  openInEditor: (sessionId, path) => request('POST', `/api/sessions/${sessionId}/open-in-editor`, { path }),
   /** Reverts one hunk of the Changes pane: { path, index, hash } (hunk-hash.js); 409 when it changed since or is refused. */
   revertHunk: (sessionId, hunk) => request('POST', `/api/sessions/${sessionId}/revert-hunk`, hunk),
   /**

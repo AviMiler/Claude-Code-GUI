@@ -2,6 +2,7 @@
  * The menu of a file path (an element with data-file-path: the open-file buttons of tool rows and changed-files cards,
  * the file headers of the Changes pane): open in the viewer, copy the full or relative path, add it as an @ reference.
  */
+import { api } from '../api.js';
 import { copyText } from '../dom.js';
 import { toast } from '../ui.js';
 import { state } from '../state.js';
@@ -21,6 +22,7 @@ const reference = path => (/\s/.test(path) ? `@"${path}" ` : `@${path} `);
  * small composer has no @ references, so a path there offers no "add")
  */
 export function enableFileMenus({ insert }) {
+  const outside = promise => promise.catch(error => toast(error.message, 'error')); // the server's Hebrew reason
   document.addEventListener('contextmenu', event => {
     const element = event.target.closest('[data-file-path]');
     const session = element && sessionOf(element);
@@ -33,6 +35,8 @@ export function enableFileMenus({ insert }) {
     openContextMenu(event, [
       { icon: 'eye', title: 'פתיחה בצופה', onSelect: () => openFileViewer(session.id, path, null) },
       canOpenInFiles(session.id) && !element.closest('[data-split-session]') && { icon: 'pencil', title: 'עריכה בחלונית הקבצים', onSelect: () => openInFiles(session.id, path) },
+      { icon: 'folder', title: 'הצג בסייר הקבצים', onSelect: () => outside(api.revealFile(session.id, path)) },
+      { icon: 'external', title: 'פתח בעורך', onSelect: () => outside(api.openInEditor(session.id, path)) },
       { icon: 'copy', title: 'העתקת הנתיב המלא', onSelect: () => copy(path) },
       { icon: 'copy', title: 'העתקת הנתיב היחסי', disabled: !relative, desc: relative ? null : 'מחוץ לתיקיית הסשן', onSelect: () => copy(relative) },
       inMain && { icon: 'at', title: 'הוספה לתיבת הכתיבה (@)', onSelect: () => insert(reference(relative || path)) },
