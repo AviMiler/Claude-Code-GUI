@@ -269,6 +269,9 @@ _Last updated: 2026-11-16 — the D1–D16 files and the local-model batch (A–
 | `public/js/folder-defaults.js`, `local-model.js` | Wave 3: per-folder mode / model / effort memory; the custom-base-URL check that hides `auto`. |
 | `public/js/plan/todo-strip.js`, `public/css/todo-strip.css` | Wave 3: the todo strip above the composer. |
 | `test/reveal.test.js`, `test/safe-path.test.js` (+ 4 sync tests) | 195 `node:test` cases in all. |
+| `lib/git/commit-status.js`, `commit.js`, `push.js`, `repo-lock.js`, `commit-routes.js` | 2026-11-16: commit and push from the Changes pane (status, commit, push, one operation per repo, the three routes); `lib/git/run.js` `git()` also takes `env`. |
+| `public/js/panes/commit-box.js`, `commit-parts.js` | 2026-11-16: the Changes pane footer: message, file checkboxes, Commit / Commit ו-Push / Push. |
+| `test/git-commit.test.js` | 2026-11-16: commit and push cases (207 in all). |
 | `public/js/rewind/rewind-button.js` | D15: the hover button "חזרה לנקודה זו" (`dataset.rewindUuid`), shown for user items with `cliUuid` in the main thread. |
 | `public/js/rewind/rewind-menu.js` | D15: one document-level `contextmenu` listener on `[data-rewind-uuid]` (`enableRewind`, wired in `main-composer.js`); skips a text selection. |
 | `public/js/rewind/rewind-dialog.js` | D15: preview, the available choices (radios), consequence lines and warnings, confirm; also the entry point of `/rewind` (last rewindable message). |
