@@ -12,14 +12,11 @@ import { renderPromptCards } from './prompt-cards.js';
 import { showDropdown } from './popover.js';
 import { enableFileLinks } from './file-viewer.js';
 import { toast } from './ui.js';
-import { confirmOutwardCommand, isCancelled } from './risk.js';
+import { createSplitSend } from './split-send.js';
+import { remember, recall, isNarrow, refuseWhenNarrow, onTooNarrow } from './split-guard.js';
 
 const OPEN_KEY = 'claude-gui.split-open';
 const SESSION_KEY = 'claude-gui.split-session';
-const NARROW = matchMedia('(max-width: 1000px)');
-const remember = (key, value) => { try { localStorage.setItem(key, value); } catch { /* storage may be blocked */ } };
-const recall = key => { try { return localStorage.getItem(key) || ''; } catch { return ''; } };
-const tooNarrow = () => toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
 
 /**
  * @param {{app:HTMLElement, pane:HTMLElement, selectMain:(id:string|null)=>void, openChanges:()=>void,
@@ -49,6 +46,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange, 
 
   // An archived session is not offered and leaves the pane empty (restore it, or open it in the main pane).
   const session = () => (sessionId && sessionId !== state.activeId && !state.sessions.get(sessionId)?.archived ? state.sessions.get(sessionId) || null : null);
+  const { submit, stopTurn } = createSplitSend({ input, session });
 
   function choose(id) {
     sessionId = id;
@@ -74,28 +72,6 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange, 
     sessionId = previousMain; // set first: the main pane must not refuse it as "already shown"
     remember(SESSION_KEY, previousMain || '');
     selectMain(current.id);
-  }
-
-  /** @param {'correct'|'queue'} delivery while the session works: into the running turn (Enter) or after it (Alt+Enter) */
-  async function submit(delivery) {
-    const current = session();
-    const text = input.value.trim();
-    if (!current || !text) return;
-    input.value = '';
-    try {
-      await confirmOutwardCommand(text); // the same warning as the main composer for commands that reach the cloud
-      await api.sendMessage(current.id, text, null, null, delivery);
-    } catch (error) {
-      input.value = text;
-      toast(error.message, isCancelled(error) ? 'info' : 'error');
-    }
-  }
-
-  async function stopTurn() {
-    const current = session();
-    if (!current) return;
-    const result = await api.stop(current.id).catch(error => { toast(error.message, 'error'); return null; });
-    if (result?.queued?.length) input.value = [...result.queued.map(entry => entry.text), input.value].filter(Boolean).join('\n\n');
   }
 
   /** Re-renders the header, cards and composer state; re-renders the thread only when the session changed. */
@@ -132,17 +108,24 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange, 
   input.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submit(event.altKey ? 'queue' : 'correct'); }
   });
-  NARROW.addEventListener('change', () => { if (NARROW.matches && app.classList.contains('split')) setOpen(false); });
-  if (recall(OPEN_KEY) && !NARROW.matches) setOpen(true);
+  // The window got narrower than a split needs: close it cleanly. Its session stays in the sidebar, and the page redraws
+  // (the sidebar's "also open" mark and the Ctrl+Alt+Down/Up stepping must not still treat it as visible).
+  onTooNarrow(() => {
+    if (!app.classList.contains('split')) return;
+    setOpen(false);
+    onChange();
+    toast('הפיצול נסגר: החלון צר מדי');
+  });
+  if (recall(OPEN_KEY) && !isNarrow()) setOpen(true);
 
   return {
     toggle() {
-      if (!app.classList.contains('split') && NARROW.matches) return tooNarrow();
+      if (!app.classList.contains('split') && refuseWhenNarrow()) return;
       return setOpen(!app.classList.contains('split'));
     },
     /** Shows a session in the pane, opening the split first (a sidebar row's menu). */
     open(id) {
-      if (!app.classList.contains('split') && NARROW.matches) return tooNarrow();
+      if (!app.classList.contains('split') && refuseWhenNarrow()) return;
       if (!app.classList.contains('split')) setOpen(true);
       return choose(id);
     },

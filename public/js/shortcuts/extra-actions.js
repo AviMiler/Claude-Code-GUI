@@ -33,7 +33,7 @@ function stepSession(step) {
 }
 
 /**
- * @param {{actions:object, side:(sessionId:string)=>void}} deps actions.js; side opens the /btw card of a session
+ * @param {{actions:object, side:(sessionId:string)=>void}} deps actions.js; side opens the side question tab of a session
  * @returns {{modeMenu, modelMenu, effortMenu, nextSession, prevSession, sideQuestion}} actions named in shortcut-list.js
  */
 export function extraShortcuts({ actions, side }) {
