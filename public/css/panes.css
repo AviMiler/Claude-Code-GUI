@@ -1,5 +1,5 @@
 /* Workspace panes beside the chat (panes/pane-host.js) and the session details rail (panes/pane-details.js). */
-.workspace { display: flex; flex: 1; min-height: 0; }
+.workspace { position: relative; display: flex; flex: 1; min-height: 0; }
 .chat { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
 
 .pane-area { position: relative; display: flex; flex: none; min-width: 0; border-inline-start: 1px solid var(--border); background: var(--bg-sidebar); }
@@ -69,8 +69,25 @@ button.detail-card-head:hover { background: var(--surface-2); }
 .detail-context { padding: 0 12px 12px; font-size: 12.5px; }
 .detail-context .legend { font-size: 12px; }
 .topbar .icon-button.on { background: var(--surface-2); color: var(--text); }
-/* Topbar pane toggles: "on" = a tab is open in the area, "active" = that tab is shown (pane-toggles.js) */
-.pane-toggles { display: contents; } /* its buttons shrink with the other topbar buttons on a narrow window */
-.topbar .pane-toggle.active { position: relative; background: var(--surface-3); color: var(--text); }
+/* Topbar pane toggles: "on" = a tab is open in the area, "active" = that tab is on screen (pane-toggles.js) */
+.pane-toggles { display: flex; flex: none; gap: 8px; align-items: center; }
+.pane-toggles .icon-button { position: relative; flex: none; }
+.pane-toggles .pane-overflow, .pane-toggles.collapsed .pane-toggle { display: none; }
+.pane-toggles.collapsed .pane-overflow { display: inline-flex; }
+.topbar .pane-toggle.active { background: var(--surface-3); color: var(--text); }
 .topbar .pane-toggle.active::after { content: ""; position: absolute; inset-inline: 9px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--accent); }
+/* New content in a pane (a plan, a background task) during a turn: a small dot, nothing opens by itself */
+.pane-dot { position: absolute; top: 5px; inset-inline-end: 5px; width: 7px; height: 7px; border: 1.5px solid var(--bg); border-radius: 50%; background: var(--accent); }
+
+/* No room beside the chat: the area is an overlay drawer from the pane side, under the top bar (pane-drawer.js) */
+.workspace.pane-narrow { overflow: hidden; }
+.pane-area.drawer { position: absolute; inset-block: 0; inset-inline-end: 0; z-index: 20; max-width: 100%; box-shadow: var(--shadow-lg);
+  animation: pane-drawer-in .2s ease-out; --drawer-from: 100%; }
+[dir="rtl"] .pane-area.drawer { --drawer-from: -100%; }
+.pane-area.drawer .pane-resizer { display: none; }
+.pane-backdrop { position: absolute; inset: 0; z-index: 19; background: rgba(20, 20, 19, .32); animation: pane-fade .15s ease-out; }
+.pane-backdrop[hidden] { display: none; }
+@keyframes pane-drawer-in { from { transform: translateX(var(--drawer-from)); } }
+@keyframes pane-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pane-area.drawer, .pane-backdrop { animation: none; } }
 [dir="rtl"] .icon.mirror svg { transform: scaleX(-1); } /* panel icons whose bar sits on the side the pane opens */
