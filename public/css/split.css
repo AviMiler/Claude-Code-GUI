@@ -24,3 +24,12 @@
 .split-composer .stop-button { background: var(--surface-3); color: var(--text); }
 .split-composer button[hidden] { display: none; }
 .split-composer textarea:disabled { opacity: .5; }
+
+/* Focus (split-focus.js): the focused pane has an accent line on top, the other is slightly dimmed (text stays readable). */
+.app.split .chat, .app.split .split-pane { border-top: 2px solid transparent; }
+.app.split[data-focus="main"] .chat, .app.split[data-focus="split"] .split-pane { border-top-color: var(--accent); }
+.app.split .main, .app.split .split-pane { transition: opacity .15s; }
+.app.split[data-focus="split"] .main, .app.split[data-focus="main"] .split-pane { opacity: .88; }
+/* The sidebar's second visible session: marked, while the focused one keeps the primary highlight (layout.css). */
+.session-row.also-open { box-shadow: inset 0 0 0 1px var(--border); }
+.session-row.also-open strong::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-inline-start: 6px; border-radius: 50%; background: var(--accent); vertical-align: middle; opacity: .7; }

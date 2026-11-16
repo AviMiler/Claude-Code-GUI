@@ -12,6 +12,7 @@ import { applySearch, searchModeControl } from './cli-list/search-modes.js';
 import { projectFolder } from './worktree/project-folder.js';
 import { showingArchive, sessionsForList, archiveSwitch, restoreButton } from './archive/archive-list.js';
 import { sessionMenuButton, enableSessionMenus } from './context-menu/session-menu.js';
+import { markSessionRows } from './split-focus.js';
 
 function statusOf(session, unread) {
   if (session.pendingPermissions?.length) return 'waiting';
@@ -46,9 +47,11 @@ function groupingSwitch(current, onChange) {
  * @param {HTMLElement} container
  * @param {{sessions:Map<string,object>, activeId:string|null, unread:Set<string>, filter:string,
  *   onSelect:(id:string, hit?:{indexes:number[], query:string})=>void, actions:{setPinned, archive, unarchive},
- *   onRegroup:()=>void}} options hit: the matching messages, to jump to; onRegroup re-renders the list (grouping, archive)
+ *   onRegroup:()=>void, focusedId?:string|null, alsoId?:string|null, onSplit?:(id:string)=>void}} options hit: the matching
+ *   messages, to jump to; onRegroup re-renders the list (grouping, archive); focusedId: the focused pane's session (the primary
+ *   highlight, default the active one); alsoId: the other visible session; onSplit: Alt+click opens a session in the split pane
  */
-export function renderSidebar(container, { sessions, activeId, unread, filter, onSelect, actions, onRegroup }) {
+export function renderSidebar(container, { sessions, activeId, unread, filter, onSelect, actions, onRegroup, focusedId = activeId, alsoId = null, onSplit }) {
   const query = filter.trim();
   const listed = sessionsForList([...sessions.values()]); // the search covers the list shown: sessions or the archive
   const archive = showingArchive();
@@ -69,8 +72,8 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
       const status = statusOf(session, unread);
       const content = results?.get(session.id)?.content;
       const row = h('button', {
-        type: 'button', class: 'session-row', 'aria-current': String(session.id === activeId), title: session.cwd,
-        onClick: () => onSelect(session.id, content ? { indexes: content.indexes, query } : undefined),
+        type: 'button', class: 'session-row', title: session.cwd,
+        onClick: event => (event.altKey && onSplit && !archive ? onSplit(session.id) : onSelect(session.id, content ? { indexes: content.indexes, query } : undefined)),
       }, h('span', { class: `dot ${status}`, title: STATUS_TITLES[status] }),
       h('span', null, h('strong', { dir: 'auto' }, colorDot(session), session.name), placeLine(session, grouping === 'project' && !session.pinned),
         content ? snippetOf(content) : null));
@@ -86,5 +89,6 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
   if (!query) nodes.push(capNotice(light.rows.length, light.total));
   nodes.push(archiveSwitch([...sessions.values()].filter(session => session.archived).length, onRegroup));
   container.replaceChildren(...nodes.filter(Boolean));
+  markSessionRows(container, { focusedId, alsoId });
   enableSessionMenus(container, { sessions, activeId, actions, onSelect }); // right click / Shift+F10 on a row
 }

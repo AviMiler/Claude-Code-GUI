@@ -17,7 +17,7 @@ import { createSideQuestions } from './side-question.js';
 import { createSearchHits } from './search-hits.js';
 import { enableFileLinks } from './file-viewer.js';
 import { createModelHealth } from './model-health.js';
-import { createSplitView } from './split-view.js';
+import { createSplitView } from './split-view.js'; import { createSplitFocus, markSessionRows } from './split-focus.js';
 import { prefetchCatalog } from './warm-up.js';
 import { createPanes } from './panes/panes.js';
 import { bindShortcuts } from './shortcuts/bind-shortcuts.js'; import { extraShortcuts } from './shortcuts/extra-actions.js'; import { chooseDraftFolder } from './folder-defaults.js';
@@ -41,7 +41,9 @@ const searchHits = createSearchHits({ scroller: els.scroller, messages: els.mess
 enableFileLinks(els.messages, () => state.activeId);
 showLiveShells(els);
 const modelHealth = createModelHealth(byId('model-health'));
-const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh() });
+const focus = createSplitFocus({ app: els.app, main: document.querySelector('.main'), pane: byId('split-pane'), onFocus: () => markSessionRows(els.list, marks()) });
+const marks = () => focus.marks(state.activeId, split.sessionId()); // the focused pane's session and the other visible one
+const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh(), focus });
 const itemSync = createItemSync({ viewed: () => [state.activeId, split.sessionId()], threadsFor: id => [id === state.activeId ? thread : null, split.threadFor(id)].filter(Boolean) });
 const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), modelLabel,
   getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
@@ -56,7 +58,7 @@ enableFileMenus({ insert: text => composer.insert(text) });
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {
   const session = activeSession();
-  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar, actions, onRegroup: refresh });
+  renderSidebar(els.list, { ...state, filter: els.search.value, onSelect: openFromSidebar, actions, onRegroup: refresh, ...marks(), onSplit: id => id !== state.activeId && split.open(id) });
   // Never rebuild a bar or page the user is typing in (title, folder); it would lose the edit. A focused button is no edit.
   const typing = document.activeElement?.matches('input, textarea, select, [contenteditable="true"]');
   const editing = node => typing && node.contains(document.activeElement) && node.dataset.sessionId === String(session?.id ?? '');
@@ -89,10 +91,11 @@ function refresh() {
   panes.refresh();
   itemSync.watch(); // a session that came on screen (main, split, compare): subscribe to it and load its items
 }
-watchPageVisibility(refresh);
+watchPageVisibility(refresh, () => [state.activeId, split.sessionId()]);
 
 /** A sidebar click; a search result also jumps to the matching messages, once the session's items are loaded. */
 function openFromSidebar(id, hit) {
+  if (focus.sidebarClick(id, { activeId: state.activeId, splitId: split.sessionId(), openInSplit: split.open })) return; // the focused pane may be the split one
   selectSession(id);
   if (hit) itemSync.whenLoaded(id).then(() => { if (state.activeId === id) searchHits.show(hit.indexes, hit.query); });
 }
@@ -134,7 +137,7 @@ document.querySelectorAll('[data-panel]').forEach(button => button.addEventListe
 bindShortcuts({
   slashMenu: () => composer.insert('/', { replace: !composer.textarea.value }), newSession: () => selectSession(null),
   toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(),
-  toggleChanges: () => panes.toggle('changes'), toggleTerminal: () => panes.toggle('terminal'), closePane: () => panes.closeFocused(),
+  toggleChanges: () => panes.toggle('changes'), toggleTerminal: () => panes.toggle('terminal'), closePane: () => panes.closeFocused(), closeFocusedPane: () => focus.closeFocused({ splitId: split.sessionId(), closeSplit: split.toggle, selectMain: selectSession }),
   cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
   stop: () => actions.stop(), isRunning: () => activeSession()?.status === 'running',
   ...extraShortcuts({ actions, side: id => sideQuestions.openInput(id) }),

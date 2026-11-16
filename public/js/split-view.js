@@ -1,6 +1,7 @@
 /**
  * Split view: a second pane beside the main thread with another session — its live thread, its approval cards and a
  * compact composer (text, send, stop). The same session is never shown in both panes. Per browser (localStorage).
+ * Which pane has the focus is split-focus.js; opening or choosing a session here focuses this pane.
  */
 import { api } from './api.js';
 import { h } from './dom.js';
@@ -18,14 +19,15 @@ const SESSION_KEY = 'claude-gui.split-session';
 const NARROW = matchMedia('(max-width: 1000px)');
 const remember = (key, value) => { try { localStorage.setItem(key, value); } catch { /* storage may be blocked */ } };
 const recall = key => { try { return localStorage.getItem(key) || ''; } catch { return ''; } };
+const tooNarrow = () => toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
 
 /**
  * @param {{app:HTMLElement, pane:HTMLElement, selectMain:(id:string|null)=>void, openChanges:()=>void,
- *   onChange:()=>void}} options app gets the `split` class; pane is the empty <aside> to fill; selectMain opens a session
+ *   onChange:()=>void, focus:{set:(where:'main'|'split')=>void}}} options focus: split-focus.js; app gets the `split` class; pane is the empty <aside> to fill; selectMain opens a session
  *   in the main pane; onChange re-renders the page (sidebar dots, title) after the pane's session changed
  * @returns {{toggle:()=>void, refresh:()=>void, threadFor:(sessionId:string)=>object|null, sessionId:()=>string|null}}
  */
-export function createSplitView({ app, pane, selectMain, openChanges, onChange }) {
+export function createSplitView({ app, pane, selectMain, openChanges, onChange, focus }) {
   let sessionId = recall(SESSION_KEY) || null;
   let shownId = null; // the session the thread currently renders
   const title = h('button', { type: 'button', class: 'split-title', title: 'בחירת סשן לחלון הזה' });
@@ -52,6 +54,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     sessionId = id;
     state.unread.delete(id); // on screen now
     remember(SESSION_KEY, id || '');
+    focus.set('split');
     onChange(); // also redraws this pane
     input.focus();
   }
@@ -116,6 +119,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     app.classList.toggle('split', open);
     pane.hidden = !open;
     remember(OPEN_KEY, open ? '1' : '');
+    focus.set('main'); // a pane just opened or closed: the main pane has the focus until the user works in the other
     shownId = null;
     if (open) refresh();
   }
@@ -133,18 +137,19 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
 
   return {
     toggle() {
-      if (!app.classList.contains('split') && NARROW.matches) return toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
+      if (!app.classList.contains('split') && NARROW.matches) return tooNarrow();
       return setOpen(!app.classList.contains('split'));
     },
     /** Shows a session in the pane, opening the split first (a sidebar row's menu). */
     open(id) {
-      if (!app.classList.contains('split') && NARROW.matches) return toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
+      if (!app.classList.contains('split') && NARROW.matches) return tooNarrow();
       if (!app.classList.contains('split')) setOpen(true);
       return choose(id);
     },
     refresh,
     /** The pane's thread when it shows this session (events.js sends it the session's live updates). */
     threadFor: id => (app.classList.contains('split') && id && id === shownId ? thread : null),
-    sessionId: () => (app.classList.contains('split') ? shownId : null),
+    /** The session the pane shows now (valid before the pane's own redraw); null when the split is closed or empty. */
+    sessionId: () => (app.classList.contains('split') ? session()?.id || null : null),
   };
 }

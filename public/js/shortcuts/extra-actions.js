@@ -23,9 +23,10 @@ function openEffort(actions) {
   }))]);
 }
 
-/** Selects the next (+1) or previous (-1) session row of the sidebar, in the order it shows them. */
+/** Selects the next (+1) or previous (-1) session row of the sidebar, in the order it shows them. The click goes to the focused
+ *  pane (app.js); the focused session's row has aria-current, and the other pane's session (`also-open`) is skipped. */
 function stepSession(step) {
-  const rows = [...document.querySelectorAll('#session-list .session-row:not(.light)')];
+  const rows = [...document.querySelectorAll('#session-list .session-row:not(.light):not(.also-open)')];
   if (!rows.length) return;
   const at = rows.findIndex(row => row.getAttribute('aria-current') === 'true');
   rows[at < 0 ? (step > 0 ? 0 : rows.length - 1) : (at + step + rows.length) % rows.length].click();

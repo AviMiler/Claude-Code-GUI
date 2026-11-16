@@ -24,10 +24,11 @@ export function renderPageStatus(brand) {
 /**
  * An answer that arrived while the tab was hidden counts as seen once the user comes back to the tab.
  * @param {() => void} refresh re-renders the views after the unread mark is cleared
+ * @param {() => Array<string|null>} [visible] the sessions on screen (main and split pane; default: the active one)
  */
-export function watchPageVisibility(refresh) {
+export function watchPageVisibility(refresh, visible = () => [state.activeId]) {
   const markActiveSeen = () => {
-    if (document.hidden || !state.unread.delete(state.activeId)) return;
+    if (document.hidden || !visible().map(id => state.unread.delete(id)).some(Boolean)) return;
     refresh();
   };
   document.addEventListener('visibilitychange', markActiveSeen);
