@@ -262,6 +262,13 @@ _Last updated: 2026-11-16 — the D1–D16 files and the local-model batch (A–
 | `lib/hooks/` | 2026-11-16: the hook editor: `hooks-store.js` (read / merge / atomic write), `hooks-validate.js` (events, matcher, scope), `hooks-routes.js` (`/api/sessions/:id/hooks`). |
 | `public/js/hooks/` | 2026-11-16: `hook-info.js` (events with Hebrew hints), `hook-form.js`, `hooks-section.js` (in the Hooks panel). |
 | `test/hooks-store.test.js` | 2026-11-16: the hook store cases (155 `node:test` cases in all). |
+| `lib/sync/` | Wave 2: `item-revision.js`, `session-search.js` (`POST /api/search/sessions`), `subscriptions.js` (per-client filter), `sync-routes.js` (`/items`, `/api/events/subscribe`), `turn-outcome.js`. |
+| `public/js/sync/` | Wave 2: `item-sync.js` (load, append, gap refetch), `load-state.js`, `content-search.js`. |
+| `lib/files/editors.js`, `lib/files/reveal.js` | Wave 3: `POST /api/sessions/:id/reveal` and `/open-in-editor` (config `editor`). |
+| `public/js/shortcuts/extra-actions.js`, `menu-digits.js` | Wave 3: the mode / model / effort / session-switch / `/btw` shortcuts and digit picks in menus. |
+| `public/js/folder-defaults.js`, `local-model.js` | Wave 3: per-folder mode / model / effort memory; the custom-base-URL check that hides `auto`. |
+| `public/js/plan/todo-strip.js`, `public/css/todo-strip.css` | Wave 3: the todo strip above the composer. |
+| `test/reveal.test.js`, `test/safe-path.test.js` (+ 4 sync tests) | 195 `node:test` cases in all. |
 | `public/js/rewind/rewind-button.js` | D15: the hover button "חזרה לנקודה זו" (`dataset.rewindUuid`), shown for user items with `cliUuid` in the main thread. |
 | `public/js/rewind/rewind-menu.js` | D15: one document-level `contextmenu` listener on `[data-rewind-uuid]` (`enableRewind`, wired in `main-composer.js`); skips a text selection. |
 | `public/js/rewind/rewind-dialog.js` | D15: preview, the available choices (radios), consequence lines and warnings, confirm; also the entry point of `/rewind` (last rewindable message). |

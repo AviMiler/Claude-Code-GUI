@@ -42,7 +42,7 @@
 .field { display: grid; gap: 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
 .field.wide { grid-column: 1 / -1; }
 .field input, .field select, .field textarea, .panel-toolbar input, .panel-toolbar select { padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-  background: var(--surface); color: var(--text); font-size: 14px; font-weight: 400; }
+  background: var(--surface); color: var(--text); font-size: 14px; font-weight: 400; max-width: 100%; min-width: 0; }
 .field textarea, textarea.code { min-height: 160px; font: 13px/1.5 var(--font-mono); resize: vertical; direction: ltr; text-align: left; }
 textarea.code { width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
 /* Path line above an inline file editor (file-editor.js): a long path wraps instead of widening the panel */
