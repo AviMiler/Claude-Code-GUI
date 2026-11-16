@@ -14,7 +14,8 @@ import { createTasksPane } from '../tasks/tasks-pane.js';
  * @param {{workspace:HTMLElement, area:HTMLElement, modelLabel:(session:object)=>string,
  *   getSession:()=>object|null, send:(text:string)=>Promise<boolean>, onChange:()=>void}} options send: the normal send path
  *   of the main session; onChange: a pane opened or closed
- * @returns {{refresh:()=>void, toggle:(id:string)=>void, open:(id:string)=>void, isOpen:(id:string)=>boolean, closeFocused:()=>void}}
+ * @returns {{refresh:()=>void, toggle:(id:string)=>void, open:(id:string)=>void, isOpen:(id:string)=>boolean,
+ *   isActive:(id:string)=>boolean, closeFocused:()=>void}}
  */
 export function createPanes({ workspace, area, modelLabel, getSession, send, onChange }) {
   const host = createPaneHost({ workspace, area, onChange });
@@ -25,5 +26,5 @@ export function createPanes({ workspace, area, modelLabel, getSession, send, onC
   host.register(createFilesPane({ rerender: refresh, openPane: id => host.open(id) }));
   host.register(createPlanPane());
   host.register(createTasksPane({ rerender: refresh }));
-  return { refresh, toggle: host.toggle, open: host.open, isOpen: host.isOpen, closeFocused: host.closeFocused };
+  return { refresh, toggle: host.toggle, open: host.open, isOpen: host.isOpen, isActive: host.isActive, closeFocused: host.closeFocused };
 }

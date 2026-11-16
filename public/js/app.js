@@ -62,9 +62,7 @@ function refresh() {
     onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
     onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onSplit: () => split.toggle(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
     onArchive: () => actions.archive(), onUnarchive: () => actions.unarchive(),
-    onToggleDetails: () => panes.toggle('details'), detailsOpen: panes.isOpen('details'),
-    onToggleChanges: () => panes.toggle('changes'), changesOpen: panes.isOpen('changes'),
-    onToggleTerminal: () => panes.toggle('terminal'), terminalOpen: panes.isOpen('terminal'), onToggleFiles: () => panes.toggle('files'), filesOpen: panes.isOpen('files'), onTogglePane: id => panes.toggle(id), paneOpen: id => panes.isOpen(id),
+    onTogglePane: id => panes.toggle(id), paneOpen: id => panes.isOpen(id), paneActive: id => panes.isActive(id),
     viewMode: () => thread.view.mode(), onViewMode: mode => thread.view.setMode(mode),
   });
   els.topbar.dataset.sessionId = els.welcome.dataset.sessionId = String(session?.id ?? '');

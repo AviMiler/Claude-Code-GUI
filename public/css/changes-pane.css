@@ -1,5 +1,6 @@
 /* Changes pane (panes/pane-changes.js, diff-view.js): the session's diff file by file, with line comments. */
-.changes-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; align-items: center; padding: 4px 2px 8px; background: var(--bg-sidebar); font-size: 12.5px; color: var(--muted); }
+.pane[data-pane="changes"] .pane-body { padding-top: 0; } /* the sticky toolbar sits on the pane's top edge */
+.changes-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; align-items: center; padding: 8px 2px; background: var(--bg-sidebar); font-size: 12.5px; color: var(--muted); }
 .changes-toolbar .spacer { flex: 1; }
 .changes-hint { color: var(--faint); font-size: 12px; }
 .diff-counts { display: inline-flex; gap: 6px; font: 12px var(--font-mono); }

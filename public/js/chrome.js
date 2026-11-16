@@ -11,6 +11,7 @@ import { viewModeEntries } from './transcript/view-mode.js';
 import { toggleShortcutsDialog } from './shortcuts/shortcuts-dialog.js';
 import { createWorktreeToggle } from './worktree/worktree-toggle.js';
 import { projectFolder } from './worktree/project-folder.js';
+import { paneButtons, paneMenuEntries } from './panes/pane-toggles.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -32,9 +33,10 @@ function greeting() {
 /**
  * @param {HTMLElement} bar
  * @param {object|null} session
- * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onToggleDetails,
- *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, onToggleTerminal, terminalOpen:boolean, onToggleFiles, filesOpen:boolean, onTogglePane, paneOpen:(id:string)=>boolean, viewMode:()=>string, onViewMode, onArchive, onUnarchive, onNewSession}}
- *   handlers detailsOpen / changesOpen: that pane is open (its toggle shows pressed); viewMode: the transcript's current mode
+ * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit,
+ *   onTogglePane:(id:string)=>void, paneOpen:(id:string)=>boolean, paneActive:(id:string)=>boolean, viewMode:()=>string, onViewMode,
+ *   onArchive, onUnarchive, onNewSession}} handlers paneOpen / paneActive: a pane's tab is open / shown (panes/pane-toggles.js);
+ *   viewMode: the transcript's current mode
  */
 export function renderTopbar(bar, session, handlers) {
   const toggle = h('button', { type: 'button', class: 'icon-button', title: 'סרגל צד (Ctrl+B)', onClick: handlers.onToggleSidebar }, icon('sidebar'));
@@ -64,17 +66,13 @@ export function renderTopbar(bar, session, handlers) {
   const more = h('button', { type: 'button', class: 'icon-button', title: 'עוד' }, icon('more'));
   more.addEventListener('click', () => showDropdown(more, [
     ...viewModeEntries(session, handlers.viewMode(), handlers.onViewMode),
+    ...paneMenuEntries(handlers),
     { section: 'סשן' },
     { icon: 'pencil', title: 'שינוי שם', hint: '/rename', onSelect: () => handlers.onRename() },
     { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה בסרגל', disabled: Boolean(session.archived), onSelect: handlers.onPin },
     session.archived ? { icon: 'history', title: 'שחזור מהארכיון', onSelect: handlers.onUnarchive }
       : { icon: 'archive', title: 'העברה לארכיון', onSelect: handlers.onArchive },
     { icon: 'sliders', title: 'אפשרויות הסשן: צבע, חשיבה, הנחיית מערכת, מצב בטוח', hint: '/color', onSelect: () => handlers.onOpenPanel('session-options') },
-    { icon: 'map', title: handlers.paneOpen('plan') ? 'הסתרת חלונית התוכנית' : 'הצגת חלונית התוכנית', onSelect: () => handlers.onTogglePane('plan') },
-    { icon: 'list', title: handlers.paneOpen('tasks') ? 'הסתרת חלונית משימות הרקע' : 'הצגת חלונית משימות הרקע', onSelect: () => handlers.onTogglePane('tasks') },
-    { icon: 'folder', title: handlers.filesOpen ? 'הסתרת חלונית הקבצים' : 'הצגת חלונית הקבצים', onSelect: handlers.onToggleFiles },
-    { icon: 'terminal', title: handlers.terminalOpen ? 'הסתרת הטרמינל' : 'הצגת הטרמינל', hint: 'Ctrl+`', onSelect: handlers.onToggleTerminal },
-    { icon: 'panel-right', title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onSelect: handlers.onToggleDetails },
     { icon: 'branch', title: 'ענף חדש מהשיחה', hint: '/fork', onSelect: handlers.onFork },
     { icon: 'refresh', title: 'שיחה חדשה (ניקוי הקשר)', hint: '/clear', onSelect: handlers.onClear },
     { icon: 'download', title: 'ייצוא ל-Markdown', hint: '/export', onSelect: handlers.onExport },
@@ -85,16 +83,9 @@ export function renderTopbar(bar, session, handlers) {
   ], { placement: 'bottom' }));
   bar.replaceChildren(...[toggle, colorDot(session), title, folder, branch, archived, extra, agent, tasks, h('span', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
-    h('button', { type: 'button', class: `icon-button${handlers.changesOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.changesOpen),
-      title: 'שינויים (Ctrl+Shift+D)', onClick: handlers.onToggleChanges }, icon('diff')),
-    h('button', { type: 'button', class: `icon-button${handlers.filesOpen ? ' on' : ''}`, 'aria-pressed': String(Boolean(handlers.filesOpen)),
-      title: 'קבצים', onClick: handlers.onToggleFiles }, icon('folder')),
-    h('button', { type: 'button', class: `icon-button${handlers.terminalOpen ? ' on' : ''}`, 'aria-pressed': String(Boolean(handlers.terminalOpen)),
-      title: 'טרמינל (Ctrl+`)', onClick: handlers.onToggleTerminal }, icon('terminal')),
     h('button', { type: 'button', class: 'icon-button', title: 'הקשר ושימוש (/context)', onClick: () => handlers.onOpenPanel('usage') }, icon('gauge')),
     h('button', { type: 'button', class: 'icon-button', title: 'הגדרות (Ctrl+,)', onClick: () => handlers.onOpenPanel('model') }, icon('settings')),
-    h('button', { type: 'button', class: `icon-button${handlers.detailsOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.detailsOpen),
-      title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onClick: handlers.onToggleDetails }, icon('panel-right', 'mirror')),
+    paneButtons(handlers),
     more].filter(Boolean));
 }
 
