@@ -1,0 +1,12 @@
+/* Side question pane (side/side-pane.js): a thread with its own input at the bottom */
+.pane[data-pane="side"] .pane-body { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.side-list { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 0; padding: 10px; overflow-y: auto; }
+.side-empty { margin: 14px 4px; padding: 18px 16px; border: 1px dashed var(--border-strong); border-radius: var(--radius); color: var(--muted); font-size: 13px; line-height: 1.6; text-align: center; }
+.side-question { align-self: flex-start; max-width: 90%; padding: 5px 10px; border-radius: var(--radius); background: var(--surface-2); font-size: 13.5px; overflow-wrap: anywhere; }
+.side-answer { font-size: 13.5px; overflow-wrap: anywhere; } .side-answer .markdown > :last-child { margin-bottom: 0; }
+.side-notice { margin: 4px 0 0; color: var(--faint); font-size: 12.5px; }
+.side-copy { display: inline-flex; gap: 4px; align-items: center; margin-top: 4px; padding: 2px 6px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--muted); font: 12px var(--font-ui); cursor: pointer; }
+.side-copy .icon { width: 13px; height: 13px; }
+.side-copy:hover { background: var(--surface-2); color: var(--text); }
+.side-form { flex: none; padding: 8px 10px 10px; border-top: 1px solid var(--border); }
+.side-form textarea { box-sizing: border-box; width: 100%; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: 14px var(--font-ui); resize: none; }

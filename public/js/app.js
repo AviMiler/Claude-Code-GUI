@@ -13,7 +13,6 @@ import { applyTheme, toast } from './ui.js';
 import { handleEvent } from './events.js';
 import { renderPageStatus, watchPageVisibility } from './page-status.js';
 import { crab } from './crab.js';
-import { createSideQuestions } from './side-question.js';
 import { createSearchHits } from './search-hits.js';
 import { enableFileLinks } from './file-viewer.js';
 import { createModelHealth } from './model-health.js';
@@ -36,7 +35,6 @@ const els = {
 };
 els.brand.prepend(crab());
 const thread = createThread({ scroller: els.scroller, messages: els.messages, onOpenGit: () => panes.open('changes') });
-const sideQuestions = createSideQuestions(els.composerArea);
 const searchHits = createSearchHits({ scroller: els.scroller, messages: els.messages });
 enableFileLinks(els.messages, () => state.activeId);
 showLiveShells(els);
@@ -49,7 +47,7 @@ const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'
   getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
-  askSide: (sessionId, question) => sideQuestions.ask(sessionId, question), composerText: () => composer.textarea.value, openInSplit: id => split.open(id) });
+  askSide: (sessionId, question) => panes.side.ask(sessionId, question), composerText: () => composer.textarea.value, openInSplit: id => split.open(id) });
 const runCommand = createCommandRunner(actions);
 
 const composer = createMainComposer(els.composerArea, { actions, runCommand });
@@ -104,7 +102,6 @@ function selectSession(id) {
   state.activeId = state.sessions.has(id) ? id : null;
   rememberActive(state.activeId);
   state.unread.delete(id);
-  sideQuestions.sessionChanged(state.activeId);
   searchHits.clear();
   thread.show(activeSession());
   refresh();
@@ -140,6 +137,6 @@ bindShortcuts({
   toggleChanges: () => panes.toggle('changes'), toggleTerminal: () => panes.toggle('terminal'), closePane: () => panes.closeFocused(), closeFocusedPane: () => focus.closeFocused({ splitId: split.sessionId(), closeSplit: split.toggle, selectMain: selectSession }),
   cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
   stop: () => actions.stop(), isRunning: () => activeSession()?.status === 'running',
-  ...extraShortcuts({ actions, side: id => sideQuestions.openInput(id) }),
+  ...extraShortcuts({ actions, side: id => panes.side.focusInput(id) }),
 });
 els.scroller.addEventListener('scroll', () => els.topbar.classList.toggle('scrolled', els.scroller.scrollTop > 4));

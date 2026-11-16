@@ -44,11 +44,16 @@ export function noteContent(session) {
   for (const id of CONDITIONAL) {
     now[id] = hasContent(id, session);
     if (before && !before[id] && now[id] && session.status === 'running') {
-      if (!dots.has(session.id)) dots.set(session.id, new Set());
-      dots.get(session.id).add(id);
+      markDot(session.id, id);
     }
   }
   seen.set(session.id, now);
+}
+
+/** Puts the dot on a pane's entry (the side question's answer arrived while its tab was not shown). */
+export function markDot(sessionId, id) {
+  if (!dots.has(sessionId)) dots.set(sessionId, new Set());
+  dots.get(sessionId).add(id);
 }
 
 /** @returns {boolean} the entry of this pane carries the dot */
