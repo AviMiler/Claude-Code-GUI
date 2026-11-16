@@ -1,6 +1,7 @@
 /** Per project folder memory of the permission mode, model and effort last chosen there (localStorage, capped, least recent dropped). */
 import { state } from './state.js';
 import { availableModes } from './modes.js';
+import { isLocalModelKnown, onLocalModelAnswer } from './local-model.js';
 
 const KEY = 'claude-gui.folder-settings';
 const MAX_FOLDERS = 40;
@@ -27,12 +28,24 @@ export function rememberFolderSettings(cwd, patch) {
   try { localStorage.setItem(KEY, JSON.stringify(map)); } catch { /* storage may be blocked */ }
 }
 
-/** Points the draft of the next new session at a folder: the settings last chosen there, else today's defaults. */
+let applied = null; // what chooseDraftFolder last put in the draft: a field that differs was changed by hand since
+
+/**
+ * Points the draft of the next new session at a folder: the settings last chosen there, else today's defaults. A field the
+ * user changed by hand in this draft is left alone. A remembered "auto" is not applied while it is unknown whether the
+ * model is local (it needs an Anthropic model); it is re-checked when the health answer arrives.
+ */
 export function chooseDraftFolder(cwd) {
   const saved = load()[cwd] || {};
-  const allowed = availableModes(state.capabilities.permissionModes).some(mode => mode.value === saved.mode);
+  const allowed = (saved.mode !== 'auto' || isLocalModelKnown()) && availableModes(state.capabilities.permissionModes).some(mode => mode.value === saved.mode);
+  const next = {
+    mode: allowed ? saved.mode : DEFAULTS.mode,
+    model: typeof saved.model === 'string' ? saved.model : DEFAULTS.model,
+    effort: typeof saved.effort === 'string' ? saved.effort : DEFAULTS.effort,
+  };
   state.draft.cwd = cwd;
-  state.draft.mode = allowed ? saved.mode : DEFAULTS.mode;
-  state.draft.model = typeof saved.model === 'string' ? saved.model : DEFAULTS.model;
-  state.draft.effort = typeof saved.effort === 'string' ? saved.effort : DEFAULTS.effort;
+  for (const field of FIELDS) if (!applied || state.draft[field] === applied[field]) state.draft[field] = next[field];
+  applied = { ...next };
 }
+
+onLocalModelAnswer(() => { if (state.draft.cwd) chooseDraftFolder(state.draft.cwd); });
