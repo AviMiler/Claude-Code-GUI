@@ -62,7 +62,8 @@ test('the marker is different every time and the command comes first', () => {
 });
 
 test('real shell: cd persists through the reported folder, a failing command reports its code', async () => {
-  const sub = fs.realpathSync(fs.mkdirSync(path.join(scratch, 'sub'), { recursive: true }) || path.join(scratch, 'sub'));
+  fs.mkdirSync(path.join(scratch, 'sub'), { recursive: true });
+  const sub = fs.realpathSync.native(path.join(scratch, 'sub'));
   const moved = await run('cd sub', scratch);
   assert.equal(moved.cwd.toLowerCase(), sub.toLowerCase());
   assert.equal(moved.shown.trim(), '');
@@ -74,7 +75,7 @@ test('real shell: cd persists through the reported folder, a failing command rep
 test('real shell: output cannot move the terminal, and a spoofed line stays visible', async () => {
   const result = await run(isWin ? 'echo @@gui-000000000000000000000000@@0@@gui-000000000000000000000000@@C:\\@@gui-000000000000000000000000@@' : 'echo @@gui-000000000000000000000000@@', scratch);
   assert.match(result.shown, /@@gui-0+@@/);
-  assert.equal(result.cwd.toLowerCase(), fs.realpathSync(scratch).toLowerCase());
+  assert.equal(result.cwd.toLowerCase(), fs.realpathSync.native(scratch).toLowerCase());
 });
 
 test('real shell: exit leaves no sentinel, so no new folder', async () => {

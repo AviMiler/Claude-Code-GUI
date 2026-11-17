@@ -51,8 +51,14 @@ export const api = {
   removeQueued: (id, queueId) => request('DELETE', `/api/sessions/${id}/queue/${queueId}`),
   resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
   /** Runs a shell command in the session's folder (output arrives as `shell` events): source 'terminal' (the pane) or 'bang' (a `!` line). */
-  runShell: (id, command, source, shell) => request('POST', `/api/sessions/${id}/shell`, { command, source, ...(shell && { shell }) }),
-  stopShell: id => request('POST', `/api/sessions/${id}/shell/stop`),
+  runShell: (id, command, source, shell, terminalId) => request('POST', `/api/sessions/${id}/shell`, { command, source, ...(shell && { shell }), ...(terminalId && { terminalId }) }),
+  /** Stops the running command of a pane terminal (terminalId) or the composer's "!" command (none). */
+  stopShell: (id, terminalId) => request('POST', `/api/sessions/${id}/shell/stop`, terminalId ? { terminalId } : undefined),
+  /** The session's terminals the server keeps: { max, terminals: [{ id, cwd, running }] }. */
+  terminals: id => request('GET', `/api/sessions/${id}/terminals`),
+  /** A new terminal in the session's folder, or (folder) in that folder as the server resolves it: { terminal }. */
+  openTerminal: (id, folder) => request('POST', `/api/sessions/${id}/terminals`, folder ? { folder } : {}),
+  closeTerminal: (id, terminalId) => request('POST', `/api/sessions/${id}/terminals/${terminalId}/close`),
   /** The automatic check of the session's project folder (verify loop, run by the CLI's Stop hook). */
   verifyCheck: id => request('GET', `/api/sessions/${id}/verify-check`),
   saveVerifyCheck: (id, check) => request('PUT', `/api/sessions/${id}/verify-check`, check),
