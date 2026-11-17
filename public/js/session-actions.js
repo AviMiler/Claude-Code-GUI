@@ -8,6 +8,7 @@ import { toast, ask } from './ui.js';
 import { worktreeChoice } from './worktree/worktree-toggle.js';
 import { confirmWorktreeRemoval, reportWorktreeRemoval } from './worktree/worktree-delete.js';
 import { projectFolder } from './worktree/project-folder.js';
+import { offerMergeBeforeArchive } from './worktree/merge-action.js';
 import { refreshLightRows } from './cli-list/light-rows.js';
 
 /**
@@ -88,6 +89,9 @@ export function createSessionActions(view, report) {
       if (!session || session.archived) return;
       const tasks = (session.tasks || []).filter(task => task.status === 'running').length;
       if (tasks && !await ask({ title: `להעביר את "${session.name}" לארכיון?`, text: `${tasks} משימות רקע רצות בסשן, והן ייעצרו.`, confirmLabel: 'העברה לארכיון', danger: true })) return;
+      const merged = await offerMergeBeforeArchive(session);
+      if (merged?.type === 'error' && !await ask({ title: 'המיזוג נכשל', text: `${merged.text}\n\nלהעביר לארכיון בכל זאת?`, confirmLabel: 'העברה לארכיון' })) return;
+      if (merged?.type === 'ok') toast(merged.text);
       const result = await api.archive(id).catch(report);
       if (!result) return;
       if (id === state.activeId) view.selectSession(null);

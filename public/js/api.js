@@ -99,6 +99,10 @@ export const api = {
   /** { message, paths, push?, setUpstream? } -> { hash, branch, pushed, pushOutput?, pushError? }; a 409 carries git's text in error.message. */
   commitChanges: (sessionId, commit) => request('POST', `/api/sessions/${sessionId}/git/commit`, commit),
   pushBranch: (sessionId, push) => request('POST', `/api/sessions/${sessionId}/git/push`, push),
+  /** Worktree session: { isWorktree, branch, target, ahead, canMerge, reason, upToDate? } (lib/git/merge-status.js). */
+  mergeStatus: sessionId => request('GET', `/api/sessions/${sessionId}/merge-status`),
+  /** Merges the session's branch into the project's branch (no options) -> { ok, target, branch, merged, output, upToDate?, message? }; a 409 carries the Hebrew reason. */
+  mergeBranch: sessionId => request('POST', `/api/sessions/${sessionId}/merge-branch`, {}),
   /**
    * Prompt templates = the user's CLI commands: [{ id (command name), name, text ({{variables}}), expands, updatedAt }],
    * newest first. saveTemplate(name, { description, text, create, previous }): previous = the name it had (a rename).
