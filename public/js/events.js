@@ -10,6 +10,8 @@ import { notify } from './notify.js';
 import { applyShellEvent, forgetShellSession } from './terminal/shell-store.js';
 import { applyRewound } from './rewind/rewind-apply.js';
 import { noteStallEvent } from './stall/stall-clock.js';
+import { markUnseen } from './sidebar/unread.js';
+import { setGroups } from './sidebar/groups-store.js';
 
 /** Window event fired when a session's background tasks change (panels/panel-tasks.js listens while open). */
 export const TASKS_EVENT = 'claude-gui:tasks';
@@ -50,6 +52,9 @@ export function handleEvent(event, view) {
       threads.forEach(thread => thread.append(event.item, session.items.length - 1, session.items));
       if (event.item.kind === 'divider' || event.item.kind === 'command-output') view.fetchContext(event.sessionId);
       break;
+    case 'sidebar-groups':
+      setGroups(event.groups); // another tab (or this one) changed the custom groups
+      break;
     case 'rewound':
       applyRewound(event, view);
       break;
@@ -71,9 +76,10 @@ export function handleEvent(event, view) {
       if (event.status === 'running') session.turnStartedAt = Date.now();
       threads.forEach(thread => thread.setRunning(event.status === 'running', { startedAt: session.turnStartedAt }));
       if (event.status === 'idle') {
-        if ((!onScreen || document.hidden) && !session.archived) state.unread.add(event.sessionId); // an archived turn was stopped
+        if ((!onScreen || document.hidden) && !session.archived) markUnseen(event.sessionId); // an archived turn was stopped
         view.fetchContext(event.sessionId);
         const outcome = event.outcome; // computed by the server: this tab may hold no items of the session (lib/sync/turn-outcome.js)
+        session.lastOutcome = outcome || null; // the sidebar's error dot (sidebar/status.js)
         if (outcome) notify(outcome, session, { onScreen, onOpen: view.selectSession });
         if (outcome === 'error') view.onTurnFailed(); // was it the model server? (model-health.js)
       }

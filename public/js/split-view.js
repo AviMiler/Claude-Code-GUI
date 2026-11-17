@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { state } from './state.js';
+import { markSeen } from './sidebar/unread.js';
 import { createThread } from './thread.js';
 import { renderPromptCards } from './prompt-cards.js';
 import { showDropdown } from './popover.js';
@@ -50,7 +51,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange, 
 
   function choose(id) {
     sessionId = id;
-    state.unread.delete(id); // on screen now
+    markSeen(id); // on screen now
     remember(SESSION_KEY, id || '');
     focus.set('split');
     onChange(); // also redraws this pane

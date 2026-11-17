@@ -7,6 +7,9 @@ import { icon } from '../icons.js';
 import { toast } from '../ui.js';
 import { projectFolder } from '../worktree/project-folder.js';
 import { openContextMenu, hasSelection } from './menu.js';
+import { openMoveMenu } from '../sidebar/move-menu.js';
+import { isUnread } from '../sidebar/status.js';
+import { state } from '../state.js';
 
 let current = { sessions: new Map(), activeId: null, actions: null, onSelect: null }; // from the latest sidebar render
 const lists = new WeakSet();
@@ -21,6 +24,9 @@ function entriesFor(session) {
     session.id !== activeId && live && { icon: 'columns', title: 'פתיחה בחלון המפוצל', onSelect: () => actions.openInSplit(session.id) },
     { icon: 'pencil', title: 'שינוי שם', onSelect: () => actions.rename(null, session.id) },
     live && { icon: 'pin', title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה', onSelect: () => actions.setPinned(session.id, !session.pinned) },
+    live && { icon: 'folder', title: 'העבר לקבוצה', onSelect: () => openMoveMenu(session, actions) },
+    live && (isUnread(session, state.unread) ? { icon: 'check', title: 'סימון כנקרא', onSelect: () => actions.setUnread(session.id, false) }
+      : { icon: 'eye', title: 'סימון כלא נקרא', onSelect: () => actions.setUnread(session.id, true) }),
     live && session.claudeSessionId && { icon: 'branch', title: 'ענף חדש מהשיחה', onSelect: () => actions.fork(session.id) },
     { icon: 'copy', title: 'העתקת נתיב התיקייה', onSelect: () => copyPath(projectFolder(session)) },
     session.worktree && { icon: 'copy', title: 'העתקת נתיב ה-worktree', onSelect: () => copyPath(session.worktree.path) },

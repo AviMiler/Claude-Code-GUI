@@ -1,5 +1,6 @@
 /** Page-wide status: the brand crab (busy / waiting) and the tab title with the count of sessions that need the user. */
 import { state, activeSession } from './state.js';
+import { markSeen } from './sidebar/unread.js';
 import { notifyPreferences } from './notify.js';
 import { setCrabState } from './crab.js';
 
@@ -28,7 +29,7 @@ export function renderPageStatus(brand) {
  */
 export function watchPageVisibility(refresh, visible = () => [state.activeId]) {
   const markActiveSeen = () => {
-    if (document.hidden || !visible().map(id => state.unread.delete(id)).some(Boolean)) return;
+    if (document.hidden || !visible().map(id => markSeen(id)).some(Boolean)) return;
     refresh();
   };
   document.addEventListener('visibilitychange', markActiveSeen);

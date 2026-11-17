@@ -1,0 +1,14 @@
+/* Local scheduled tasks (public/js/schedule/). */
+.schedule-form { display: grid; gap: 10px; margin-block: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.schedule-folder { display: flex; gap: 6px; align-items: center; }
+.schedule-folder input { flex: 1; min-width: 0; }
+.schedule-fields, .schedule-parts { display: grid; gap: 8px; }
+.schedule-days { display: flex; flex-wrap: wrap; gap: 10px; }
+.schedule-days label, .schedule-active, .schedule-toggle { display: inline-flex; gap: 4px; align-items: center; font-weight: 400; cursor: pointer; }
+.schedule-preview { color: var(--muted); font-size: 13px; }
+.schedule-preview.invalid { color: var(--danger); }
+.schedule-warning { padding: 8px 10px; border-radius: 8px; background: var(--warning-soft); color: var(--warning); font-size: 13px; }
+.schedule-warning.danger { background: var(--danger-soft); color: var(--danger); font-weight: 600; }
+.schedule-history { margin-top: 14px; }
+.session-row .schedule-badge { display: inline-flex; width: 13px; height: 13px; margin-inline-end: 4px; vertical-align: -2px; color: var(--muted); }
+.session-row .schedule-badge svg { width: 13px; height: 13px; }

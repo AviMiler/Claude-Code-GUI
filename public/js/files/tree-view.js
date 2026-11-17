@@ -2,6 +2,7 @@
 import { api } from '../api.js';
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
+import { terminalMenu } from './tree-menu.js';
 
 const key = (sessionId, dir, hidden) => `${sessionId}|${hidden ? 1 : 0}|${dir}`;
 
@@ -32,11 +33,11 @@ export function createTreeView({ onChange }) {
       const path = dir ? `${dir}/${entry.name}` : entry.name;
       if (entry.type === 'file') {
         return [h('button', { type: 'button', class: 'tree-row', title: entry.blocked ? 'קישור אל מחוץ לתיקיות הסשן' : path, disabled: Boolean(entry.blocked), ...pad,
-          onClick: () => onOpen(path) }, icon('file'), h('span', { class: 'tree-name', dir: 'ltr' }, entry.name))];
+          onClick: () => onOpen(path), onContextmenu: terminalMenu(session, path) }, icon('file'), h('span', { class: 'tree-name', dir: 'ltr' }, entry.name))];
       }
       const open = state.expanded.has(path) && !entry.blocked;
       const row = h('button', { type: 'button', class: 'tree-row dir', 'aria-expanded': String(open), disabled: Boolean(entry.blocked), title: entry.blocked ? 'קישור אל מחוץ לתיקיות הסשן' : path, ...pad,
-        onClick: () => { if (!state.expanded.delete(path)) state.expanded.add(path); onChange(); } },
+        onClick: () => { if (!state.expanded.delete(path)) state.expanded.add(path); onChange(); }, onContextmenu: terminalMenu(session, path) },
       icon('chevron-down', `chevron${open ? '' : ' collapsed'}`), icon('folder'), h('span', { class: 'tree-name', dir: 'ltr' }, entry.name));
       return [row, ...(open ? rows(session, state, onOpen, path, depth + 1) : [])];
     });

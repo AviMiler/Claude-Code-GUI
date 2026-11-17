@@ -6,6 +6,7 @@
 import { api } from '../api.js';
 import { state, getModels } from '../state.js';
 import { chooseDraftFolder } from '../folder-defaults.js';
+import { setGroups } from '../sidebar/groups-store.js';
 
 const ACTIVE_KEY = 'claude-gui.active-session';
 
@@ -20,7 +21,8 @@ export function rememberActive(id) {
  */
 export function createStateLoader({ versionLabel, selectSession, refresh, itemSync }) {
   return async function loadState() {
-    const { sessions, config, capabilities } = await api.state();
+    const { sessions, config, capabilities, sidebarGroups } = await api.state();
+    setGroups(sidebarGroups); // the sidebar's custom groups (also after a resync)
     const held = state.sessions;
     state.sessions = new Map(sessions.map(session => {
       const old = held.get(session.id);
