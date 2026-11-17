@@ -9,6 +9,7 @@ import { toast } from '../ui.js';
 import { state } from '../state.js';
 import { openFileViewer } from '../file-viewer.js';
 import { canOpenInFiles, openInFiles } from '../files/open-in-files.js';
+import { canOpenInTerminal, openInTerminal } from '../terminal/open-in-terminal.js';
 import { canPreview, openPreview } from '../preview/open-preview.js';
 import { openContextMenu, hasSelection } from './menu.js';
 import { relativePath } from './paths.js';
@@ -38,6 +39,7 @@ export function enableFileMenus({ insert }) {
       { icon: 'eye', title: 'פתיחה בצופה', onSelect: () => openFileViewer(session.id, path, null) },
       canOpenInFiles(session.id) && !element.closest('[data-split-session]') && { icon: 'pencil', title: 'עריכה בחלונית הקבצים', onSelect: () => openInFiles(session.id, path) },
       inMain && canPreview(session.id, path) && { icon: 'globe', title: 'תצוגה מקדימה', onSelect: () => openPreview(session.id, path) },
+      inMain && canOpenInTerminal(session.id) && { icon: 'terminal', title: 'פתיחה בטרמינל', onSelect: () => openInTerminal(session.id, path) },
       { icon: 'folder', title: 'הצג בסייר הקבצים', onSelect: () => outside(api.revealFile(session.id, path)) },
       { icon: 'external', title: 'פתח בעורך', onSelect: () => outside(api.openInEditor(session.id, path)) },
       { icon: 'copy', title: 'העתקת הנתיב המלא', onSelect: () => copy(path) },

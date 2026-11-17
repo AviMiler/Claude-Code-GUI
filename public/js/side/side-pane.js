@@ -30,9 +30,10 @@ export function createSidePane({ open, isActive, rerender }) {
 
   function copyButton(entry) {
     return h('button', { type: 'button', class: 'side-copy', title: 'העתקת התשובה', onClick: async event => {
+      const button = event.currentTarget; // null after the await
       await copyText(entry.response);
       toast('התשובה הועתקה');
-      event.currentTarget.blur();
+      button.blur();
     } }, icon('copy'), 'העתקת תשובה');
   }
 

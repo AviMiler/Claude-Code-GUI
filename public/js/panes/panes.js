@@ -24,7 +24,7 @@ export function createPanes({ workspace, area, modelLabel, getSession, send, onC
   const refresh = () => host.refresh(getSession());
   host.register(createDetailsPane({ openPane: id => host.open(id), modelLabel, rerender: refresh }));
   host.register(createChangesPane({ send, rerender: refresh }));
-  host.register(createTerminalPane());
+  host.register(createTerminalPane({ rerender: refresh, openPane: id => host.open(id) }));
   host.register(createFilesPane({ rerender: refresh, openPane: id => host.open(id) }));
   host.register(createPlanPane());
   host.register(createTasksPane({ rerender: refresh }));

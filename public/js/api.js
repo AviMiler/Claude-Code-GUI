@@ -1,9 +1,13 @@
 /** Thin client for the server API. All user-facing errors come back as Error(message in Hebrew). */
+import { scheduleApi } from './schedule/schedule-api.js';
+
 async function request(method, url, body, { keepalive = false } = {}) {
   const response = await fetch(url, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    // X-Claude-Gui: a custom header the server requires on every API call; another site's page cannot send it (lib/http-utils.js).
+    headers: { 'X-Claude-Gui': '1', ...(body && { 'Content-Type': 'application/json' }) },
     body: body ? JSON.stringify(body) : undefined,
+    keepalive, // lets a save sent while the page unloads finish (files/auto-save.js)
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw Object.assign(new Error(data.error || `שגיאה ${response.status}`), { status: response.status });
@@ -53,8 +57,14 @@ export const api = {
   removeQueued: (id, queueId) => request('DELETE', `/api/sessions/${id}/queue/${queueId}`),
   resumeQueue: id => request('POST', `/api/sessions/${id}/queue/resume`),
   /** Runs a shell command in the session's folder (output arrives as `shell` events): source 'terminal' (the pane) or 'bang' (a `!` line). */
-  runShell: (id, command, source, shell) => request('POST', `/api/sessions/${id}/shell`, { command, source, ...(shell && { shell }) }),
-  stopShell: id => request('POST', `/api/sessions/${id}/shell/stop`),
+  runShell: (id, command, source, shell, terminalId) => request('POST', `/api/sessions/${id}/shell`, { command, source, ...(shell && { shell }), ...(terminalId && { terminalId }) }),
+  /** Stops the running command of a pane terminal (terminalId) or the composer's "!" command (none). */
+  stopShell: (id, terminalId) => request('POST', `/api/sessions/${id}/shell/stop`, terminalId ? { terminalId } : undefined),
+  /** The session's terminals the server keeps: { max, terminals: [{ id, cwd, running }] }. */
+  terminals: id => request('GET', `/api/sessions/${id}/terminals`),
+  /** A new terminal in the session's folder, or (folder) in that folder as the server resolves it: { terminal }. */
+  openTerminal: (id, folder) => request('POST', `/api/sessions/${id}/terminals`, folder ? { folder } : {}),
+  closeTerminal: (id, terminalId) => request('POST', `/api/sessions/${id}/terminals/${terminalId}/close`),
   /** The automatic check of the session's project folder (verify loop, run by the CLI's Stop hook). */
   verifyCheck: id => request('GET', `/api/sessions/${id}/verify-check`),
   saveVerifyCheck: (id, check) => request('PUT', `/api/sessions/${id}/verify-check`, check),
@@ -129,6 +139,7 @@ export const api = {
   searchCliConversations: query => request('POST', '/api/cli-conversations/search', { query }),
   files: (scope, q) => request('GET', `/api/files?${query({ ...scope, q })}`),
   git: scope => request('GET', `/api/git?${query(scope)}`),
+  schedule: scheduleApi(request), // local scheduled tasks (schedule/schedule-api.js)
   folders: (path, hidden) => request('GET', `/api/folders?${query({ path, hidden: hidden ? '1' : '' })}`),
   createFolder: (path, name) => request('POST', '/api/folders', { path, name }),
 };
