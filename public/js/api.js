@@ -36,6 +36,11 @@ export const api = {
   /** @returns {Promise<{worktreeRemoved:boolean, worktreeError?:string}>} archiving also removes a clean worktree */
   archive: id => request('POST', `/api/sessions/${id}/archive`),
   unarchive: id => request('POST', `/api/sessions/${id}/unarchive`),
+  /** The sidebar's custom groups (lib/sidebar-groups/): a change is also broadcast as a `sidebar-groups` event. */
+  createGroup: name => request('POST', '/api/sidebar/groups', { name }),
+  renameGroup: (id, name) => request('PATCH', `/api/sidebar/groups/${id}`, { name }),
+  deleteGroup: id => request('DELETE', `/api/sidebar/groups/${id}`),
+  reorderGroups: ids => request('POST', '/api/sidebar/groups/order', { ids }),
   /**
    * images / files: [{ data, mediaType?, name }] or [{ ref, name }] (see attachments.js forServer). delivery while the
    * session works: 'correct' joins the running turn, 'queue' (or nothing) waits for its end.
