@@ -281,6 +281,8 @@ _Last updated: 2026-11-16 — the D1–D16 files and the local-model batch (A–
 | `public/js/files/auto-save.js`, `file-saver.js` | 2026-11-17: Files-editor auto-save and the saver (one save in flight per file). |
 | `lib/file-backup.js` | 2026-11-17: backups of settings files in `<data>/backups/` (used through `safe-file.js` `backup`). |
 | `lib/schedule/`, `public/js/schedule/`, `public/css/schedule.css`, `test/schedule-*.test.js` | 2026-11-17: local scheduled tasks (store `data/schedules.json`, timer, runs, routes `/api/schedules`, the sidebar entry "מתוזמנות" and the task form). |
+| `lib/terminal/` (terminal tabs, 2026-11-17) | `terminals.js` (up to 8 per session), `shell-sentinel.js` (per-command cwd report), `terminal-folder.js` (guarded folder), `terminal-routes.js`, `terminal-tabs-routes.js`, `shell-guard.js`, `shell-run.js`, `shell-runs.js`, `shell-spec.js`. |
+| `public/js/terminal/` | 2026-11-17: `terminal-pane.js`, `terminal-tabs.js`, `tab-strip.js`, `open-in-terminal.js`; `public/js/files/tree-menu.js` ("פתיחה בטרמינל" on tree rows); tests `test/terminal-{folder,sentinel,tabs}.test.js`. |
 | `public/js/rewind/rewind-button.js` | D15: the hover button "חזרה לנקודה זו" (`dataset.rewindUuid`), shown for user items with `cliUuid` in the main thread. |
 | `public/js/rewind/rewind-menu.js` | D15: one document-level `contextmenu` listener on `[data-rewind-uuid]` (`enableRewind`, wired in `main-composer.js`); skips a text selection. |
 | `public/js/rewind/rewind-dialog.js` | D15: preview, the available choices (radios), consequence lines and warnings, confirm; also the entry point of `/rewind` (last rewindable message). |

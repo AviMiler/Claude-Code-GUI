@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-17 (terminal tabs)
+Merged into develop locally (not pushed); 282 tests pass; verify-agent GO with notes (API checks passed: separate cwd per tab, refused `cd` out, 403 outside, spoofed sentinel, junction, 9th terminal 409, header / Origin 403, close kills a running command).
+- Added: up to 8 terminals per session ("טרמינל N", numbers not reused), tabs with folder name and busy spinner, per-tab output / stop / scrollback cap, shared command history, a cwd kept per terminal through a random per-command sentinel (`lib/terminal/shell-sentinel.js`; kept only inside the session's folders, else `cwdRefused` and a toast); "פתיחה בטרמינל" in the Files-tree and file-path menus (`public/js/files/tree-menu.js`, `file-menu.js`; server resolves the folder, 403 outside). Files: `lib/terminal/` (`shell-guard`, `shell-run`, `shell-runs`, `shell-sentinel`, `shell-spec`, `terminal-folder`, `terminal-routes`, `terminal-tabs-routes`, `terminals`), `public/js/terminal/` (`terminal-pane`, `terminal-tabs`, `tab-strip`, `open-in-terminal`), `test/terminal-{folder,sentinel,tabs}.test.js`
+- Fixed: `lib/files/safe-path.js` `isInside` treated a folder named like `..cache` inside the session as outside
+- Known: in cmd a command ending in `rem`, an unbalanced quote or `^` swallows the sentinel (the cwd silently stays, no toast); terminals of a deleted session stay in memory until another is created; a single command can still reach outside paths while it runs
+- Not verified: the UI in a browser (tabs, toast, right-click), light / dark, RTL, the real CLI, the target machine
+
 ## 2026-11-17 (side-question tab, preview pane, API hardening, auto-save, backups, scheduled tasks)
 Verified: preview security review PASS with notes, browser verification GO, scheduled tasks PASS with notes, all findings fixed; a final browser pass found no unexpected 403; 262 unit tests pass.
 - Changed: `/btw` is the tab "שאלת צד" (`public/js/side/side-pane.js`, `public/css/side.css`; `public/js/side-question.js` deleted): thread, pending / error, copy, own input, history per session in browser memory; `/btw <q>` and Ctrl+; open it; a dot when an answer arrives hidden; in the split pane `/btw` is still an ordinary message. Ctrl+\ does nothing while a modal or popover is open; an open split closes with a toast below 1000 px (`public/js/split-guard.js`, `split-send.js`)
