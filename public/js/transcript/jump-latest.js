@@ -14,7 +14,7 @@ const AWAY_PX = 140;
 export function attachJumpLatest(scroller, messages) {
   let fresh = false;
   let lastHeight = scroller.scrollHeight;
-  const dot = h('span', { class: 'jump-dot', hidden: true, role: 'status', 'aria-label': 'הודעות חדשות', title: 'הודעות חדשות' });
+  const dot = h('span', { class: 'jump-dot', hidden: true, 'aria-hidden': 'true', title: 'הודעות חדשות' }); // the transcript is already aria-live: no second announcement
   const button = h('button', { type: 'button', class: 'jump-latest', hidden: true, title: 'קפיצה לסוף', 'aria-label': 'קפיצה לסוף' }, icon('arrow-down'), dot);
   const away = () => scroller.clientHeight > 0 && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > AWAY_PX;
   function update() {
@@ -22,6 +22,7 @@ export function attachJumpLatest(scroller, messages) {
     if (!isAway) fresh = false;
     button.hidden = !isAway;
     dot.hidden = !fresh;
+    button.setAttribute('aria-label', fresh ? 'קפיצה לסוף, יש הודעות חדשות' : 'קפיצה לסוף');
   }
   button.addEventListener('click', () => {
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
