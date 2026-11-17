@@ -30,7 +30,8 @@ const server = http.createServer(async (request, response) => {
     serveStatic(request, response);
   } catch (error) {
     // 501 = this Claude Code version lacks the feature; the browser shows a neutral note, so it is not a failure to log.
-    if (error.status !== 501) console.error('[server] request failed:', request.method, request.url, error);
+    // Client mistakes and refusals (4xx) are answered, not logged: a refused framed or header-less request is routine noise.
+    if (!error.status || error.status >= 500 && error.status !== 501) console.error('[server] request failed:', request.method, request.url, error);
     if (!response.headersSent) sendJson(response, error.status || 500, { error: error.message });
   }
 });

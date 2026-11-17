@@ -13,6 +13,7 @@ import { createTreeView } from './tree-view.js';
 import { createTreeFilter } from './tree-filter.js';
 import { createEditorView } from './editor-view.js';
 import { registerFilesOpener } from './open-in-files.js';
+import { openPreview } from '../preview/open-preview.js';
 
 /**
  * @param {{rerender:()=>void, openPane:(id:string)=>void}} deps rerender: draws the panes again (after a save, so the Changes
@@ -36,6 +37,7 @@ export function createFilesPane({ rerender, openPane }) {
     onSave: () => (autoSaveEnabled() ? autoSave.flush(session.id) : saver.save(session.id)),
     onOverwrite: () => saver.save(session.id, { overwrite: true }), onBack: () => leaveFile(), onBlur: () => autoSave.flush(session.id),
     onReload: () => openFile(state().file.path, { force: true }),
+    onPreview: previewSaved,
     onToggleAuto: on => { setAutoSaveEnabled(on); if (on) autoSave.flush(session.id); else autoSave.cancel(session.id); editor.sync(state()); },
     onCancel: async () => { if (await confirmDiscard()) { Object.assign(state(), { draft: state().file.content, error: null }); editor.show(state()); } },
   });
@@ -48,6 +50,14 @@ export function createFilesPane({ rerender, openPane }) {
     await autoSave.flush(session.id);
     if (!isDirty(state())) return true;
     return ask({ title: 'שינויים שלא נשמרו', text: 'הקובץ נערך ולא נשמר. להשליך את השינויים?', confirmLabel: 'השלכה', danger: true });
+  }
+
+  /** The Preview pane shows the file on disk: a pending edit is saved first, and nothing opens when that failed or conflicts. */
+  async function previewSaved() {
+    const id = session.id, st = state();
+    if (isDirty(st)) await (autoSaveEnabled() ? autoSave.flush(id) : saver.save(id));
+    if (session.id !== id || state() !== st || !st.file || st.error || st.conflict || isDirty(st)) return;
+    openPreview(id, st.file.path);
   }
 
   async function openFile(path, { force = false } = {}) {
