@@ -7,6 +7,7 @@ async function request(method, url, body, { keepalive = false } = {}) {
     // X-Claude-Gui: a custom header the server requires on every API call; another site's page cannot send it (lib/http-utils.js).
     headers: { 'X-Claude-Gui': '1', ...(body && { 'Content-Type': 'application/json' }) },
     body: body ? JSON.stringify(body) : undefined,
+    keepalive, // lets a save sent while the page unloads finish (files/auto-save.js)
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw Object.assign(new Error(data.error || `שגיאה ${response.status}`), { status: response.status });

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-17 (side-question tab, preview pane, API hardening, auto-save, backups, scheduled tasks)
+Verified: preview security review PASS with notes, browser verification GO, scheduled tasks PASS with notes, all findings fixed; a final browser pass found no unexpected 403; 262 unit tests pass.
+- Changed: `/btw` is the tab "שאלת צד" (`public/js/side/side-pane.js`, `public/css/side.css`; `public/js/side-question.js` deleted): thread, pending / error, copy, own input, history per session in browser memory; `/btw <q>` and Ctrl+; open it; a dot when an answer arrives hidden; in the split pane `/btw` is still an ordinary message. Ctrl+\ does nothing while a modal or popover is open; an open split closes with a toast below 1000 px (`public/js/split-guard.js`, `split-send.js`)
+- Added: preview pane (`lib/preview/`, `public/js/preview/`, `public/css/preview.css`): passive, sandboxed iframe, CSP on every response of `GET /api/sessions/:id/preview/<path>`, address box for localhost only. Limits: fonts and module scripts, PDF in the frame; Edge untested
+- Added (hardening): `X-Claude-Gui: 1` required on `/api/` (exempt: SSE, images, uploads, preview); `?cwd=` only for known folders (`lib/known-folders.js`); framed loads refused, `frame-ancestors 'none'` + `X-Frame-Options: DENY`; files with `nlink > 1` matching the data dir or `config.json` refused (`lib/files/own-files.js`); 4xx no longer logged as errors; `test/api-guard.test.js`, `test/own-files.test.js`
+- Added: Files-editor auto-save (`public/js/files/auto-save.js`, `file-saver.js`): default on, about 1 s after typing, on blur, before another file or session, on `visibilitychange` / `pagehide`; "שומר…" / "נשמר" / error; toggle "שמירה אוטומטית"; a conflict pauses it; Files-pane saves keep no backup
+- Changed: settings files written by the GUI (hook editor) are backed up to `<data>/backups/<path hash>/<timestamp>-<name>`, the last 10 (`lib/file-backup.js`, `backup` option of `lib/safe-file.js`), never beside the file
+- Added: local scheduled tasks (`lib/schedule/`, `public/js/schedule/`, `public/css/schedule.css`, `test/schedule-*.test.js`; "מתוזמנות" in the sidebar; `data/schedules.json`; routes `/api/schedules`; config `scheduleApprovalMinutes`, `scheduleStallMinutes`). Known gaps: a stored task with an unknown schedule kind loads active with no next run; real sleep / resume and the real CLI untested
+- Not verified: the preview in Edge, a real CLI with scheduled runs, real sleep / resume
+
 ## 2026-11-16 (pane drawer and attention dots, split-view focus model)
 Independent browser verification PASS with notes; 207 unit tests pass.
 - Changed: below the room limit the pane area is an overlay drawer (`public/js/panes/pane-drawer.js`) instead of hidden with a toast (backdrop, Esc / Ctrl+\ close, full width at 480 px, open state not saved, narrowing from inside opens it, widening docks it); Plan and Tasks buttons only with content, an attention dot (`pane-attention.js`); top bar: one icon per pane collapsing into a "חלוניות" menu (`pane-overflow.js`), pane lines removed from "עוד"
