@@ -32,16 +32,16 @@ function fakeClock(start) {
 }
 
 let fileCount = 0;
-function setup({ start = Date.UTC(2026, 10, 16, 8, 0), sessions = new Map(), approvalMs = 30 * MIN } = {}) {
+function setup({ start = Date.UTC(2026, 10, 16, 8, 0), sessions = new Map(), approvalMs = 30 * MIN, stallStopMs = 0, stopEnds = true } = {}) {
   const clock = fakeClock(start);
   const store = createScheduleStore({ file: path.join(dir, `s${++fileCount}.json`), now: clock.now });
   const launched = []; const stopped = [];
   const runner = createRunner({
     store, now: clock.now, timers: clock.timers, watchEveryMs: 1000,
-    launch: async task => { const id = `s${launched.length + 1}`; launched.push(task.id); sessions.set(id, { status: 'running', pending: 0, lastEventAt: clock.now(), outcome: 'done', errorText: '' }); return id; },
+    launch: async task => { const id = `s${launched.length + 1}`; launched.push(task.id); sessions.set(id, { status: 'running', pending: 0, lastEventAt: clock.now(), outcome: 'done', errorText: '', userTurns: 1 }); return id; },
     inspect: id => sessions.get(id) || null,
-    stop: async id => { stopped.push(id); Object.assign(sessions.get(id), { status: 'idle', outcome: null, pending: 0 }); },
-    settings: () => ({ approvalMs, stallMs: 10 * MIN }),
+    stop: async id => { stopped.push(id); if (stopEnds) Object.assign(sessions.get(id), { status: 'idle', outcome: null, pending: 0 }); },
+    settings: () => ({ approvalMs, stallMs: 10 * MIN, stallStopMs }),
   });
   return { clock, store, runner, launched, stopped, sessions };
 }
@@ -165,6 +165,7 @@ test('delete while running: no more writes, no timer left behind', async () => {
   Object.assign(env.sessions.get('s1'), { status: 'idle' });
   await env.clock.advance(5000);
   assert.equal(env.store.get(task.id), null);
+  assert.deepEqual(env.stopped, ['s1']); // its run is stopped through the normal stop path
   assert.equal(env.clock.pending(), 0);
 });
 
@@ -194,4 +195,88 @@ test('restart: live runs become errors; the store keeps at most 50 runs, newest 
   assert.equal(again.get(task.id).runs[0].outcome, 'error');
   fs.writeFileSync(file, '{broken');
   assert.equal(createScheduleStore({ file }).get(task.id).runs.length, MAX_RUNS); // a broken file falls back to its .bak
+});
+
+test('a stored task with a bad schedule is paused with an error; the others still run', async () => {
+  const env = setup({ start: local(8, 0) });
+  const bad = env.store.create({ ...daily(), schedule: { kind: 'cron', expression: 'bad bad' } });
+  const good = env.store.create(daily());
+  assert.doesNotThrow(() => env.runner.start());
+  assert.equal(env.store.get(bad.id).active, false);
+  assert.match(env.store.get(bad.id).error, /הושהתה/);
+  assert.equal(env.runner.nextRunOf(env.store.get(bad.id)), null);
+  env.store.update(bad.id, { active: true }); // active again by hand: the tick survives it and re-arms
+  await env.clock.advance(6 * MIN);
+  assert.deepEqual(env.launched, [good.id]);
+  assert.equal(env.store.get(bad.id).active, false);
+  assert.ok(env.clock.pending() > 0);
+});
+
+test('a clock that went back resets marks in the future', async () => {
+  const env = setup({ start: local(8, 0) });
+  const task = env.store.create(daily());
+  env.store.update(task.id, { checkedAt: local(8, 0) + DAY, since: local(8, 0) + DAY });
+  env.runner.start();
+  assert.equal(env.store.get(task.id).checkedAt, local(8, 0));
+  await env.clock.advance(6 * MIN);
+  assert.equal(env.launched.length, 1);
+});
+
+test('skips in a row collapse into one entry with a count', async () => {
+  const env = setup({ start: local(8, 0) });
+  const task = env.store.create({ ...daily(), schedule: { kind: 'cron', expression: '* * * * *' } });
+  env.runner.start();
+  await env.clock.advance(MIN + 10);
+  await env.clock.advance(5 * MIN);
+  const runs = env.store.get(task.id).runs;
+  assert.equal(runs.length, 2);
+  assert.equal(runs[0].outcome, 'skipped');
+  assert.equal(runs[0].count, 5);
+  assert.equal(runs[1].outcome, 'running');
+});
+
+test('a turn that ends by itself after the stop request keeps its real outcome', async () => {
+  const env = setup({ start: local(8, 0), approvalMs: MIN, stopEnds: false });
+  const task = env.store.create(daily());
+  env.runner.start();
+  await env.clock.advance(5 * MIN);
+  const session = env.sessions.get('s1');
+  session.pending = 1;
+  await env.clock.advance(MIN + 2000);
+  assert.deepEqual(env.stopped, ['s1']);
+  Object.assign(session, { status: "idle", outcome: "done", pending: 0 }); // its result came before the stop landed
+  await env.clock.advance(2000);
+  assert.equal(env.store.get(task.id).runs[0].outcome, 'done');
+});
+
+test('a stalled scheduled run is stopped after stallStopMs; a taken-over one is not', async () => {
+  const env = setup({ start: local(8, 0), stallStopMs: 15 * MIN });
+  const task = env.store.create(daily());
+  env.runner.start();
+  await env.clock.advance(5 * MIN);
+  await env.clock.advance(14 * MIN);
+  assert.deepEqual(env.stopped, []);
+  await env.clock.advance(2 * MIN);
+  assert.deepEqual(env.stopped, ['s1']);
+  await env.clock.advance(2000);
+  assert.equal(env.store.get(task.id).runs[0].outcome, 'stalled');
+  assert.equal(env.store.get(task.id).runs[0].reason, 'נעצרה: תקועה');
+  env.runner.runNow(env.store.get(task.id));
+  await env.clock.advance(10);
+  env.sessions.get('s2').userTurns = 2; // a person wrote into the session
+  await env.clock.advance(40 * MIN);
+  assert.deepEqual(env.stopped, ['s1']);
+});
+
+test('answering a prompt counts as taking the run over', async () => {
+  const env = setup({ start: local(8, 0), stallStopMs: 15 * MIN });
+  env.store.create(daily());
+  env.runner.start();
+  await env.clock.advance(5 * MIN);
+  const session = env.sessions.get('s1');
+  session.pending = 1;
+  await env.clock.advance(2000);
+  session.pending = 0;
+  await env.clock.advance(40 * MIN);
+  assert.deepEqual(env.stopped, []);
 });

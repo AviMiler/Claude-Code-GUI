@@ -36,7 +36,9 @@ export function scheduleForm(task, { api, toast, capabilities, folder, onDone })
     const saveButton = event.currentTarget; // currentTarget is gone after the first await
     const body = { name: name.value, prompt: prompt.value, folder: folderInput.value.trim(), mode: mode.value, model: model.value.trim(), effort: effort.value, active: active.checked, schedule: schedule.value() };
     try {
-      if (mode.value !== draft.mode || !task) await confirmMode(mode.value); // the same warning as switching a session to it
+      // The same warning as switching a session to it; again when what an unattended bypass run does or where has changed.
+      const changedWork = body.prompt.trim() !== draft.prompt || body.folder !== draft.folder;
+      if (!task || mode.value !== draft.mode || (mode.value === 'bypassPermissions' && changedWork)) await confirmMode(mode.value);
       saveButton.disabled = true;
       if (task) await api.schedule.update(task.id, body); else await api.schedule.create(body);
       toast('המשימה נשמרה');
