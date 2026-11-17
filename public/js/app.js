@@ -4,6 +4,7 @@ import { state, activeSession, getCommands, peekModels, modelLabel } from './sta
 import { createThread } from './thread.js';
 import { createMainComposer } from './main-composer.js';
 import { renderSidebar } from './sidebar.js';
+import { markSeen } from './sidebar/unread.js';
 import { renderTopbar, renderWelcome } from './chrome.js';
 import { renderPromptCards } from './prompt-cards.js';
 import { createActions } from './actions.js';
@@ -101,7 +102,7 @@ function openFromSidebar(id, hit) {
 function selectSession(id) {
   state.activeId = state.sessions.has(id) ? id : null;
   rememberActive(state.activeId);
-  state.unread.delete(id);
+  markSeen(id);
   searchHits.clear();
   thread.show(activeSession());
   refresh();

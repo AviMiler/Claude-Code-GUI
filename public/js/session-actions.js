@@ -2,6 +2,7 @@
 import { api } from './api.js';
 import { copyText, downloadText, folderName } from './dom.js';
 import { state, activeSession, rememberFolder } from './state.js';
+import { setUnread } from './sidebar/unread.js';
 import { exportMarkdown } from './render-items.js';
 import { toast, ask } from './ui.js';
 import { worktreeChoice } from './worktree/worktree-toggle.js';
@@ -59,6 +60,14 @@ export function createSessionActions(view, report) {
     /** Pins a session to the top of the sidebar (or unpins it). */
     setPinned(id, pinned) {
       api.updateSession(id, { pinned }).catch(report);
+    },
+    /** Moves a session into a sidebar group (null: out of any group). */
+    setGroup(id, groupId) {
+      api.updateSession(id, { groupId }).catch(report);
+    },
+    /** "Mark as read / unread" of the sidebar menu. */
+    setUnread(id, unread) {
+      setUnread(id, unread).catch(report);
     },
     /** Deletes a session (the open one by default); one in a worktree is also asked about its worktree folder. */
     async remove(id = state.activeId) {

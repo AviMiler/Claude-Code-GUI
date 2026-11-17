@@ -1,0 +1,21 @@
+/* Sidebar groups: the view bar (grouping, sort, new group), the foldable section titles, the unread row. Logical properties: RTL-safe. */
+.view-bar { display: flex; gap: 4px; align-items: center; margin: 4px 10px 0; }
+.view-select { flex: 1; min-width: 0; padding: 3px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); font-size: 12px; }
+.view-select:hover { color: var(--text); }
+.view-bar .icon-button { flex: none; width: 26px; height: 26px; }
+
+.section-title { position: relative; display: flex; align-items: center; margin: 10px 4px 2px; }
+.section-toggle { display: flex; flex: 1; gap: 4px; align-items: center; min-width: 0; padding: 3px 6px; border: 0; border-radius: 6px; background: none;
+  color: var(--faint); font-size: 12px; font-weight: 600; text-align: start; }
+.section-toggle:hover { background: var(--surface-3); color: var(--text); }
+.section-toggle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.section-toggle em { margin-inline-start: auto; font-style: normal; font-weight: 400; }
+.section-chevron { width: 12px; height: 12px; flex: none; transition: transform .15s; }
+.section-toggle.folded .section-chevron { transform: rotate(-90deg); }
+[dir="rtl"] .section-toggle.folded .section-chevron { transform: rotate(90deg); }
+.section-more { position: static; opacity: 0; margin-inline-start: 2px; }
+.section-title:hover .section-more, .section-more:focus-visible { opacity: 1; }
+
+.session-item.unread .session-row strong { font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .section-chevron { transition: none; } }
+.dot.error { background: var(--danger, #d33); }
