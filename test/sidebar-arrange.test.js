@@ -48,6 +48,20 @@ describe('arrange', () => {
     assert.deepEqual(ids(sections[0]).sort(), ['a', 'b']);
   });
 
+  test('completed unpinned sessions go to a last "completed" section in every grouping; pinned and group members stay', async () => {
+    const { arrange } = await load();
+    const list = [session('a'), session('done', { completed: true }), session('pin', { pinned: true, completed: true }), session('g', { groupId: 'g1', completed: true })];
+    for (const grouping of ['date', 'project', 'none']) {
+      const sections = arrange(list, { grouping, sort: 'activity', groups });
+      assert.equal(sections.at(-1).id, 'completed');
+      assert.deepEqual(ids(sections.at(-1)), ['done']);
+      assert.deepEqual(ids(sections.find(section => section.id === 'pinned')), ['pin']);
+      assert.deepEqual(ids(sections.find(section => section.id === 'g:g1')), ['g']);
+      assert.ok(sections.slice(0, -1).every(section => !ids(section).includes('done')));
+    }
+    assert.ok(!arrange([session('a')], { grouping: 'none', sort: 'activity', groups: [] }).some(section => section.id === 'completed'));
+  });
+
   test('by date: today and older are separate sections', async () => {
     const { arrange } = await load();
     const list = [session('new'), session('old', { updatedAt: now - 90 * 86400000, createdAt: now - 90 * 86400000 })];

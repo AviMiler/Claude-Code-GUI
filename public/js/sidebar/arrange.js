@@ -70,8 +70,11 @@ export function arrange(sessions, { grouping, sort, groups, hideEmptyGroups = fa
     const members = unpinned.filter(session => session.groupId === group.id);
     if (members.length || !hideEmptyGroups) sections.push({ id: `g:${group.id}`, title: group.name, group, sessions: members });
   }
-  const rest = unpinned.filter(session => !known.has(session.groupId));
-  if (grouping === 'project') return [...sections, ...byProject(rest, sort)];
-  if (grouping === 'none') return [...sections, ...(rest.length ? [{ id: 'all', title: groups.length ? 'ללא קבוצה' : 'סשנים', sessions: rest }] : [])];
-  return [...sections, ...byDate(rest, sort)];
+  const ungrouped = unpinned.filter(session => !known.has(session.groupId));
+  const done = ungrouped.filter(session => session.completed); // a completed session sinks to the last section (date / project / flat views)
+  const rest = ungrouped.filter(session => !session.completed);
+  const tail = done.length ? [{ id: 'completed', title: 'הושלמו', sessions: done }] : [];
+  if (grouping === 'project') return [...sections, ...byProject(rest, sort), ...tail];
+  if (grouping === 'none') return [...sections, ...(rest.length ? [{ id: 'all', title: groups.length ? 'ללא קבוצה' : 'סשנים', sessions: rest }] : []), ...tail];
+  return [...sections, ...byDate(rest, sort), ...tail];
 }

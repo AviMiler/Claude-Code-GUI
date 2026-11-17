@@ -27,6 +27,7 @@ function entriesFor(session) {
     live && { icon: 'folder', title: 'העבר לקבוצה', onSelect: () => openMoveMenu(session, actions) },
     live && (isUnread(session, state.unread) ? { icon: 'check', title: 'סימון כנקרא', onSelect: () => actions.setUnread(session.id, false) }
       : { icon: 'eye', title: 'סימון כלא נקרא', onSelect: () => actions.setUnread(session.id, true) }),
+    live && { icon: 'check-circle', title: session.completed ? 'ביטול סימון הושלם' : 'סימון כהושלם', onSelect: () => actions.setCompleted(session.id, !session.completed) },
     live && session.claudeSessionId && { icon: 'branch', title: 'ענף חדש מהשיחה', onSelect: () => actions.fork(session.id) },
     { icon: 'copy', title: 'העתקת נתיב התיקייה', onSelect: () => copyPath(projectFolder(session)) },
     session.worktree && { icon: 'copy', title: 'העתקת נתיב ה-worktree', onSelect: () => copyPath(session.worktree.path) },

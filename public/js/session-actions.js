@@ -61,6 +61,10 @@ export function createSessionActions(view, report) {
     setPinned(id, pinned) {
       api.updateSession(id, { pinned }).catch(report);
     },
+    /** "Mark as done" / "unmark" of the sidebar menu. */
+    setCompleted(id, completed) {
+      api.updateSession(id, { completed }).catch(report);
+    },
     /** Moves a session into a sidebar group (null: out of any group). */
     setGroup(id, groupId) {
       api.updateSession(id, { groupId }).catch(report);

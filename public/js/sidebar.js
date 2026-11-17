@@ -69,12 +69,12 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
         type: 'button', class: 'session-row', title: session.cwd, 'data-unread': mark ? 'true' : null,
         onClick: event => (event.altKey && onSplit && !archive ? onSplit(session.id) : onSelect(session.id, content ? { indexes: content.indexes, query } : undefined)),
       }, statusDot(status),
-      h('span', null, h('strong', { dir: 'auto' }, colorDot(session), session.scheduled ? icon('clock', 'schedule-badge') : null, session.name), placeLine(session, section.id.startsWith('p:')),
+      h('span', null, h('strong', { dir: 'auto' }, colorDot(session), session.scheduled ? icon('clock', 'schedule-badge') : null, session.completed ? icon('check-circle', 'done-badge') : null, session.name), placeLine(session, section.id.startsWith('p:')),
         content ? snippetOf(content) : null));
       const pin = archive ? null : h('button', { type: 'button', class: `pin-button${session.pinned ? ' pinned' : ''}`,
         title: session.pinned ? 'ביטול הצמדה' : 'הצמדה למעלה', 'aria-pressed': String(Boolean(session.pinned)),
         onClick: () => actions.setPinned(session.id, !session.pinned) }, icon('pin'));
-      nodes.push(h('div', { class: `session-item${mark ? ' unread' : ''}`, dataset: { sessionId: session.id } }, row, sessionMenuButton(session), restoreButton(session, actions), pin));
+      nodes.push(h('div', { class: `session-item${mark ? ' unread' : ''}${session.completed ? ' completed' : ''}`, dataset: { sessionId: session.id } }, row, sessionMenuButton(session), restoreButton(session, actions), pin));
     }
   }
   if (!visible.length) {

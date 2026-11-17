@@ -19,3 +19,8 @@
 .session-item.unread .session-row strong { font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .section-chevron { transition: none; } }
 .dot.error { background: var(--danger, #d33); }
+
+/* a session marked as done: muted, with a check beside the name */
+.session-item.completed .session-row { opacity: .6; }
+.session-item.completed:hover .session-row { opacity: .9; }
+.done-badge { width: 13px; height: 13px; margin-inline-end: 4px; vertical-align: -2px; color: var(--accent); }
