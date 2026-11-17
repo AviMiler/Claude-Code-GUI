@@ -17,7 +17,7 @@ import { crab } from './crab.js';
 import { createSearchHits } from './search-hits.js';
 import { enableFileLinks } from './file-viewer.js';
 import { createModelHealth } from './model-health.js';
-import { createSplitView } from './split-view.js'; import { createSplitFocus, markSessionRows } from './split-focus.js';
+import { createSplitView } from './split-view.js'; import { createFocusedPane } from './split-focused.js'; import { NEW_DRAFT } from './composer-drafts.js'; import { createSplitFocus, markSessionRows } from './split-focus.js';
 import { prefetchCatalog } from './warm-up.js';
 import { createPanes } from './panes/panes.js';
 import { bindShortcuts } from './shortcuts/bind-shortcuts.js'; import { extraShortcuts } from './shortcuts/extra-actions.js'; import { chooseDraftFolder } from './folder-defaults.js';
@@ -40,19 +40,19 @@ const searchHits = createSearchHits({ scroller: els.scroller, messages: els.mess
 enableFileLinks(els.messages, () => state.activeId);
 showLiveShells(els);
 const modelHealth = createModelHealth(byId('model-health'));
-const focus = createSplitFocus({ app: els.app, main: document.querySelector('.main'), pane: byId('split-pane'), onFocus: () => markSessionRows(els.list, marks()) });
+const focus = createSplitFocus({ app: els.app, main: document.querySelector('.main'), pane: byId('split-pane'), onFocus: () => { markSessionRows(els.list, marks()); refresh(); } }); // the side panes (side question, changes...) follow the focused pane's session
 const marks = () => focus.marks(state.activeId, split.sessionId()); // the focused pane's session and the other visible one
-const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh(), focus });
+const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh(), focus, askSide: (id, question) => panes.side.ask(id, question), focusSide: id => panes.side.focusInput(id), openPanel: id => actions.openPanel(id) });
 const itemSync = createItemSync({ viewed: () => [state.activeId, split.sessionId()], threadsFor: id => [id === state.activeId ? thread : null, split.threadFor(id)].filter(Boolean) });
 const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), modelLabel,
-  getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
+  getSession: () => pane.session(), send: text => pane.actions().send(text), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => panes.side.ask(sessionId, question), composerText: () => composer.textarea.value, openInSplit: id => split.open(id) });
 const runCommand = createCommandRunner(actions);
 
 const composer = createMainComposer(els.composerArea, { actions, runCommand });
-enableFileMenus({ insert: text => composer.insert(text) });
+enableFileMenus({ insert: text => composer.insert(text) }); const pane = createFocusedPane({ focus, split, main: { composer, actions, area: els.composerArea, session: activeSession } }); // what the shortcuts act on
 
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {
@@ -81,7 +81,7 @@ function refresh() {
   }
   const settings = session || state.draft;
   composer.update({ mode: settings.mode, modelLabel: modelLabel(settings), fallbackModel: settings.fallbackModel, modelSwitchable: peekModels()?.switchable ?? true, isRunning: session?.status === 'running',
-    contextPercent: contextInfo(session, refresh), hasSession: Boolean(session), queue: session?.queue || [] });
+    contextPercent: contextInfo(session, refresh), hasSession: Boolean(session), queue: session?.queue || [], draftKey: session?.id ?? NEW_DRAFT });
   const cardsBefore = els.cards.childElementCount;
   renderPromptCards(els.cards, session?.pendingPermissions || [], (prompt, answer) => actions.answerPermission(prompt, answer));
   if (els.cards.childElementCount > cardsBefore) thread.scrollToEnd(); // a new request shrinks the thread; keep its end visible
@@ -133,11 +133,11 @@ els.search.addEventListener('keydown', event => {
 });
 document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => actions.openPanel(button.dataset.panel)));
 bindShortcuts({
-  slashMenu: () => composer.insert('/', { replace: !composer.textarea.value }), newSession: () => selectSession(null),
+  slashMenu: () => { const box = pane.composer(); box.insert('/', { replace: !box.textarea.value }); }, newSession: () => selectSession(null),
   toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(),
   toggleChanges: () => panes.toggle('changes'), toggleTerminal: () => panes.toggle('terminal'), closePane: () => panes.closeFocused(), closeFocusedPane: () => focus.closeFocused({ splitId: split.sessionId(), closeSplit: split.toggle, selectMain: selectSession }),
   cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
-  stop: () => actions.stop(), isRunning: () => activeSession()?.status === 'running',
-  ...extraShortcuts({ actions, side: id => panes.side.focusInput(id) }),
+  stop: () => pane.actions().stop(), isRunning: () => pane.session()?.status === 'running',
+  ...extraShortcuts({ pane, side: id => panes.side.focusInput(id) }),
 });
 els.scroller.addEventListener('scroll', () => els.topbar.classList.toggle('scrolled', els.scroller.scrollTop > 4));

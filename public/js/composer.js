@@ -98,8 +98,7 @@ export function createComposer(root, handlers) {
   modeChip.addEventListener('click', () => handlers.onModeMenu(modeChip));
   let modelSwitchable = true;
   modelChip.addEventListener('click', () => { if (modelSwitchable) handlers.onModelMenu(modelChip); });
-  ring.addEventListener('click', () => handlers.onContext());
-  autosize();
+  ring.addEventListener('click', () => handlers.onContext()); autosize();
 
   return {
     textarea,

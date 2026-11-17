@@ -1,9 +1,10 @@
 /** Page-wide shortcut actions that act on the composer's chips and the sidebar's session list. */
-import { state, activeSession } from '../state.js';
+import { state } from '../state.js';
 import { showDropdown, closeMenus } from '../popover.js';
 import { EFFORT_LEVELS } from '../modes.js';
 
-const chips = () => document.querySelectorAll('#composer-area .composer-chip'); // [permission mode, model]
+let pane; // the focused pane (split-focused.js)
+const chips = () => pane.area().querySelectorAll('.composer-chip'); // [permission mode, model] of the focused pane's composer
 
 /** Opens a chip's menu; pressing again while a menu is open closes it. */
 function openChip(index) {
@@ -13,13 +14,13 @@ function openChip(index) {
 }
 
 /** The effort levels as their own menu under the model chip. */
-function openEffort(actions) {
+function openEffort() {
   const anchor = chips()[1];
   if (document.querySelector('.popover')) return closeMenus();
   if (!anchor) return;
-  const current = (activeSession() || state.draft).effort || '';
+  const current = (pane.session() || state.draft).effort || '';
   showDropdown(anchor, [{ section: 'מאמץ (effort)' }, ...EFFORT_LEVELS.map(level => ({
-    icon: 'sliders', title: level.label, checked: level.value === current, onSelect: () => actions.trySettings({ effort: level.value }),
+    icon: 'sliders', title: level.label, checked: level.value === current, onSelect: () => pane.actions().trySettings({ effort: level.value }),
   }))]);
 }
 
@@ -33,13 +34,14 @@ function stepSession(step) {
 }
 
 /**
- * @param {{actions:object, side:(sessionId:string)=>void}} deps actions.js; side opens the side question tab of a session
+ * @param {{pane:import('../split-focused.js').createFocusedPane, side:(sessionId:string)=>void}} deps the focused pane (its actions and session); side opens the side question tab of a session
  * @returns {{modeMenu, modelMenu, effortMenu, nextSession, prevSession, sideQuestion}} actions named in shortcut-list.js
  */
-export function extraShortcuts({ actions, side }) {
+export function extraShortcuts({ pane: focused, side }) {
+  pane = focused;
   return {
-    modeMenu: () => openChip(0), modelMenu: () => openChip(1), effortMenu: () => openEffort(actions),
+    modeMenu: () => openChip(0), modelMenu: () => openChip(1), effortMenu: () => openEffort(),
     nextSession: () => stepSession(1), prevSession: () => stepSession(-1),
-    sideQuestion: () => { const session = activeSession(); if (session) side(session.id); },
+    sideQuestion: () => { const session = pane.session(); if (session) side(session.id); },
   };
 }

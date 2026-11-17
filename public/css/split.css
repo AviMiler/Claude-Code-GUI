@@ -15,15 +15,8 @@
 .split-pane .thread[hidden] { display: none; }
 .split-pane .thread-column { width: 100%; padding: 14px 18px 18px; }
 .split-composer-area { padding: 0 14px 12px; }
-.split-composer { display: flex; gap: 6px; align-items: flex-end; padding: 6px 6px 6px 10px; padding-inline: 10px 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
-  background: var(--surface); box-shadow: var(--shadow-md, none); }
-.split-composer:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--border-strong)); }
-.split-composer textarea { flex: 1; min-height: 34px; max-height: 160px; padding: 7px 2px; border: 0; background: none; color: var(--text); font: inherit; resize: vertical; outline: none; }
-.split-composer button { display: grid; flex: none; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 10px; }
-.split-composer .send-button { background: var(--accent); color: var(--on-accent); }
-.split-composer .stop-button { background: var(--surface-3); color: var(--text); }
-.split-composer button[hidden] { display: none; }
-.split-composer textarea:disabled { opacity: .5; }
+.split-pane .composer-area { width: 100%; padding: 0; }
+.split-pane .composer-hint { display: none; }
 
 /* Focus (split-focus.js): the focused pane has an accent line on top, the other is slightly dimmed (text stays readable). */
 .app.split .chat, .app.split .split-pane { border-top: 2px solid transparent; }
