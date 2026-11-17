@@ -1,5 +1,10 @@
 # Decisions
 
+## [2026-11-17] Sidebar groups and unread are server state; a non-boolean `pinned` is rejected
+**Decision:** User groups (max 50, names up to 60 characters, duplicates 409, no drag and drop) live in `sidebar-groups.json` in the data dir (safe-file with `.bak`), sent in `/api/state` and by an SSE event; sessions carry `pinOrder`, `groupId` (must exist), `markedUnread` and `completed`; the view (grouping, sort, collapsed headers) stays per browser in `claude-gui.sidebar-view`. Unread moved from browser memory to the server (`markedUnread`). A non-boolean `pinned` in PATCH is now 400 instead of ignored.
+**Alternatives considered:** Groups in localStorage (not shared between tabs); drag and drop (declined, more code); keeping unread in the browser (lost on reload, differs per tab).
+**Why:** Claude Desktop sidebar parity, requested by the user. Accepted: deleting a group clears `groupId` on its sessions and never deletes them; `completed` exists with no UI yet. Not verified: a live update in a second tab, the unread dot.
+
 ## [2026-11-17] Terminal tabs keep a per-terminal cwd through a sentinel, still without a PTY
 **Decision:** Up to 8 terminals per session; each keeps its cwd by a random per-command sentinel (`lib/terminal/shell-sentinel.js`) that reports the final folder, accepted only when it is a real directory inside the session's folders (realpath, junctions refused); otherwise `cwdRefused` and a toast. The shell is still a fresh process per command; no PTY (the zero-dependency rule, user decision 2026-11-17).
 **Alternatives considered:** A persistent shell with a sentinel for the end of each command (rejected 2026-10-27); a PTY dependency; a cwd taken from the request (ignored by the server).
