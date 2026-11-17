@@ -1,6 +1,7 @@
 /** Inline SVG icons (stroke style, 24x24). Kept as strings so there is nothing to download. */
 const PATHS = {
   plus: '<path d="M12 5v14M5 12h14"/>',
+  'arrow-down': '<path d="M12 5v14M5 12l7 7 7-7"/>',
   'arrow-up': '<path d="M12 19V5M5 12l7-7 7 7"/>',
   stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/>',
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',

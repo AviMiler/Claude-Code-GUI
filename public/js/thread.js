@@ -12,6 +12,7 @@ import { countToolCalls } from './turn-stats.js';
 import { openTool } from './open-tool.js';
 import { enableMessageCopy } from './message-copy.js';
 import { createTranscriptView } from './transcript/transcript-view.js';
+import { attachJumpLatest } from './transcript/jump-latest.js';
 
 const NEAR_BOTTOM_PX = 140;
 
@@ -30,6 +31,7 @@ export function createThread({ scroller, messages, onOpenGit }) {
   const view = createTranscriptView(messages);
   enableCodeCopy(messages, copyText);
   enableMessageCopy(messages);
+  attachJumpLatest(scroller, messages); // the "jump to latest" button (main and split transcripts)
 
   const isNearBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < NEAR_BOTTOM_PX;
   const scrollToEnd = () => { scroller.scrollTop = scroller.scrollHeight; };

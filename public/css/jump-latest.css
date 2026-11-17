@@ -1,0 +1,12 @@
+/* "Jump to latest": a zero-height sticky strip at the bottom of the transcript scroller holds the round button */
+.jump-latest-anchor { position: sticky; bottom: 0; height: 0; z-index: 5; display: flex; justify-content: center; pointer-events: none; }
+.jump-latest { position: absolute; bottom: 14px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-md); cursor: pointer; pointer-events: auto;
+  transition: background .15s; }
+.jump-latest[hidden] { display: none; }
+.jump-latest:hover { background: var(--surface-2); }
+.jump-latest:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.jump-latest svg { width: 18px; height: 18px; }
+.jump-dot { position: absolute; top: 2px; inset-inline-end: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); }
+.jump-dot[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .jump-latest { transition: none; } }
