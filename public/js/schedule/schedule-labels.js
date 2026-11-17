@@ -3,7 +3,7 @@ import { badge } from '../panels/kit.js';
 
 const OUTCOMES = {
   starting: ['מתחיל…', 'info'], running: ['רץ עכשיו', 'info'], waiting: ['ממתין לאישור', 'warning'], done: ['הסתיים', 'success'],
-  error: ['נכשל', 'danger'], stopped: ['נעצר', 'warning'], 'no-approval': ['נעצר: אין אישור', 'danger'], skipped: ['דולג', ''],
+  error: ['נכשל', 'danger'], stopped: ['נעצר', 'warning'], 'no-approval': ['נעצר: אין אישור', 'danger'], stalled: ['נעצרה: תקועה', 'danger'], skipped: ['דולג', ''],
 };
 
 /** @param {{outcome:string, catchUp?:boolean, manual?:boolean, stalled?:boolean}} run @returns {HTMLElement[]} badges */

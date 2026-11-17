@@ -33,7 +33,7 @@ export function renderSchedulePanel(body, context) {
     const next = task.active && task.nextRunAt ? `הבאה: ${formatTime(task.nextRunAt)}` : task.active ? 'אין ריצה מתוזמנת' : 'מושהית';
     return row({
       title: h('span', { dir: 'auto' }, task.name),
-      badges: [badge(task.scheduleText, 'info'), ...(task.running ? [badge('רצה עכשיו', 'accent')] : []), ...(task.lastRun ? runBadges(task.lastRun) : [])],
+      badges: [badge(task.scheduleText, 'info'), ...(task.error ? [badge(task.error, 'danger')] : []), ...(task.running ? [badge('רצה עכשיו', 'accent')] : []), ...(task.lastRun ? runBadges(task.lastRun) : [])],
       sub: [next, task.lastRun ? `אחרונה: ${formatTime(task.lastRun.startedAt)}` : 'עדיין לא רצה', task.folder].join(' · '),
       actions: [
         h('label', { class: 'schedule-toggle' }, toggle, task.active ? 'פעילה' : 'מושהית'),
@@ -41,7 +41,8 @@ export function renderSchedulePanel(body, context) {
         button('היסטוריה', () => { formHolder.replaceChildren(); showHistory(historyHolder, task, context); }, { iconName: 'history' }),
         button('עריכה', () => edit(task), { iconName: 'pencil' }),
         button('מחיקה', async () => {
-          if (!await context.ask({ title: `למחוק את המשימה "${task.name}"?`, text: 'ההיסטוריה שלה תימחק. סשנים שכבר נוצרו ממנה נשארים.', confirmLabel: 'מחיקה', danger: true })) return;
+          const title = task.running ? `המשימה "${task.name}" רצה עכשיו: למחוק ולעצור את הריצה?` : `למחוק את המשימה "${task.name}"?`;
+          if (!await context.ask({ title, text: 'ההיסטוריה שלה תימחק. סשנים שכבר נוצרו ממנה נשארים.', confirmLabel: task.running ? 'מחיקה ועצירה' : 'מחיקה', danger: true })) return;
           await act(() => api.schedule.remove(task.id))();
           historyHolder.replaceChildren();
         }, { variant: 'danger', iconName: 'trash' }),
