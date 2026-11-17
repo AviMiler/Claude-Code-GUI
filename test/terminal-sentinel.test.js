@@ -99,15 +99,34 @@ test('real shell: a drive change reports the other drive', { skip: !isWin }, asy
 });
 
 test('folder state: a deleted folder falls back to the nearest one that exists, and only real directories are learned', () => {
-  const deep = path.join(scratch, 'one', 'two');
+  const root = fs.realpathSync.native(scratch);
+  const session = { id: 's', cwd: root };
+  const deep = path.join(root, 'one', 'two');
   fs.mkdirSync(deep, { recursive: true });
   const terminal = { id: 't', cwd: deep };
-  assert.equal(startDirectory(terminal, scratch), deep);
-  fs.rmSync(path.join(scratch, 'one'), { recursive: true });
-  assert.equal(startDirectory(terminal, scratch), scratch);
-  assert.equal(learnCwd(terminal, path.join(scratch, 'one')), false);
-  assert.equal(learnCwd(terminal, 'relative'), false);
-  assert.equal(learnCwd(terminal, 42), false);
-  assert.equal(learnCwd(terminal, scratch), true);
-  assert.equal(terminal.cwd, scratch);
+  assert.equal(startDirectory(terminal, session), deep);
+  fs.rmSync(path.join(root, 'one'), { recursive: true });
+  assert.equal(startDirectory(terminal, session), root);
+  assert.equal(learnCwd(terminal, path.join(root, 'one'), session), false);
+  assert.equal(learnCwd(terminal, 'relative', session), false);
+  assert.equal(learnCwd(terminal, 42, session), false);
+  assert.equal(learnCwd(terminal, root, session), true);
+  assert.equal(terminal.cwd, root);
+});
+
+test('folder guard: a reported folder outside the session folders is refused, and a stale one is pulled back', () => {
+  const root = fs.realpathSync.native(scratch);
+  const project = path.join(root, 'guarded');
+  const sub = path.join(project, 'sub');
+  fs.mkdirSync(sub, { recursive: true });
+  fs.mkdirSync(path.join(root, 'guarded-evil'));
+  const session = { id: 's', cwd: project };
+  const terminal = { id: 't', cwd: sub };
+  assert.equal(learnCwd(terminal, root, session), false); // cd ..
+  assert.equal(learnCwd(terminal, path.join(root, 'guarded-evil'), session), false); // sibling with the same prefix
+  assert.equal(terminal.cwd, sub);
+  assert.equal(learnCwd(terminal, project, session), true);
+  terminal.cwd = path.join(root, 'guarded-evil'); // a terminal that somehow sits outside restarts in the session folder
+  assert.equal(startDirectory(terminal, session), project);
+  assert.equal(startDirectory({ id: 'u', cwd: path.join(root, 'nowhere') }, session), project);
 });

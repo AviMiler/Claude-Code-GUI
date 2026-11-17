@@ -6,7 +6,7 @@ const MAX_RUNS = 50; // per terminal
 const MAX_CHARS = 400000; // output kept per terminal: the oldest finished commands go first
 
 /** @typedef {{runId:string, sessionId:string, terminalId?:string, cwd?:string, command:string, source:'terminal'|'bang', stdout:string, stderr:string,
- *   running:boolean, exitCode?:number|null, stopped?:boolean, truncated?:boolean, error?:string|null}} ShellRun */
+ *   running:boolean, cwdRefused?:boolean, exitCode?:number|null, stopped?:boolean, truncated?:boolean, error?:string|null}} ShellRun */
 
 const bySession = new Map(); // sessionId -> ShellRun[] (oldest first)
 const listeners = new Set();
@@ -61,7 +61,7 @@ export function applyShellEvent(event) {
   const run = runs.find(item => item.runId === event.runId);
   if (!run) return; // a command that started before this page was opened
   if (event.phase === 'out') { run[event.stream] += event.text; trim(runs, run.terminalId); }
-  else Object.assign(run, { cwd: event.cwd ?? run.cwd, running: false, exitCode: event.exitCode, stopped: event.stopped, truncated: event.truncated, error: event.error });
+  else Object.assign(run, { cwd: event.cwd ?? run.cwd, running: false, exitCode: event.exitCode, stopped: event.stopped, truncated: event.truncated, error: event.error, cwdRefused: event.cwdRefused });
   listeners.forEach(listener => listener(run, event.phase));
   if (event.phase === 'end' && run.source === 'bang') runs.splice(runs.indexOf(run), 1); // its saved card takes over
 }
