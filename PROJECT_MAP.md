@@ -275,7 +275,8 @@ _Last updated: 2026-11-16 — the D1–D16 files and the local-model batch (A–
 | `public/js/panes/pane-drawer.js`, `pane-attention.js`, `pane-overflow.js` | 2026-11-16: the overlay drawer below the room limit; the dot for new plan / tasks content; the "חלוניות" overflow menu of the top bar. |
 | `public/js/split-focus.js` | 2026-11-16: the split-view focus model (focused pane, Alt+click, Ctrl+Alt+W, sidebar marks). |
 | `public/js/side/side-pane.js`, `public/css/side.css` | 2026-11-17: the `/btw` tab "שאלת צד" (replaces `public/js/side-question.js`, deleted). |
-| `public/js/split-guard.js`, `split-send.js` | 2026-11-17: closes an open split below 1000 px with a toast; sending from the split pane. |
+| `public/js/split-guard.js`, `split-actions.js` | 2026-11-17: `split-guard.js` closes an open split below 1000 px with a toast; `split-actions.js` (send / stop / queue / settings for the pane's session; replaced `split-send.js`). |
+| `public/js/split-composer.js`, `composer-drafts.js`, `split-route.js`, `split-focused.js`; `test/composer-drafts.test.js`, `test/split-route.test.js` | 2026-11-17: the full composer of the split pane (`createComposer`, bound to its own session), per-session drafts in browser memory, routing of slash commands / `!` in the split pane, shortcuts acting on the focused pane. |
 | `lib/preview/`, `public/js/preview/`, `public/css/preview.css` | 2026-11-17: the preview pane (`preview-headers.js`, `preview-file.js`, `preview-routes.js`; `preview-url.js`, `preview-view.js`, `preview-pane.js`, `open-preview.js`). |
 | `lib/known-folders.js`, `lib/files/own-files.js`, `test/api-guard.test.js`, `test/own-files.test.js` | 2026-11-17: known folders for `?cwd=`; refusing the GUI's own files by identity (`nlink > 1`); tests of the API guard. |
 | `public/js/files/auto-save.js`, `file-saver.js` | 2026-11-17: Files-editor auto-save and the saver (one save in flight per file). |

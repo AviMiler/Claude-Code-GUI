@@ -7,7 +7,8 @@ import { getCommands, modelLabel, peekModels } from './state.js';
 import { contextInfo } from './context/context-info.js';
 import { toast } from './ui.js';
 
-const blocked = name => toast(`/${name} פועלת בחלון הראשי`);
+const blocked = name => toast(`${name === '!' ? 'פקודת מעטפת (!)' : `/${name}`} פועלת בחלון הראשי`);
+const panelBlocked = () => toast('החלוניות (הרשאות, מודל, שימוש…) נפתחות לסשן של החלון הראשי. פתח את הסשן שם.');
 
 /**
  * @param {HTMLElement} area the pane's composer container
@@ -33,9 +34,9 @@ export function createSplitComposer(area, deps) {
       else actions.send(`/${command.name}`);
     },
     onStop: () => actions.stop(), onQueueRemove: actions.removeQueued, onQueueEdit: actions.editQueued, onQueueResume: actions.resumeQueue,
-    onCycleMode: actions.cycleMode, onContext: () => actions.openPanel('usage'),
+    onCycleMode: actions.cycleMode, onContext: panelBlocked, // panels act on the main session only
     getHistory: () => (deps.session()?.items || []).filter(item => item.kind === 'user').map(item => item.text),
-    ...createChipMenus({ actions, getComposer: () => composer, getSession: deps.session, getScope: scope }),
+    ...createChipMenus({ actions: { ...actions, openPanel: panelBlocked }, getComposer: () => composer, getSession: deps.session, getScope: scope }),
   });
   return {
     composer, actions,

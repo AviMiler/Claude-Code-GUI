@@ -25,6 +25,8 @@ export function createSidePane({ open, isActive, rerender }) {
   const threads = new Map(); // sessionId -> [{ question, response, notice, error, status: 'pending'|'done'|'error' }]
   const drafts = new Map(); // sessionId -> text typed in the input and not sent
   let view = null; // { sessionId, list, input }: built on the first render, the body is attached once and never moved
+  let shown = null; // { id, main }: a session asked from the split pane, shown instead of the main one until the main session changes
+  const show = id => { shown = { id, main: undefined }; };
 
   const entriesOf = id => { if (!threads.has(id)) threads.set(id, []); return threads.get(id); };
 
@@ -57,6 +59,7 @@ export function createSidePane({ open, isActive, rerender }) {
     const history = entries.filter(entry => entry.status === 'done').map(({ question: q, response }) => ({ question: q, response }));
     const entry = { question, response: null, notice: null, error: null, status: 'pending' };
     entries.push(entry);
+    show(sessionId);
     open('side'); // shows the tab (the drawer when there is no room) and draws it
     draw();
     try {
@@ -90,6 +93,7 @@ export function createSidePane({ open, isActive, rerender }) {
     ask,
     /** Ctrl+; : shows the tab with the cursor in its input. */
     focusInput(sessionId) {
+      show(sessionId);
       open('side');
       setTimeout(() => { if (view?.sessionId === sessionId) view.input.focus(); }); // after the drawer put the focus on the tab
     },
@@ -97,10 +101,13 @@ export function createSidePane({ open, isActive, rerender }) {
       id: 'side', title: 'שאלת צד', icon: 'message',
       render(body, session) {
         view ||= build(body);
-        if (view.sessionId === session.id) return;
+        if (shown && shown.main === undefined) shown.main = session.id; // the main session when the split pane asked
+        if (shown && shown.main !== session.id) shown = null; // the main session changed: back to it
+        const id = shown?.id || session.id;
+        if (view.sessionId === id) return;
         if (view.sessionId) drafts.set(view.sessionId, view.input.value);
-        view.sessionId = session.id;
-        view.input.value = drafts.get(session.id) || '';
+        view.sessionId = id;
+        view.input.value = drafts.get(id) || '';
         draw();
       },
     },

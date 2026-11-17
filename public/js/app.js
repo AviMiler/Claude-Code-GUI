@@ -40,12 +40,12 @@ const searchHits = createSearchHits({ scroller: els.scroller, messages: els.mess
 enableFileLinks(els.messages, () => state.activeId);
 showLiveShells(els);
 const modelHealth = createModelHealth(byId('model-health'));
-const focus = createSplitFocus({ app: els.app, main: document.querySelector('.main'), pane: byId('split-pane'), onFocus: () => { markSessionRows(els.list, marks()); refresh(); } }); // the side panes (side question, changes...) follow the focused pane's session
+const focus = createSplitFocus({ app: els.app, main: document.querySelector('.main'), pane: byId('split-pane'), onFocus: () => markSessionRows(els.list, marks()) }); // the side panes stay on the main session (spec: split view)
 const marks = () => focus.marks(state.activeId, split.sessionId()); // the focused pane's session and the other visible one
 const split = createSplitView({ app: els.app, pane: byId('split-pane'), selectMain: id => selectSession(id), openChanges: () => panes.open('changes'), onChange: () => refresh(), focus, askSide: (id, question) => panes.side.ask(id, question), focusSide: id => panes.side.focusInput(id), openPanel: id => actions.openPanel(id) });
 const itemSync = createItemSync({ viewed: () => [state.activeId, split.sessionId()], threadsFor: id => [id === state.activeId ? thread : null, split.threadFor(id)].filter(Boolean) });
 const panes = createPanes({ workspace: byId('workspace'), area: byId('pane-area'), modelLabel,
-  getSession: () => pane.session(), send: text => pane.actions().send(text), onChange: () => refresh() });
+  getSession: activeSession, send: text => actions.send(text), onChange: () => refresh() });
 const actions = createActions({ refresh: () => refresh(), selectSession: id => selectSession(id),
   insert: (text, options) => composer.insert(text, options), restore: entries => composer.restore(entries),
   askSide: (sessionId, question) => panes.side.ask(sessionId, question), composerText: () => composer.textarea.value, openInSplit: id => split.open(id) });

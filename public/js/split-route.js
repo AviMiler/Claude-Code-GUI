@@ -25,6 +25,7 @@ export function routeCommand(command, args = '') {
  * @returns {SplitRoute} a line that is not a known command is an ordinary message
  */
 export function routeSplitInput(text, commands) {
+  if (/^\s*!\S/.test(text)) return { kind: 'blocked', name: '!' }; // "!ls" runs in the main pane only (main-composer.js)
   const slash = parseSlash(text);
   const command = slash && findCommand(commands, slash.name);
   return command ? routeCommand(command, slash.args) : { kind: 'send' };
