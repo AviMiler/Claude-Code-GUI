@@ -39,10 +39,11 @@ function commandEntries(commands, onPick) {
 /**
  * @param {HTMLTextAreaElement} textarea
  * @param {HTMLElement} anchor Element the menus attach to (the composer box).
- * @param {{onCommand:(command:object)=>void, onChange:()=>void}} handlers
+ * @param {{onCommand:(command:object)=>void, onChange:()=>void, getScope?:()=>object}} handlers getScope: whose commands,
+ *   agents and files the menus list (the pane's session; the active session or the new-session folder by default)
  * @returns {{handleKey:(event:KeyboardEvent)=>boolean, refresh:()=>void, close:()=>void}}
  */
-export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
+export function attachComposerMenus(textarea, anchor, { onCommand, onChange, getScope = currentScope }) {
   const menu = createListMenu(anchor);
   let requestId = 0;
   let mentionTimer = null;
@@ -64,10 +65,11 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
     const id = ++requestId;
     const draw = (catalog, loading) => menu.update(
       commandEntries(filterCommands(buildCommands(catalog), query), command => { menu.close(); onCommand(command); }), footer(loading));
-    const cached = peekCatalog();
+    const scope = getScope();
+    const cached = peekCatalog(scope);
     if (cached !== undefined) return draw(cached, false);
     draw(null, true);
-    const catalog = await getCatalog();
+    const catalog = await getCatalog(scope);
     if (id === requestId && menu.isOpen()) draw(catalog, false);
     return undefined;
   }
@@ -75,7 +77,7 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
   /** Skills in the middle of a sentence: the pick replaces the "/query" token and the text around it stays. */
   async function showInlineSkills(query) {
     const id = ++requestId;
-    const commands = filterCommands(await getCommands(), query).filter(command => INLINE_GROUPS.has(command.group));
+    const commands = filterCommands(await getCommands(getScope()), query).filter(command => INLINE_GROUPS.has(command.group));
     if (id !== requestId) return;
     // A path such as "/usr/bin" in a sentence is not a request for the menu.
     if (!commands.length) { menu.close(); return; }
@@ -84,7 +86,7 @@ export function attachComposerMenus(textarea, anchor, { onCommand, onChange }) {
 
   async function showMentions(query) {
     const id = ++requestId;
-    const scope = currentScope();
+    const scope = getScope();
     const [files, catalog] = await Promise.all([api.files(scope, query).catch(() => []), getCatalog(scope)]);
     if (id !== requestId) return;
     const agents = (catalog?.agents || []).filter(agent => `agent-${agent.name}`.toLowerCase().includes(query.toLowerCase()));
