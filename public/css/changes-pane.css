@@ -11,6 +11,10 @@
 .diff-file-head .icon { flex: none; width: 13px; height: 13px; color: var(--muted); transition: transform .12s; }
 .diff-file-head .icon.collapsed { transform: rotate(90deg); }
 [dir="rtl"] .diff-file-head .icon.collapsed { transform: rotate(-90deg); }
+.diff-file-bar { display: flex; align-items: center; background: var(--surface-2); } .diff-file-bar > .diff-file-head { flex: 1; min-width: 0; }
+.diff-file-discard { flex: none; width: 26px; height: 26px; margin-inline-end: 4px; color: var(--muted); }
+.diff-file-discard:hover, .diff-file-discard:focus-visible { color: var(--danger); }
+.diff-file-discard .icon { width: 14px; height: 14px; }
 .diff-path { flex: 1; min-width: 0; overflow: hidden; font: 12px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 .diff-status { flex: none; padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 11px; line-height: 18px; }
 .diff-status.added { background: var(--success-soft); color: var(--success); } .diff-status.deleted { background: var(--danger-soft); color: var(--danger); }

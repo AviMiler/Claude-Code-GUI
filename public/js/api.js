@@ -79,7 +79,7 @@ export const api = {
   gitSummary: sessionId => request('GET', `/api/sessions/${sessionId}/git-summary`),
   /** The real context window of the session's model: { window, source, estimate, model, warnPercent } (lib/context/). */
   contextWindow: sessionId => request('GET', `/api/sessions/${sessionId}/context-window`),
-  /** The session folder's uncommitted diff against HEAD, new files included: { isRepo, diff, truncated, newFilesSkipped }. */
+  /** The session folder's uncommitted diff against HEAD, new files included: { isRepo, diff, truncated, newFilesSkipped, root, fileStates: { path: { status, hash, conflict } } }. */
   sessionDiff: sessionId => request('GET', `/api/sessions/${sessionId}/diff`),
   /** Text of a file in the session's folders: { path, content, totalLines, truncated, size }. */
   viewFile: (sessionId, path) => request('GET', `/api/file-view?${query({ sessionId, path })}`),
@@ -94,6 +94,8 @@ export const api = {
   openInEditor: (sessionId, path) => request('POST', `/api/sessions/${sessionId}/open-in-editor`, { path }),
   /** Reverts one hunk of the Changes pane: { path, index, hash } (hunk-hash.js); 409 when it changed since or is refused. */
   revertHunk: (sessionId, hunk) => request('POST', `/api/sessions/${sessionId}/revert-hunk`, hunk),
+  /** Discards all changes of one file of the Changes pane: { path, status, diffHash } (the diff's fileStates entry) -> { ok, path, kind }; 409 when it changed since or is refused. */
+  discardFile: (sessionId, file) => request('POST', `/api/sessions/${sessionId}/discard-file`, file),
   /** Commit box data: { isRepo, branch, upstream, ahead, files, canCommit, commitReason, canPush, pushReason, canPushNewUpstream, … } (lib/git/commit-status.js). */
   commitStatus: sessionId => request('GET', `/api/sessions/${sessionId}/git/status`),
   /** { message, paths, push?, setUpstream? } -> { hash, branch, pushed, pushOutput?, pushError? }; a 409 carries git's text in error.message. */

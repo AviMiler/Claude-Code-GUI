@@ -1,5 +1,10 @@
 # Decisions
 
+## [2026-11-19] The GUI may discard a whole file in the Changes pane, staged work and untracked files included (the user's decision)
+**Decision:** Per file, with a danger confirmation that says "לא ניתן לשחזר": tracked files are restored to HEAD (staged and unstaged), a staged new file is `git rm -f`'d, a rename is undone on both names, an untracked file is deleted. Path from the pane's `status --porcelain -z` list, shared repo lock, `--literal-pathspecs`, `safe-path` write rules, symlink / submodule / junction refusals, a stale status or hash is 409. It is not refused while a turn runs (the dialog warns). No "discard all", no folder discard, no recoverable backup.
+**Alternatives considered:** Tracked files only, leaving untracked deletion to the terminal; a recoverable copy in `<data>/backups/`; refusing during a running turn.
+**Why:** Asked as a Desktop-parity gap; the user answered "both, with confirmation". Accepted limits: a short race between the path checks and the write (git would follow a junction swapped in by a local process); untracked files beyond the diff budget have no button. Also fixed: `repo-lock.js` keyed `c:\x` for merge and `C:/x` for commit, push and discard, so on Windows they never excluded each other; it now keys on `path.resolve(root)` lowercased on Windows.
+
 ## [2026-11-19] The GUI may merge a worktree session's branch into the project branch (the user's decision)
 **Decision:** The Changes pane (and the archive flow) can run `git merge --no-ff --no-edit refs/heads/<branch>` in the project root (`lib/git/merge*.js`), under the repo lock with a 2 minute timeout; branch and folders from the stored session; refused with uncommitted changes in either folder, a merge or rebase in progress or a detached project HEAD; a conflict or timeout runs `git merge --abort`; never pushes, never deletes a branch, never touches the worktree. This widens "only the worktree, hunk revert, commit and push write to git".
 **Alternatives considered:** Leaving merges to the terminal; a rebase or squash merge; merging with the user's uncommitted changes present; deleting the merged branch.

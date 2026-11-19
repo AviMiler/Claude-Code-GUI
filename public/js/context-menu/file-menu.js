@@ -1,7 +1,7 @@
 /**
  * The menu of a file path (an element with data-file-path: the open-file buttons of tool rows and changed-files cards,
  * the file headers of the Changes pane): open in the viewer, preview (html, image, pdf), copy the full or relative path,
- * add it as an @ reference.
+ * add it as an @ reference; on a Changes pane header also discard the file's changes.
  */
 import { api } from '../api.js';
 import { copyText } from '../dom.js';
@@ -13,6 +13,7 @@ import { canOpenInTerminal, openInTerminal } from '../terminal/open-in-terminal.
 import { canPreview, openPreview } from '../preview/open-preview.js';
 import { openContextMenu, hasSelection } from './menu.js';
 import { relativePath } from './paths.js';
+import { discardMenuEntry } from '../panes/file-discard.js';
 
 /** The session a path belongs to: the split pane's (its element carries the id) or the main one. */
 const sessionOf = element => state.sessions.get(element.closest('[data-split-session]')?.dataset.splitSession || state.activeId) || null;
@@ -45,6 +46,7 @@ export function enableFileMenus({ insert }) {
       { icon: 'copy', title: 'העתקת הנתיב המלא', onSelect: () => copy(path) },
       { icon: 'copy', title: 'העתקת הנתיב היחסי', disabled: !relative, desc: relative ? null : 'מחוץ לתיקיית הסשן', onSelect: () => copy(relative) },
       inMain && { icon: 'at', title: 'הוספה לתיבת הכתיבה (@)', onSelect: () => insert(reference(relative || path)) },
+      discardMenuEntry(element), // a Changes pane file header only
     ].filter(Boolean));
   });
 }

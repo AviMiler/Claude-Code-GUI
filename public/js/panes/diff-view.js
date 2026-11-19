@@ -64,12 +64,16 @@ function fileHead(file, commentCount, collapsed, onToggle, fullPath) {
  * @param {import('./diff-parse.js').DiffFile} file
  * @param {{comments:object[], box:{anchor:object, draft:string, focus:boolean}|null, collapsed:boolean, onToggle:()=>void,
  *   onComment:(anchor:object)=>void, onInput:(text:string)=>void, onAdd:(comment:object)=>void, onCancel:()=>void,
- *   onRemove:(id:number)=>void, hunkAction?:(hunk:object, index:number)=>HTMLElement|null}} options comments: this file's
- *   comments; box: the open comment box, if on this file; hunkAction: a control for a hunk's header row (the revert button)
+ *   onRemove:(id:number)=>void, hunkAction?:(hunk:object, index:number)=>HTMLElement|null,
+ *   fileAction?:(file:object, head:HTMLElement)=>HTMLElement|null}} options comments: this file's comments; box: the open
+ *   comment box, if on this file; hunkAction: a control for a hunk's header row (the revert button); fileAction: a control
+ *   beside the file's header (the discard button)
  * @returns {HTMLElement}
  */
-export function renderDiffFile(file, { comments, box, collapsed, fullPath, onToggle, onComment, onInput, onAdd, onCancel, onRemove, hunkAction }) {
-  const head = fileHead(file, comments.length, collapsed, onToggle, fullPath);
+export function renderDiffFile(file, { comments, box, collapsed, fullPath, onToggle, onComment, onInput, onAdd, onCancel, onRemove, hunkAction, fileAction }) {
+  const toggle = fileHead(file, comments.length, collapsed, onToggle, fullPath);
+  const action = fileAction?.(file, toggle);
+  const head = action ? h('div', { class: 'diff-file-bar' }, toggle, action) : toggle; // a button cannot hold another button
   if (collapsed) return h('section', { class: 'diff-file' }, head);
   const placed = new Set();
   const rows = [];

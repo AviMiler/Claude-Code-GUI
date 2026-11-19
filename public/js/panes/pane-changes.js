@@ -12,6 +12,7 @@ import { createSessionFetch } from './session-fetch.js';
 import { notRepoText } from './pane-details.js';
 import { joinPath } from '../context-menu/paths.js';
 import { revertHunkButton } from './hunk-revert.js';
+import { discardFileButton } from './file-discard.js';
 import { createCommitBox } from './commit-box.js';
 import { createMergeBox } from './merge-box.js';
 
@@ -52,6 +53,7 @@ export function createChangesPane({ send, rerender }) {
       onCancel: () => { box = null; redrawFile(file.path); keepFocus(); },
       onRemove: id => { removeComment(session.id, id); redrawFile(file.path); keepFocus(); },
       hunkAction: (hunk, index) => revertHunkButton(file, hunk, index, { sessionId: session.id, onDone: rerender }),
+      fileAction: (_, head) => discardFileButton(file.path, data.fileStates?.[file.path], head, { sessionId: session.id, onDone: rerender }),
     });
   }
 
