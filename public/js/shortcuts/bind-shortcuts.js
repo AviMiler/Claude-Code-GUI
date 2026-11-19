@@ -7,8 +7,9 @@ import { toggleShortcutsDialog } from './shortcuts-dialog.js';
 const MODAL = '.modal-backdrop, .popover, dialog[open]';
 
 /**
- * @param {{slashMenu, newSession, toggleSidebar, settings, cycleView, toggleChanges, toggleTerminal, closePane, toggleSplit, stop,
- *   isRunning:()=>boolean}} run what each action of the table does (isRunning: Esc stops only a running turn);
+ * @param {{slashMenu, newSession, findInSession, toggleSidebar, settings, cycleView, toggleChanges, toggleTerminal, closePane, toggleSplit, stop,
+ *   isRunning:()=>boolean}} run what each action of the table does (isRunning: Esc stops only a running turn; an `optional`
+ *   row's action runs on every keydown, also a held key, and returns false to leave the key to the browser);
  *   the Ctrl+/ dialog is this folder's own
  * @example bindShortcuts({ slashMenu: () => composer.insert('/'), ... })
  */
@@ -19,8 +20,9 @@ export function bindShortcuts(run) {
     const shortcut = shortcutFor(event);
     if (shortcut) {
       if (shortcut.action === 'closePane' && document.querySelector(MODAL)) return; // the dialog owns the keyboard
+      if (shortcut.optional && actions[shortcut.action]() === false) return; // left to the browser (Ctrl+F: its own find)
       event.preventDefault(); // also for a held key: the browser's own Ctrl+O / Ctrl+K never opens
-      if (!event.repeat) actions[shortcut.action](); // a held key acts once
+      if (!event.repeat && !shortcut.optional) actions[shortcut.action](); // a held key acts once
       return;
     }
     if (event.key === 'Escape' && !event.defaultPrevented && run.isRunning()

@@ -4,7 +4,8 @@
  * composer, the Changes pane) and is listed here only so it shows in the lists.
  */
 
-/** @typedef {{keys:string, label:string, group:string, action?:string, code?:string, shift?:boolean, alt?:boolean}} Shortcut */
+/** @typedef {{keys:string, label:string, group:string, action?:string, code?:string, shift?:boolean, alt?:boolean, optional?:boolean}} Shortcut
+ *  optional: the action may return false, "not handled here": the key is then left to the browser (no preventDefault) */
 
 export const SHORTCUT_GROUPS = [
   { id: 'general', label: 'כללי' },
@@ -24,6 +25,7 @@ export const SHORTCUTS = [
   { keys: 'Ctrl+Shift+]', label: 'הסשן הבא בסרגל (בחלון הממוקד)', group: 'general', action: 'nextSession', code: 'BracketRight', shift: true },
   { keys: 'Ctrl+Shift+[', label: 'הסשן הקודם בסרגל (בחלון הממוקד)', group: 'general', action: 'prevSession', code: 'BracketLeft', shift: true },
   { keys: 'Ctrl+;', label: 'שאלת צד (/btw)', group: 'conversation', action: 'sideQuestion', code: 'Semicolon' },
+  { keys: 'Ctrl+F', label: 'חיפוש בתוך הסשן', group: 'conversation', action: 'findInSession', code: 'KeyF', optional: true },
   { keys: 'Ctrl+O', label: 'החלפת תצוגת התמליל (רגילה, חשיבה, מפורטת)', group: 'conversation', action: 'cycleView', code: 'KeyO' },
   { keys: 'Esc', label: 'עצירת Claude (או סגירת תפריט)', group: 'conversation' },
   { keys: 'Ctrl+Shift+D', label: 'חלונית השינויים', group: 'panes', action: 'toggleChanges', code: 'KeyD', shift: true },

@@ -14,7 +14,7 @@ import { applyTheme, toast } from './ui.js';
 import { handleEvent } from './events.js';
 import { renderPageStatus, watchPageVisibility } from './page-status.js';
 import { crab } from './crab.js';
-import { createSearchHits } from './search-hits.js';
+import { createSearchHits } from './search-hits.js'; import { createSessionFind } from './transcript/find-shortcut.js';
 import { enableFileLinks } from './file-viewer.js';
 import { createModelHealth } from './model-health.js';
 import { createSplitView } from './split-view.js'; import { createFocusedPane } from './split-focused.js'; import { NEW_DRAFT } from './composer-drafts.js'; import { createSplitFocus, markSessionRows } from './split-focus.js';
@@ -52,7 +52,8 @@ const actions = createActions({ refresh: () => refresh(), selectSession: id => s
 const runCommand = createCommandRunner(actions);
 
 const composer = createMainComposer(els.composerArea, { actions, runCommand });
-enableFileMenus({ insert: text => composer.insert(text) }); const pane = createFocusedPane({ focus, split, main: { composer, actions, area: els.composerArea, session: activeSession } }); // what the shortcuts act on
+enableFileMenus({ insert: text => composer.insert(text) }); const pane = createFocusedPane({ focus, split, main: { composer, actions, area: els.composerArea, session: activeSession, messages: els.messages } }); // what the shortcuts act on
+const find = createSessionFind({ pane, whenLoaded: id => itemSync.whenLoaded(id) }); // Ctrl+F
 
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {
@@ -89,6 +90,7 @@ function refresh() {
   split.refresh();
   panes.refresh();
   itemSync.watch(); // a session that came on screen (main, split, compare): subscribe to it and load its items
+  find.sync(); // a pane that now shows another session closes its Ctrl+F bar
 }
 watchPageVisibility(refresh, () => [state.activeId, split.sessionId()]);
 
@@ -134,7 +136,7 @@ els.search.addEventListener('keydown', event => {
 document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => actions.openPanel(button.dataset.panel)));
 bindShortcuts({
   slashMenu: () => { const box = pane.composer(); box.insert('/', { replace: !box.textarea.value }); }, newSession: () => selectSession(null),
-  toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(),
+  toggleSidebar, settings: () => actions.openPanel('model'), toggleSplit: () => split.toggle(), findInSession: () => find.findInSession(),
   toggleChanges: () => panes.toggle('changes'), toggleTerminal: () => panes.toggle('terminal'), closePane: () => panes.closeFocused(), closeFocusedPane: () => focus.closeFocused({ splitId: split.sessionId(), closeSplit: split.toggle, selectMain: selectSession }),
   cycleView: () => { if (activeSession()) toast(`תצוגת תמליל: ${viewModeLabel(thread.view.cycle())}`); },
   stop: () => pane.actions().stop(), isRunning: () => pane.session()?.status === 'running',

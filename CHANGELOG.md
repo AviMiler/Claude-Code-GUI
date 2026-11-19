@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-19 (Ctrl+F in-session find)
+The user chose the GUI's find over the browser's. Verify GO with notes (fixed: a sidebar result with no visible node closed the find bar). Builder browser-checked on the fake CLI: main and split, Esc during a running turn, both bars replacing each other, dark theme. 343 tests pass at verify time (including another task's in-progress tests).
+- Added: find bar at the top of the focused pane's transcript (`public/js/transcript/hit-stepper.js`, `find-bar.js`, `find-shortcut.js`, `find-logic.js`, `public/css/find-bar.css`, `test/find-logic.test.js`): same search rules as the sidebar (`searchItems`), 150 ms debounce, "k מתוך N" / "אין התאמות", ▲ ▼ / Enter / Shift+Enter, Esc closes without stopping a turn and returns focus to the composer, the last query kept; one bar per pane, one bar per transcript at a time
+- Changed: `search-hits.js` uses the shared stepper and skips a result with no visible node without closing an open find bar; `shortcut-list.js` has the row "חיפוש בתוך הסשן" with a new `optional: true` flag and `bind-shortcuts.js` skips `preventDefault` when an optional action returns false (the browser's find opens); `split-focused.js` `where()` / `of()`; `split-view.js` exposes its messages; `app.js` 4 hook lines; `index.html` css link
+- Left to the browser: focus in the side pane area or a tab strip, a modal / popover / dialog open, no session shown, a second Ctrl+F with a non-empty query that has no matches
+- Known: highlights do not refresh while items stream or after a re-render (rewind, compaction); Cmd+F on a Mac and a physical Hebrew keyboard untested
+
 ## 2026-11-19 (local merge of a worktree session's branch)
 User-approved; commits e8b3347 and e84b443 on develop plus the review fixes; 322 tests pass; independent security / code review GO with notes, all notes fixed.
 - Added: `lib/git/merge.js` (`mergeIntoProject`: `git merge --no-ff --no-edit refs/heads/<branch>` in the project root, under `withRepoLock`, 2 min timeout; never pushes, never deletes a branch, never touches the worktree), `merge-status.js` (target branch, ahead count, `canMerge` + Hebrew reason, `upToDate`), `merge-routes.js` (`GET /api/sessions/:id/merge-status`, `POST /api/sessions/:id/merge-branch`)

@@ -23,7 +23,7 @@ const SESSION_KEY = 'claude-gui.split-session';
  * @param {{app:HTMLElement, pane:HTMLElement, selectMain:(id:string|null)=>void, openChanges:()=>void,
  *   onChange:()=>void, focus:{set:(where:'main'|'split')=>void}, askSide:Function, focusSide:Function, openPanel:Function}} options askSide / focusSide: the side question tab; focus: split-focus.js; app gets the `split` class; pane is the empty <aside> to fill; selectMain opens a session
  *   in the main pane; onChange re-renders the page (sidebar dots, title) after the pane's session changed
- * @returns {{toggle:()=>void, refresh:()=>void, threadFor:(sessionId:string)=>object|null, sessionId:()=>string|null, composer:object, actions:object, area:HTMLElement, session:()=>object|null}}
+ * @returns {{toggle:()=>void, refresh:()=>void, threadFor:(sessionId:string)=>object|null, sessionId:()=>string|null, composer:object, actions:object, area:HTMLElement, session:()=>object|null, messages:HTMLElement}}
  */
 export function createSplitView({ app, pane, selectMain, openChanges, onChange, focus, askSide, focusSide, openPanel }) {
   let sessionId = recall(SESSION_KEY) || null;
@@ -127,6 +127,6 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange, 
     threadFor: id => (app.classList.contains('split') && id && id === shownId ? thread : null),
     /** The session the pane shows now (valid before the pane's own redraw); null when the split is closed or empty. */
     sessionId: () => (app.classList.contains('split') ? session()?.id || null : null),
-    composer: box.composer, actions: box.actions, area, session,
+    composer: box.composer, actions: box.actions, area, session, messages, // messages: the pane's transcript (the Ctrl+F bar, transcript/find-shortcut.js)
   };
 }
