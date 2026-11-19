@@ -63,3 +63,5 @@
 .commit-message:focus { outline: none; border-color: var(--accent); }
 .commit-notice { padding: 6px 10px; border-radius: var(--radius-sm); white-space: pre-wrap; }
 .commit-notice.ok { background: var(--success-soft); color: var(--success); } .commit-notice.warn { background: var(--warning-soft); color: var(--warning); }
+.changes-toolbar .segmented { margin: 0; }
+.changes-toolbar .segmented button:disabled { opacity: .5; }

@@ -17,6 +17,7 @@ const config = loadConfig();
 cliSync.start(config); // sessions show their CLI conversations, kept up to date
 sweepAttachments(); // after the first build: the items now show what they refer to
 migrateTemplates(config); // data/templates.json (before 2026-10-30) -> the user's CLI commands
+require('./lib/keep-awake').start(config); // keeps the machine awake while Claude works (Windows)
 require('./lib/schedule/schedule-service').start(config); // local scheduled tasks: catch up, then wake at the next due run
 
 const server = http.createServer(async (request, response) => {

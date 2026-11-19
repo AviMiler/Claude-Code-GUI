@@ -2,7 +2,6 @@
  * Changes pane (Claude Code Desktop's diff view): the session folder's uncommitted changes file by file; a "+" beside a
  * line number adds a comment, and Ctrl+Enter sends all comments to Claude as one message.
  */
-import { api } from '../api.js';
 import { h } from '../dom.js';
 import { parseDiff } from './diff-parse.js';
 import { renderDiffFile, renderUnplacedComments } from './diff-view.js';
@@ -11,8 +10,7 @@ import { commentsOf, addComment, removeComment, clearComments, composeMessage } 
 import { createSessionFetch } from './session-fetch.js';
 import { notRepoText } from './pane-details.js';
 import { joinPath } from '../context-menu/paths.js';
-import { revertHunkButton } from './hunk-revert.js';
-import { discardFileButton } from './file-discard.js';
+import { branchToggle, editActions, loadDiff, emptyText, commitBoxFor } from './branch-mode.js';
 import { createCommitBox } from './commit-box.js';
 import { createMergeBox } from './merge-box.js';
 
@@ -22,7 +20,7 @@ import { createMergeBox } from './merge-box.js';
  * @returns {import('./pane-host.js').PaneDefinition}
  */
 export function createChangesPane({ send, rerender }) {
-  const diffs = createSessionFetch(id => api.sessionDiff(id).then(result => ({ ...result, files: parseDiff(result.diff || '') })),
+  const diffs = createSessionFetch(id => loadDiff(id).then(result => ({ ...result, files: parseDiff(result.diff || '') })),
     error => ({ error: error.message, files: [] }));
   const commitBox = createCommitBox({ rerender });
   const mergeBox = createMergeBox({ rerender });
@@ -52,8 +50,7 @@ export function createChangesPane({ send, rerender }) {
       onAdd: comment => { addComment(session.id, comment); box = null; redrawFile(file.path); keepFocus(); },
       onCancel: () => { box = null; redrawFile(file.path); keepFocus(); },
       onRemove: id => { removeComment(session.id, id); redrawFile(file.path); keepFocus(); },
-      hunkAction: (hunk, index) => revertHunkButton(file, hunk, index, { sessionId: session.id, onDone: rerender }),
-      fileAction: (_, head) => discardFileButton(file.path, data.fileStates?.[file.path], head, { sessionId: session.id, onDone: rerender }),
+      ...editActions(data, session.id, file, rerender),
     });
   }
 
@@ -79,7 +76,8 @@ export function createChangesPane({ send, rerender }) {
   function redrawFrame() {
     const paths = new Set(data.files.map(file => file.path));
     const next = {
-      toolbar: changesToolbar(data, commentsHere().length, () => { commitBox.reload(session); diffs.get(session, rerender, true); }),
+      toolbar: changesToolbar(data, commentsHere().length, () => { commitBox.reload(session); diffs.get(session, rerender, true); },
+        branchToggle(session.id, data, () => diffs.get(session, rerender, true))),
       unplaced: renderUnplacedComments(commentsHere().filter(comment => !paths.has(comment.path)), 'הערות על קבצים שכבר אינם בשינויים:', id => {
         removeComment(session.id, id);
         redrawFrame();
@@ -101,7 +99,8 @@ export function createChangesPane({ send, rerender }) {
     frame = { toolbar: h('div'), unplaced: h('div'), footer: h('div') };
     const files = data.files.map(file => { const node = fileNode(file); fileNodes.set(file.path, node); return node; });
     body.replaceChildren(frame.toolbar, ...changesNotes(data), frame.unplaced,
-      files.length ? h('div', { class: 'diff-files' }, files) : h('p', { class: 'detail-muted' }, 'אין שינויים שלא נשמרו ב-commit.'), commitBox.element(session), mergeBox.element(session), frame.footer);
+      files.length ? h('div', { class: 'diff-files' }, files) : h('p', { class: 'detail-muted' }, emptyText(data)),
+      commitBoxFor(data, commitBox, session), mergeBox.element(session), frame.footer);
     return redrawFrame();
   }
 
@@ -135,7 +134,7 @@ export function createChangesPane({ send, rerender }) {
       }
       session = current;
       data = diffs.get(current, rerender);
-      const key = data ? `${data.isRepo}|${data.error ?? ''}|${data.diff ?? ''}` : 'loading';
+      const key = data ? `${data.isRepo}|${data.error ?? ''}|${data.mode ?? ''}|${data.diff ?? ''}` : 'loading';
       commitBox.sync(current, key);
       mergeBox.sync(current, key);
       if (shown.id === current.id && shown.key === key) return;

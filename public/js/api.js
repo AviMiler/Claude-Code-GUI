@@ -79,8 +79,9 @@ export const api = {
   gitSummary: sessionId => request('GET', `/api/sessions/${sessionId}/git-summary`),
   /** The real context window of the session's model: { window, source, estimate, model, warnPercent } (lib/context/). */
   contextWindow: sessionId => request('GET', `/api/sessions/${sessionId}/context-window`),
-  /** The session folder's uncommitted diff against HEAD, new files included: { isRepo, diff, truncated, newFilesSkipped, root, fileStates: { path: { status, hash, conflict } } }. */
-  sessionDiff: sessionId => request('GET', `/api/sessions/${sessionId}/diff`),
+  /** mode 'branch' (worktree session): the whole branch against the project's branch (no fileStates; `mode`, `target`). A worktree session's default answer carries branchView { target, canCompare, reason }.
+   * The session folder's uncommitted diff against HEAD, new files included: { isRepo, diff, truncated, newFilesSkipped, root, fileStates: { path: { status, hash, conflict } } }. */
+  sessionDiff: (sessionId, mode) => request('GET', `/api/sessions/${sessionId}/diff${mode === 'branch' ? '?mode=branch' : ''}`),
   /** Text of a file in the session's folders: { path, content, totalLines, truncated, size }. */
   viewFile: (sessionId, path) => request('GET', `/api/file-view?${query({ sessionId, path })}`),
   /** One folder level of the session folder (dir relative to it): { dir, entries: [{ name, type: 'dir'|'file', blocked? }], truncated }. */
@@ -145,6 +146,9 @@ export const api = {
   searchCliConversations: query => request('POST', '/api/cli-conversations/search', { query }),
   files: (scope, q) => request('GET', `/api/files?${query({ ...scope, q })}`),
   git: scope => request('GET', `/api/git?${query(scope)}`),
+  /** { enabled, active, available, reason } (lib/keep-awake/); setKeepAwake(enabled) flips the switch kept in the data folder */
+  keepAwake: () => request('GET', '/api/keep-awake'),
+  setKeepAwake: enabled => request('PUT', '/api/keep-awake', { enabled }),
   schedule: scheduleApi(request), // local scheduled tasks (schedule/schedule-api.js)
   folders: (path, hidden) => request('GET', `/api/folders?${query({ path, hidden: hidden ? '1' : '' })}`),
   createFolder: (path, name) => request('POST', '/api/folders', { path, name }),

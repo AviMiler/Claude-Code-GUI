@@ -2,13 +2,14 @@
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
 
-/** @param {{files:object[]}} data @param {number} commentCount @param {()=>void} onRefresh @returns {HTMLElement} */
-export function changesToolbar(data, commentCount, onRefresh) {
+/** @param {{files:object[]}} data @param {number} commentCount @param {()=>void} onRefresh @param {HTMLElement|null} [toggle] the worktree view toggle @returns {HTMLElement} */
+export function changesToolbar(data, commentCount, onRefresh, toggle = null) {
   const added = data.files.reduce((sum, file) => sum + file.added, 0);
   const removed = data.files.reduce((sum, file) => sum + file.removed, 0);
   return h('div', { class: 'changes-toolbar' },
     h('span', null, `${data.files.length} קבצים`),
     h('span', { class: 'diff-counts', dir: 'ltr' }, h('span', { class: 'added' }, `+${added}`), h('span', { class: 'removed' }, `−${removed}`)),
+    toggle,
     h('span', { class: 'spacer' }),
     commentCount ? null : h('span', { class: 'changes-hint' }, '+ ליד מספר שורה מוסיף הערה'),
     h('button', { type: 'button', class: 'icon-button', title: 'רענון', onClick: onRefresh }, icon('refresh')));

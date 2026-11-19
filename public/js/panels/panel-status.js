@@ -2,6 +2,7 @@
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
 import { applyTheme, themePreference } from '../ui.js';
+import { keepAwakeSection } from '../keep-awake/keep-awake-section.js';
 import { section, kv, button, load, cliOutput, badge } from './kit.js';
 
 export function renderStatusPanel(body, context) {
@@ -17,6 +18,8 @@ export function renderStatusPanel(body, context) {
     ...(runtime?.model ? [['מודל בפועל', runtime.model], ['כלים זמינים', String(runtime.tools ?? '—')]] : []),
   ])));
   if (capabilities.error) body.append(h('div', { class: 'error-box' }, `לא ניתן להריץ את Claude Code: ${capabilities.error}`));
+
+  body.append(keepAwakeSection(context));
 
   const statusBox = h('div');
   body.append(section('סטטוס מ-Claude Code (/status)', null, statusBox));
