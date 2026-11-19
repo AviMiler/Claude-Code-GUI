@@ -90,3 +90,13 @@ test('refused: not a worktree session, archived, target equals the session branc
   const second = makeSession();
   assert.strictEqual((await mergeStatus({ ...second.session, worktree: { ...second.session.worktree, path: second.root, branch: 'main' } })).canMerge, false);
 });
+
+test('an untracked project file the merge would overwrite is refused in Hebrew and the project is unchanged', async () => {
+  const { root, tree, session } = makeSession();
+  commitIn(tree, 'clash.txt', 'from branch\n');
+  write(root, 'clash.txt', 'untracked in project\n');
+  const head = sh(root, 'rev-parse', 'HEAD');
+  await rejects(mergeIntoProject(session), /היה דורס[\s\S]*clash\.txt[\s\S]*ללא שינוי/);
+  assert.strictEqual(sh(root, 'rev-parse', 'HEAD'), head);
+  assert.strictEqual(fs.readFileSync(path.join(root, 'clash.txt'), 'utf8'), 'untracked in project\n');
+});

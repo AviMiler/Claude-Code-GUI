@@ -27,7 +27,7 @@ export async function confirmAndMerge(id, status) {
 
 /**
  * Before archiving a worktree session (archiving removes the worktree folder; the branch stays): offers the merge when there is one to do.
- * @returns {Promise<{type:string, text:string}|null>} the outcome of a merge the user chose, else null (archive goes on either way)
+ * @returns {Promise<{type:string, text?:string}|null>} the outcome of a merge the user chose; {type:'cancel'} when Escape closed the offer (no archive); null: archive without merging
  */
 export async function offerMergeBeforeArchive(session) {
   if (!session.worktree) return null;
@@ -36,8 +36,9 @@ export async function offerMergeBeforeArchive(session) {
   const merge = await ask({
     title: 'למזג לפני הארכיון?',
     text: `בענף ${iso(status.branch)} יש ${status.ahead} commits שלא מוזגו לענף ${iso(status.target)}. הענף נשמר גם אחרי הארכיון.`,
-    confirmLabel: 'מיזוג וארכוב', cancelLabel: 'ארכוב בלי מיזוג',
+    confirmLabel: 'מיזוג וארכוב', cancelLabel: 'ארכוב בלי מיזוג', escapeValue: 'cancel', // Escape cancels the archive too
   });
+  if (merge === 'cancel') return { type: 'cancel' };
   if (!merge) return null;
   try {
     const result = await api.mergeBranch(session.id);

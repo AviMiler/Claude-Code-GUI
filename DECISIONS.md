@@ -1,5 +1,10 @@
 # Decisions
 
+## [2026-11-19] The GUI may merge a worktree session's branch into the project branch (the user's decision)
+**Decision:** The Changes pane (and the archive flow) can run `git merge --no-ff --no-edit refs/heads/<branch>` in the project root (`lib/git/merge*.js`), under the repo lock with a 2 minute timeout; branch and folders from the stored session; refused with uncommitted changes in either folder, a merge or rebase in progress or a detached project HEAD; a conflict or timeout runs `git merge --abort`; never pushes, never deletes a branch, never touches the worktree. This widens "only the worktree, hunk revert, commit and push write to git".
+**Alternatives considered:** Leaving merges to the terminal; a rebase or squash merge; merging with the user's uncommitted changes present; deleting the merged branch.
+**Why:** Asked as a Desktop-parity gap and approved ("Yes, build it"). A conflict leaves the project unchanged (the abort), which is why dirty trees are refused up front. Not verified in a browser or on the target machine; hooks run, as for every git write.
+
 ## [2026-11-17] Sidebar groups and unread are server state; a non-boolean `pinned` is rejected
 **Decision:** User groups (max 50, names up to 60 characters, duplicates 409, no drag and drop) live in `sidebar-groups.json` in the data dir (safe-file with `.bak`), sent in `/api/state` and by an SSE event; sessions carry `pinOrder`, `groupId` (must exist), `markedUnread` and `completed`; the view (grouping, sort, collapsed headers) stays per browser in `claude-gui.sidebar-view`. Unread moved from browser memory to the server (`markedUnread`). A non-boolean `pinned` in PATCH is now 400 instead of ignored.
 **Alternatives considered:** Groups in localStorage (not shared between tabs); drag and drop (declined, more code); keeping unread in the browser (lost on reload, differs per tab).

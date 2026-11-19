@@ -90,6 +90,7 @@ export function createSessionActions(view, report) {
       const tasks = (session.tasks || []).filter(task => task.status === 'running').length;
       if (tasks && !await ask({ title: `להעביר את "${session.name}" לארכיון?`, text: `${tasks} משימות רקע רצות בסשן, והן ייעצרו.`, confirmLabel: 'העברה לארכיון', danger: true })) return;
       const merged = await offerMergeBeforeArchive(session);
+      if (merged?.type === 'cancel') return;
       if (merged?.type === 'error' && !await ask({ title: 'המיזוג נכשל', text: `${merged.text}\n\nלהעביר לארכיון בכל זאת?`, confirmLabel: 'העברה לארכיון' })) return;
       if (merged?.type === 'ok') toast(merged.text);
       const result = await api.archive(id).catch(report);

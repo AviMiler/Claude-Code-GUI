@@ -18,7 +18,7 @@ export function toast(message, type = 'info') {
  * @param {{title:string, text?:string, value?:string, placeholder?:string, confirmLabel?:string, cancelLabel?:string, danger?:boolean}} options
  * @returns {Promise<boolean|string|null>}
  */
-export function ask({ title, text, value, placeholder, confirmLabel = 'אישור', cancelLabel = 'ביטול', danger = false }) {
+export function ask({ title, text, value, placeholder, confirmLabel = 'אישור', cancelLabel = 'ביטול', danger = false, escapeValue }) { // escapeValue: what Escape resolves to when it differs from the cancel button
   return new Promise(resolve => {
     const input = value !== undefined ? h('input', { value, placeholder: placeholder || '', dir: 'auto' }) : null;
     const dialog = h('dialog', { class: 'confirm' });
@@ -28,7 +28,7 @@ export function ask({ title, text, value, placeholder, confirmLabel = 'אישו�
       h('div', { class: 'card-actions' },
         h('button', { type: 'button', class: 'btn ghost', onClick: () => finish(input ? null : false) }, cancelLabel),
         h('button', { type: 'button', class: `btn ${danger ? 'danger' : 'primary'}`, onClick: ok }, confirmLabel))].filter(Boolean));
-    dialog.addEventListener('cancel', event => { event.preventDefault(); finish(input ? null : false); });
+    dialog.addEventListener('cancel', event => { event.preventDefault(); finish(escapeValue !== undefined ? escapeValue : input ? null : false); });
     input?.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); ok(); } });
     document.body.append(dialog);
     dialog.showModal();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-19 (local merge of a worktree session's branch)
+User-approved; commits e8b3347 and e84b443 on develop plus the review fixes; 322 tests pass; independent security / code review GO with notes, all notes fixed.
+- Added: `lib/git/merge.js` (`mergeIntoProject`: `git merge --no-ff --no-edit refs/heads/<branch>` in the project root, under `withRepoLock`, 2 min timeout; never pushes, never deletes a branch, never touches the worktree), `merge-status.js` (target branch, ahead count, `canMerge` + Hebrew reason, `upToDate`), `merge-routes.js` (`GET /api/sessions/:id/merge-status`, `POST /api/sessions/:id/merge-branch`)
+- Failures (409, Hebrew): conflict lists up to 30 files and aborts (says the project is unchanged, or that the abort failed); timeout aborts when `MERGE_HEAD` exists and tells the user to check `git status`; untracked or unsaved project files git would overwrite are listed, project unchanged; other errors trimmed and redacted
+- UI: button "מיזוג לענף הפרויקט" in the Changes pane for worktree sessions with a confirmation (`public/js/panes/merge-box.js`); before archiving a worktree session with unmerged commits an offer merge / archive without merge / cancel (`public/js/worktree/merge-action.js`); Escape now means cancel (`ui.js` `ask` has an `escapeValue` option, `session-actions.js` returns on cancel); `api.js` and `pane-changes.js` wired
+- Tests: `test/git-merge.test.js` on real temporary repositories (merge, up to date, dirty refusals, conflict abort, detached, untracked overwrite refused)
+- Not verified: the button and dialogs in a browser, the real CLI, the target machine
+
 ## 2026-11-17 (jump to latest, completed mark)
 Merged into develop locally; 315 tests pass; independent review GO with notes (fixed: the dot's double screen-reader announcement). Builder browser-checked on the fake CLI: the done section and its fold, clearing on a new message, the button and dot.
 - Added: "קפיצה לסוף" button (`public/js/transcript/jump-latest.js`, `public/css/jump-latest.css`, `arrow-down` icon, one hook line in `thread.js`, so the main and split transcripts both have it): appears when scrolled up more than 140 px, a dot when the transcript grows meanwhile (the label becomes "קפיצה לסוף, יש הודעות חדשות"), a click scrolls to the end (smooth unless reduced motion) and auto-follow resumes
