@@ -45,6 +45,8 @@ The full list is in CHANGELOG.md. Latest: 2026-11-16 the local-model batch A–F
 - Significant actions are only confirmed, never blocked (`guardedApi`, `confirmRisk` in `public/js/risk.js`).
 - A feature gets its own folder (`lib/<feature>/`, `public/js/<feature>/`); the context percentage has ONE function (`public/js/context/context-info.js`).
 
+Scheduling 2026-11-19 (412 tests): schedule kind `rule` v:1 (see spec "Local scheduled tasks"); old kinds unchanged and converted only on edit; an unknown stored kind loads paused with an error; `runsDone` / `done` state; the engine uses an injectable local-time helper (tests need no `TZ`); a timer tick must clear the pending timer first. Not verified: real DST, sleep / resume, a rule run firing in the GUI. Left out: several rules per task, jitter, same-session runs.
+
 ## Next Steps
 Everything below was verified only against the fake CLI (and a fake Ollama). This is the one consolidated to-do for the real machine (Windows, Claude Code 2.1.246, local qwen). Fixes are mostly local to the file named in each item.
 **Before the user relies on the 2026-11-16 batch**

@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { field, select, button } from '../panels/kit.js';
 import { availableModes, EFFORT_LEVELS } from '../modes.js';
 import { pickFolder } from '../folder-browser.js';
-import { confirmMode } from '../risk.js';
+import { confirmMode, confirmRisk } from '../risk.js';
 import { scheduleFields } from './schedule-fields.js';
 import { modeWarning } from './schedule-labels.js';
 
@@ -16,7 +16,7 @@ import { modeWarning } from './schedule-labels.js';
  * @returns {HTMLElement}
  */
 export function scheduleForm(task, { api, toast, capabilities, folder, onDone }) {
-  const draft = task || { name: '', prompt: '', folder, mode: 'acceptEdits', model: '', effort: '', active: true, schedule: { kind: 'daily', time: '09:00' } };
+  const draft = task || { name: '', prompt: '', folder, mode: 'acceptEdits', model: '', effort: '', active: true, schedule: null }; // null: the flexible form's default
   const name = h('input', { value: draft.name, maxlength: 80, dir: 'auto', placeholder: 'למשל: סיכום שינויים יומי' });
   const prompt = h('textarea', { class: 'code markdown-editor', dir: 'auto', maxlength: 20000, placeholder: 'מה Claude יעשה בכל ריצה…' }, draft.prompt);
   const folderInput = h('input', { value: draft.folder || '', dir: 'ltr', spellcheck: false });
@@ -39,6 +39,7 @@ export function scheduleForm(task, { api, toast, capabilities, folder, onDone })
       // The same warning as switching a session to it; again when what an unattended bypass run does or where has changed.
       const changedWork = body.prompt.trim() !== draft.prompt || body.folder !== draft.folder;
       if (!task || mode.value !== draft.mode || (mode.value === 'bypassPermissions' && changedWork)) await confirmMode(mode.value);
+      await confirmRisk('לשמור את התזמון הזה?', await schedule.risks(mode.value));
       saveButton.disabled = true;
       if (task) await api.schedule.update(task.id, body); else await api.schedule.create(body);
       toast('המשימה נשמרה');

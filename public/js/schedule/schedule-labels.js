@@ -6,10 +6,10 @@ const OUTCOMES = {
   error: ['נכשל', 'danger'], stopped: ['נעצר', 'warning'], 'no-approval': ['נעצר: אין אישור', 'danger'], stalled: ['נעצרה: תקועה', 'danger'], skipped: ['דולג', ''],
 };
 
-/** @param {{outcome:string, catchUp?:boolean, manual?:boolean, stalled?:boolean}} run @returns {HTMLElement[]} badges */
+/** @param {{outcome:string, catchUp?:boolean, manual?:boolean, stalled?:boolean, delayed?:boolean}} run @returns {HTMLElement[]} badges */
 export function runBadges(run) {
   const [label, tone] = OUTCOMES[run.outcome] || [run.outcome, ''];
-  return [badge(label, tone), run.catchUp ? badge('השלמה', 'accent') : null, run.manual ? badge('ידני', '') : null,
+  return [badge(label, tone), run.catchUp ? badge('השלמה', 'accent') : null, run.manual ? badge('ידני', '') : null, run.delayed ? badge('נדחתה', 'warning') : null,
     run.stalled ? badge('נתקע', 'warning') : null].filter(Boolean);
 }
 

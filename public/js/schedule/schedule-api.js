@@ -12,6 +12,6 @@ export const scheduleApi = request => ({
   setActive: (id, active) => request('POST', `/api/schedules/${id}/active`, { active }),
   /** { runs: [{ id, startedAt, endedAt, durationMs, outcome, reason, sessionId, catchUp, manual, stalled }] } newest first */
   runs: id => request('GET', `/api/schedules/${id}/runs`),
-  /** { text, next: [ms, ms, ms] }, or an error with what is wrong in the schedule */
+  /** { text, next: [ms ×5], delayed: [bool] (deferred to a window end), perDay }, or an error with what is wrong */
   preview: schedule => request('POST', '/api/schedules/preview', { schedule }),
 });

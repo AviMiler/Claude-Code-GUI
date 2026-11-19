@@ -30,13 +30,13 @@ export function renderSchedulePanel(body, context) {
   function taskRow(task) {
     const toggle = h('input', { type: 'checkbox', checked: task.active, title: task.active ? 'פעילה: לחץ להשהיה' : 'מושהית: לחץ להפעלה', 'aria-label': 'פעילה' });
     toggle.addEventListener('change', act(() => api.schedule.setActive(task.id, toggle.checked)));
-    const next = task.active && task.nextRunAt ? `הבאה: ${formatTime(task.nextRunAt)}` : task.active ? 'אין ריצה מתוזמנת' : 'מושהית';
+    const next = task.done ? (task.doneNote || 'הסתיים') : task.active && task.nextRunAt ? `הבאה: ${formatTime(task.nextRunAt)}` : task.active ? 'אין ריצה מתוזמנת' : 'מושהית';
     return row({
       title: h('span', { dir: 'auto' }, task.name),
-      badges: [badge(task.scheduleText, 'info'), ...(task.error ? [badge(task.error, 'danger')] : []), ...(task.running ? [badge('רצה עכשיו', 'accent')] : []), ...(task.lastRun ? runBadges(task.lastRun) : [])],
+      badges: [badge(task.scheduleText, 'info'), ...(task.done ? [badge('הסתיים', 'success')] : []), ...(task.error ? [badge(task.error, 'danger')] : []), ...(task.running ? [badge('רצה עכשיו', 'accent')] : []), ...(task.lastRun ? runBadges(task.lastRun) : [])],
       sub: [next, task.lastRun ? `אחרונה: ${formatTime(task.lastRun.startedAt)}` : 'עדיין לא רצה', task.folder].join(' · '),
       actions: [
-        h('label', { class: 'schedule-toggle' }, toggle, task.active ? 'פעילה' : 'מושהית'),
+        task.done ? null : h('label', { class: 'schedule-toggle' }, toggle, task.active ? 'פעילה' : 'מושהית'),
         button('הרץ עכשיו', act(async () => { await api.schedule.runNow(task.id); toast('הריצה התחילה: סשן חדש ייפתח בסרגל'); }), { variant: 'primary', iconName: 'arrow-up' }),
         button('היסטוריה', () => { formHolder.replaceChildren(); showHistory(historyHolder, task, context); }, { iconName: 'history' }),
         button('עריכה', () => edit(task), { iconName: 'pencil' }),
