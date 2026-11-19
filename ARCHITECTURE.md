@@ -1,5 +1,5 @@
 # Architecture
-_Last updated: 2026-10-30 — the D1–D16 sections are below; the history of each change is in CHANGELOG.md._
+_Last updated: 2026-11-19 (HEAD 12aec3e) — the D1–D16 sections, "Data flow since wave 2", "Local-model batch" and the Security bullets of 2026-11-16..19 (verify hook, hunk revert, commit / push, merge, discard, preview and dev servers, hardening, terminal tabs, hooks editor, scheduled tasks, backups) are below; the history of each change is in CHANGELOG.md._
 
 ## Overview
 Browser UI <-> Node HTTP server <-> one long-lived `claude -p` process per session in stream-json mode.
@@ -173,7 +173,7 @@ Since 2026-11-16 also: the model-server gate (one turn at a time), the stall clo
 - Items and queue entries hold references only; `sessions.json` never holds file bytes
 
 ## Side questions (/btw)
-- `/btw <question>` runs in the browser (`command-runner.js` -> `side-question.js`), even while a turn runs, and calls
+- `/btw <question>` runs in the browser (`command-runner.js` -> `side/side-pane.js`), even while a turn runs, and calls
   `POST /api/sessions/:id/side-question` `{ question, history }` -> `lib/side-questions.js` -> control request `side_question`
   on the session's process (started if needed; 10 min timeout). The answer is `{ response, notice }`
 - It never becomes a thread item or a queue entry and is never saved; follow-up history lives only in the open card.
@@ -217,7 +217,8 @@ Since 2026-11-16 also: the model-server gate (one turn at a time), the stall clo
 - Layout: `.main` = topbar + `.workspace` (`#workspace`), a row of `.chat` (thread + composer, ids unchanged) and `#pane-area`. `.app` still has the sidebar column and the optional split column, so the order in RTL is
   sidebar, chat, pane area, then the split pane. `public/js/panes/panes.js` is the only module `app.js` talks to; `pane-host.js` owns the area (registry, open set, width, room rule, `closeFocused()`, which Ctrl+\ calls);
   each pane is `{ id, title, icon, render(body, session) }` registered in `panes.js` (the details rail, Changes, Terminal, Files, Plan and Background tasks). The host has `open(id)` (never closes) and `toggle(id)`, and calls `onChange` after any open or close so the topbar toggles stay in step. The area belongs to the main session only
-- Room rule: shown only when `#workspace` is at least 560 px of chat plus the column wide (a `ResizeObserver` re-checks); otherwise hidden with the saved choice kept (`claude-gui.panes-open`, `claude-gui.panes-width`).
+- Since 2026-11-16 the area is ONE tabbed area (`pane-tabs.js`: a tab per open pane, one shown, the others hidden not destroyed; the active tab in `claude-gui.panes-active`; `closeFocused()` now closes the active tab; resize in `pane-resize.js`, toggles in `pane-toggles.js`, the "חלוניות" overflow menu in `pane-overflow.js`, attention dots in `pane-attention.js`). Panes registered since: Preview ("תצוגה מקדימה") and the side-question tab ("שאלת צד").
+- Room rule (changed 2026-11-16): docked only when `#workspace` is at least 560 px of chat plus the column wide (a `ResizeObserver` re-checks); below that the area is an overlay drawer (`pane-drawer.js`) whose open state is never saved (`claude-gui.panes-open`, `claude-gui.panes-width` as before). The old "hidden with a toast" text is gone.
   The split view needs no special case: it narrows the main region, so the rule hides the area
 - The rail (`pane-details.js`) reads only what the browser has (`session`, `state.context`, `session.tasks`) plus the git summary: `GET /api/sessions/:id/git-summary` (`lib/git/changes.js` `gitSummary`: `git status --branch`
   and `git diff --numstat` staged + unstaged through `lib/git/run.js`; the session's own folder, no `cwd` parameter). The summary is fetched on select/switch, on status change and by hand, never on a timer (`panes/session-fetch.js`, shared with the Changes pane).
@@ -493,7 +494,7 @@ the right to run commands as that user.
   stop ended the turn), error
 - Result item: `{ kind: 'result', isError, subtype, text, durationMs, durationApiMs?, costUsd (number, or null when unknown), turns, usage: { input, output, cacheRead?, cacheWrite? } | null }`; the `?` fields are missing in older saved items
 - Session fields beyond settings: `queue` ([{ id, text, images?, files?, at }], persisted), `status`, `claudeSessionId`, `pinned` (boolean, persisted; set via PATCH, not a CLI setting so no restart; not inherited by forks; ignored for an archived session), `archived` (boolean) and `archivedAt` (ms, null after a restore) (persisted; set only by `POST .../archive` / `.../unarchive`, never by PATCH; not inherited by forks; the queue is kept while archived), `worktree` (`{ path, branch, root, source }` or null, persisted; set only by the server when the session is made, inherited by forks, not settable through PATCH), `shellContext` (D10: `[{ command, stdout, stderr, exitCode }]`, max 10, persisted; set only by the server when a `!` run ends, cleared when a message carries it to the CLI and by `/clear`, not inherited by forks, not settable through PATCH)
-- Sidebar grouping: `session-groups.js` (pure: sessions + mode -> groups: pinned first, then by date or by project folder) feeds `sidebar.js`;
+- Sidebar grouping: `sidebar/arrange.js` (pure: sessions + mode -> groups: pinned first, then by date or by project folder) feeds `sidebar.js`;
   the mode is per browser in localStorage `claude-gui.sidebar-grouping`. Frontend only
 - User items: `{ kind: 'user', text, images?: [{ id, mediaType, name }], files?: [{ id, name, size, path }] }`
 - SSE event types: session, removed, item, status, delta, runtime, permission, permission-resolved, tasks, shell (D10: `phase` start / out / end of a shell run)

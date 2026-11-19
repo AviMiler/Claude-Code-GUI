@@ -14,6 +14,8 @@ On Node 22 the runner takes file names or glob patterns, not a directory, so `no
 
 Requirements: Node 18 or newer (`node:test` is stable from Node 20). The project targets Node 22.
 
+As of 2026-11-19 there are 60 test files and 459 cases. They cover the pure modules and also the later features that have pure logic or a route (safe-path, API guard, preview and launch config, dev servers, git commit / merge / discard / branch diff / worktree list, schedule rules, keep-awake, sidebar groups, sync, highlight, quote, find logic, chat folder). Some of these start a throwaway HTTP server on `127.0.0.1` or use real temporary git repositories.
+
 ## Rules for these tests
 
 - One file per module: `<module>.test.js`.
