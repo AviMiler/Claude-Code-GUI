@@ -54,6 +54,7 @@ const runCommand = createCommandRunner(actions);
 const composer = createMainComposer(els.composerArea, { actions, runCommand });
 enableFileMenus({ insert: text => composer.insert(text) }); const pane = createFocusedPane({ focus, split, main: { composer, actions, area: els.composerArea, session: activeSession, messages: els.messages } }); // what the shortcuts act on
 const find = createSessionFind({ pane, whenLoaded: id => itemSync.whenLoaded(id) }); // Ctrl+F
+import { enableQuoteSelection } from './quote/selection-watch.js'; enableQuoteSelection({ pane }); // "הוספה לצ'אט" over a selection
 
 /** Re-renders everything that depends on the active session (cheap: no thread re-render). */
 function refresh() {

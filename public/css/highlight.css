@@ -1,0 +1,25 @@
+/* Syntax colours for highlight.js output (js/highlight/), our own palette, not a highlight.js theme.
+   Every colour is at least 4.5:1 on --code-block and on a marked viewer line (--accent-soft over it), light and dark. */
+:root {
+  --hl-keyword: #8E3A9E; --hl-string: #276B32; --hl-number: #A04A10; --hl-comment: #62615B;
+  --hl-title: #1F5FA8; --hl-type: #86580A; --hl-attr: #A33A2B; --hl-regexp: #A8326A; --hl-meta: #5A5A9E;
+}
+:root[data-theme="dark"] {
+  --hl-keyword: #D7A2E8; --hl-string: #A5D6A0; --hl-number: #F0B27A; --hl-comment: #AEACA3;
+  --hl-title: #8DB8E8; --hl-type: #E3C07A; --hl-attr: #EE9A8E; --hl-regexp: #F4A3C4; --hl-meta: #B4B4E6;
+}
+
+.hljs-keyword, .hljs-selector-tag, .hljs-doctag, .hljs-operator.hljs-keyword { color: var(--hl-keyword); }
+.hljs-string, .hljs-char.escape_, .hljs-template-tag, .hljs-addition, .hljs-selector-attr { color: var(--hl-string); }
+.hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet, .hljs-variable.constant_ { color: var(--hl-number); }
+.hljs-comment, .hljs-quote { color: var(--hl-comment); font-style: italic; }
+.hljs-title, .hljs-title.function_, .hljs-section, .hljs-selector-id, .hljs-selector-class { color: var(--hl-title); }
+.hljs-type, .hljs-built_in, .hljs-title.class_, .hljs-class .hljs-title { color: var(--hl-type); }
+.hljs-attr, .hljs-attribute, .hljs-property, .hljs-name, .hljs-variable, .hljs-template-variable { color: var(--hl-attr); }
+.hljs-regexp, .hljs-link, .hljs-deletion { color: var(--hl-regexp); }
+.hljs-meta, .hljs-meta .hljs-keyword, .hljs-tag { color: var(--hl-meta); }
+.hljs-subst { color: var(--text); }
+.hljs-meta .hljs-string { color: var(--hl-string); }
+.hljs-section, .hljs-strong { font-weight: 600; }
+.hljs-emphasis { font-style: italic; }
+.hljs-deletion { text-decoration: line-through; }

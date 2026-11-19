@@ -1,11 +1,14 @@
 /**
  * File viewer: a click on a file path in a tool row opens the file's current text with line numbers, the lines the
- * tool read or wrote highlighted and scrolled into view. Read-only; content is shown as plain text, never as HTML.
+ * tool read or wrote highlighted and scrolled into view. Read-only; the text is coloured by highlight.js (its own
+ * escaped output only, highlight/highlight.js) or shown as plain text, never as the file's own HTML.
  */
 import { api } from './api.js';
 import { h, copyText } from './dom.js';
 import { icon } from './icons.js';
 import { toast } from './ui.js';
+import { highlightLines } from './highlight/highlight.js';
+import { languageForPath } from './highlight/languages.js';
 import { canOpenInFiles, openInFiles, tryOpenInFiles } from './files/open-in-files.js';
 
 const MAX_RENDERED_LINES = 20000;
@@ -73,9 +76,12 @@ export async function openFileViewer(sessionId, path, highlight) {
   const lines = file.content.split('\n');
   if (lines.length > 1 && lines.at(-1) === '') lines.pop(); // the newline that ends the last line is not a line
   const marked = highlightedLines(lines, highlight);
-  const body = h('div', { class: 'file-lines', dir: 'ltr' }, lines.slice(0, MAX_RENDERED_LINES).map((text, index) => h('div', {
+  const shown = lines.slice(0, MAX_RENDERED_LINES);
+  const coloured = highlightLines(shown, languageForPath(file.path)); // null: plain (too big, unknown and large, no hljs)
+  const lineText = index => (coloured ? h('span', { class: 'line-text hljs', html: coloured[index] }) : h('span', { class: 'line-text' }, shown[index]));
+  const body = h('div', { class: 'file-lines', dir: 'ltr' }, shown.map((unused, index) => h('div', {
     class: `file-line${marked.has(index + 1) ? ' marked' : ''}`,
-  }, h('span', { class: 'line-no' }, String(index + 1)), h('span', { class: 'line-text' }, text))));
+  }, h('span', { class: 'line-no' }, String(index + 1)), lineText(index))));
   const dialog = h('dialog', { class: 'file-viewer', 'aria-label': file.path });
   const close = () => { dialog.close(); dialog.remove(); };
   const notes = [file.truncated ? `מוצגים 2MB הראשונים מתוך ${Math.round(file.size / 1048576)}MB.` : '',
