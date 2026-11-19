@@ -2,11 +2,16 @@
 import { api } from './api.js';
 import { copyText, downloadText, folderName } from './dom.js';
 import { state, activeSession, rememberFolder } from './state.js';
+import { setUnread } from './sidebar/unread.js';
 import { exportMarkdown } from './render-items.js';
 import { toast, ask } from './ui.js';
 import { worktreeChoice } from './worktree/worktree-toggle.js';
 import { confirmWorktreeRemoval, reportWorktreeRemoval } from './worktree/worktree-delete.js';
 import { projectFolder } from './worktree/project-folder.js';
+import { offerMergeBeforeArchive } from './worktree/merge-action.js';
+import { chatWanted } from './chat/chat-toggle.js';
+import { CHAT_LABEL } from './chat/chat-session.js';
+import { refreshLightRows } from './cli-list/light-rows.js';
 
 /**
  * @param {{selectSession:(id:string|null)=>void, openInSplit:(id:string)=>void}} view
@@ -18,14 +23,16 @@ export function createSessionActions(view, report) {
   /** Creates a session from the draft settings (folder, mode, model, worktree switch) for a first message. */
   async function createFromDraft(firstText, attachments = []) {
     const draft = state.draft;
+    const chat = chatWanted(); // a chat without a project: the server picks the folder, so no cwd and no worktree
     const cwd = draft.cwd || state.config.defaultCwd;
     const name = firstText && !firstText.startsWith('/') ? firstText.replace(/\s+/g, ' ').slice(0, 48)
-      : attachments.length ? attachments[0].name : folderName(cwd);
-    const worktree = await worktreeChoice(cwd);
+      : attachments.length ? attachments[0].name : chat ? CHAT_LABEL : folderName(cwd);
+    const worktree = !chat && await worktreeChoice(cwd);
     if (worktree) toast('יוצר worktree…');
-    const session = await api.createSession({ name, cwd, mode: draft.mode, model: draft.model, effort: draft.effort, worktree });
+    const settings = { name, mode: draft.mode, model: draft.model, effort: draft.effort };
+    const session = await api.createSession(chat ? { ...settings, chat: true } : { ...settings, cwd, worktree });
     if (session.notice) toast(session.notice);
-    rememberFolder(projectFolder(session));
+    if (!session.chat) rememberFolder(projectFolder(session));
     state.sessions.set(session.id, session);
     view.selectSession(session.id);
     return session;
@@ -59,13 +66,26 @@ export function createSessionActions(view, report) {
     setPinned(id, pinned) {
       api.updateSession(id, { pinned }).catch(report);
     },
+    /** "Mark as done" / "unmark" of the sidebar menu. */
+    setCompleted(id, completed) {
+      api.updateSession(id, { completed }).catch(report);
+    },
+    /** Moves a session into a sidebar group (null: out of any group). */
+    setGroup(id, groupId) {
+      api.updateSession(id, { groupId }).catch(report);
+    },
+    /** "Mark as read / unread" of the sidebar menu. */
+    setUnread(id, unread) {
+      setUnread(id, unread).catch(report);
+    },
     /** Deletes a session (the open one by default); one in a worktree is also asked about its worktree folder. */
     async remove(id = state.activeId) {
       const session = state.sessions.get(id);
-      if (!session || !await ask({ title: `למחוק את "${session.name}"?`, text: 'השיחה תימחק מהממשק. ב-Claude Code היא נשארת וניתן לפתוח אותה שוב מ"שיחות קודמות".', confirmLabel: 'מחיקה', danger: true })) return;
+      if (!session || !await ask({ title: `למחוק את "${session.name}"?`, text: 'הסשן יימחק מהממשק. השיחה נשארת ב-Claude Code ותופיע ברשימה כשיחה מהטרמינל.', confirmLabel: 'מחיקה', danger: true })) return;
       const removeWorktree = await confirmWorktreeRemoval(session);
       const result = await api.deleteSession(session.id, { removeWorktree }).catch(report);
       if (removeWorktree && result) reportWorktreeRemoval(session, result);
+      refreshLightRows(); // its conversation is a light row now
     },
     /** Archives a session (the open one by default); asks first only when it would stop running background tasks. */
     async archive(id = state.activeId) {
@@ -73,6 +93,10 @@ export function createSessionActions(view, report) {
       if (!session || session.archived) return;
       const tasks = (session.tasks || []).filter(task => task.status === 'running').length;
       if (tasks && !await ask({ title: `להעביר את "${session.name}" לארכיון?`, text: `${tasks} משימות רקע רצות בסשן, והן ייעצרו.`, confirmLabel: 'העברה לארכיון', danger: true })) return;
+      const merged = await offerMergeBeforeArchive(session);
+      if (merged?.type === 'cancel') return;
+      if (merged?.type === 'error' && !await ask({ title: 'המיזוג נכשל', text: `${merged.text}\n\nלהעביר לארכיון בכל זאת?`, confirmLabel: 'העברה לארכיון' })) return;
+      if (merged?.type === 'ok') toast(merged.text);
       const result = await api.archive(id).catch(report);
       if (!result) return;
       if (id === state.activeId) view.selectSession(null);

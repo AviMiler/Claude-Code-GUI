@@ -4,7 +4,8 @@
  * composer, the Changes pane) and is listed here only so it shows in the lists.
  */
 
-/** @typedef {{keys:string, label:string, group:string, action?:string, code?:string, shift?:boolean}} Shortcut */
+/** @typedef {{keys:string, label:string, group:string, action?:string, code?:string, shift?:boolean, alt?:boolean, optional?:boolean}} Shortcut
+ *  optional: the action may return false, "not handled here": the key is then left to the browser (no preventDefault) */
 
 export const SHORTCUT_GROUPS = [
   { id: 'general', label: 'כללי' },
@@ -21,11 +22,16 @@ export const SHORTCUTS = [
   { keys: 'Ctrl+,', label: 'הגדרות', group: 'general', action: 'settings', code: 'Comma' },
   { keys: 'Ctrl+/', label: 'קיצורי מקלדת', group: 'general', action: 'shortcuts', code: 'Slash' },
   { keys: 'Shift+F10', label: 'תפריט הקשר של סשן או קובץ (גם קליק ימני)', group: 'general' },
+  { keys: 'Ctrl+Shift+]', label: 'הסשן הבא בסרגל (בחלון הממוקד)', group: 'general', action: 'nextSession', code: 'BracketRight', shift: true },
+  { keys: 'Ctrl+Shift+[', label: 'הסשן הקודם בסרגל (בחלון הממוקד)', group: 'general', action: 'prevSession', code: 'BracketLeft', shift: true },
+  { keys: 'Ctrl+;', label: 'שאלת צד (/btw)', group: 'conversation', action: 'sideQuestion', code: 'Semicolon' },
+  { keys: 'Ctrl+F', label: 'חיפוש בתוך הסשן', group: 'conversation', action: 'findInSession', code: 'KeyF', optional: true },
   { keys: 'Ctrl+O', label: 'החלפת תצוגת התמליל (רגילה, חשיבה, מפורטת)', group: 'conversation', action: 'cycleView', code: 'KeyO' },
   { keys: 'Esc', label: 'עצירת Claude (או סגירת תפריט)', group: 'conversation' },
   { keys: 'Ctrl+Shift+D', label: 'חלונית השינויים', group: 'panes', action: 'toggleChanges', code: 'KeyD', shift: true },
   { keys: 'Ctrl+`', label: 'חלונית הטרמינל', group: 'panes', action: 'toggleTerminal', code: 'Backquote' },
   { keys: 'Ctrl+\\', label: 'סגירת החלונית הממוקדת', group: 'panes', action: 'closePane', code: 'Backslash' },
+  { keys: 'Ctrl+Alt+W', label: 'סגירת החלון הממוקד (בפיצול: הסשן של החלון השני עובר לחלון הראשי)', group: 'panes', action: 'closeFocusedPane', code: 'KeyW', alt: true },
   { keys: 'Ctrl+Shift+\\', label: 'פיצול תצוגה: סשן נוסף לצד זה', group: 'panes', action: 'toggleSplit', code: 'Backslash', shift: true },
   { keys: 'Ctrl+S', label: 'שמירת הקובץ (בעורך של חלונית הקבצים)', group: 'panes' },
   { keys: 'Ctrl+Enter', label: 'שליחת ההערות על השינויים (בחלונית השינויים)', group: 'panes' },
@@ -35,12 +41,16 @@ export const SHORTCUTS = [
   { keys: 'Shift+Enter', label: 'שורה חדשה', group: 'composer' },
   { keys: '/', label: 'פקודות ו-Skills', group: 'composer' },
   { keys: '@', label: 'קבצים, תיקיות וסוכנים', group: 'composer' },
+  { keys: 'Ctrl+Shift+M', label: 'תפריט מצב ההרשאות', group: 'composer', action: 'modeMenu', code: 'KeyM', shift: true },
+  { keys: 'Ctrl+Shift+I', label: 'תפריט המודל', group: 'composer', action: 'modelMenu', code: 'KeyI', shift: true },
+  { keys: 'Ctrl+Shift+E', label: 'תפריט המאמץ (effort)', group: 'composer', action: 'effortMenu', code: 'KeyE', shift: true },
+  { keys: '1 – 9', label: 'בחירת הפריט ה-N בתפריט פתוח (כשאין שדה טקסט בפוקוס)', group: 'composer' },
   { keys: 'Shift+Tab', label: 'החלפת מצב הרשאות (שאל → עריכות → תכנון)', group: 'composer' },
   { keys: '↑', label: 'הודעה קודמת (בתיבה ריקה)', group: 'composer' },
 ];
 
-/** The page-wide shortcut a keydown means, or null. Ctrl or Cmd, never Alt; Shift must match exactly. */
+/** The page-wide shortcut a keydown means, or null. Ctrl or Cmd; Shift and Alt must match exactly (Alt only where the row says so). */
 export function shortcutFor(event) {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
-  return SHORTCUTS.find(item => item.action && item.code === event.code && Boolean(item.shift) === event.shiftKey) || null;
+  if (!(event.ctrlKey || event.metaKey)) return null;
+  return SHORTCUTS.find(item => item.action && item.code === event.code && Boolean(item.shift) === event.shiftKey && Boolean(item.alt) === event.altKey) || null;
 }

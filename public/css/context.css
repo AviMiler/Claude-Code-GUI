@@ -1,0 +1,45 @@
+/* Context window: the composer ring, the usage report (panel + rail) and the early-warning card (public/js/context/). */
+:root {
+  --seg-0: #D97757; --seg-1: #6A9BCC; --seg-2: #788C5D; --seg-3: #C2A05A; --seg-4: #9B7EBD; --seg-5: #5FA8A0; --seg-6: #CC6F8E; --seg-7: #8A8577;
+}
+:root[data-theme="dark"] {
+  --seg-0: #E08A6C; --seg-1: #86B1DD; --seg-2: #97AD7A; --seg-3: #D6B676; --seg-4: #B29AD0; --seg-5: #7DC0B8; --seg-6: #DD8DA8; --seg-7: #A9A49A;
+}
+
+/* Ring: accent, warning from the warning level, danger past the window; an estimate is fainter. */
+.context-ring[data-level="warn"] .fill { stroke: var(--warning); }
+.context-ring[data-level="over"] .fill { stroke: var(--danger); }
+.context-ring[data-estimate] .fill { opacity: .7; }
+
+/* Report */
+.context-total { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 8px; }
+.context-percent { font: 22px/1.2 var(--font-serif); font-variant-numeric: tabular-nums; }
+.context-total.level-warn .context-percent { color: var(--warning); }
+.context-total.level-over .context-percent { color: var(--danger); }
+.context-of { color: var(--muted); font-size: 13.5px; }
+.context-bar { position: relative; }
+.context-seg { flex: none; width: var(--w); min-width: 2px; }
+.context-window-mark { position: absolute; top: -3px; bottom: -3px; inset-inline-start: var(--at); width: 2px; background: var(--text); border-radius: 1px; }
+.context-bar.is-over { outline: 1px solid var(--danger); outline-offset: 1px; }
+.context-swatch { flex: none; }
+.seg-0 { background: var(--seg-0); } .seg-1 { background: var(--seg-1); } .seg-2 { background: var(--seg-2); } .seg-3 { background: var(--seg-3); }
+.seg-4 { background: var(--seg-4); } .seg-5 { background: var(--seg-5); } .seg-6 { background: var(--seg-6); } .seg-7 { background: var(--seg-7); }
+.seg-reserve { background: repeating-linear-gradient(45deg, var(--border-strong) 0 3px, transparent 3px 6px); }
+.seg-free { background: var(--surface-3); } .seg-over { background: var(--danger); }
+.seg-deferred { background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.context-over-note { margin: 0 0 8px; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger); font-size: 12.5px; }
+.context-note, .context-empty { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+.detail-context .context-percent { font-size: 18px; }
+.context-rail-value { font-variant-numeric: tabular-nums; }
+.context-rail-value.level-warn { color: var(--warning); } .context-rail-value.level-over { color: var(--danger); font-weight: 600; }
+
+/* Early warning above the composer: calm, one line of text and two actions; wraps on a narrow window. */
+.context-warning { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: var(--column); margin: 0 auto 8px; padding: 8px 10px 8px 12px;
+  border: 1px solid var(--border); border-inline-start: 3px solid var(--warning); border-radius: var(--radius); background: var(--warning-soft); font-size: 13px; }
+.context-warning.is-over { border-inline-start-color: var(--danger); background: var(--danger-soft); }
+.context-warning-text { flex: 1 1 220px; min-width: 0; color: var(--text-2); }
+.context-warning-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
+.context-warning > .icon { width: 16px; height: 16px; color: var(--warning); } /* an icon has no size of its own */
+.context-warning.is-over > .icon { color: var(--danger); }
+.context-warning .icon-button { width: 26px; height: 26px; }
+@media (max-width: 480px) { .context-warning-actions { width: 100%; } .context-warning-actions .btn { flex: 1 1 auto; } }

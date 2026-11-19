@@ -1,6 +1,7 @@
 /** What the user can do to sessions (send, stop, clear, fork, rename, settings...) and the context given to panels. */
 import { api } from './api.js';
 import { state, activeSession, currentScope, scopeFolder, getCatalog, getCommands, forgetCatalog } from './state.js';
+import { rememberFolderSettings } from './folder-defaults.js';
 import { availableModes, MODE_CYCLE } from './modes.js';
 import { forServer, fromStored } from './attachments.js';
 import { openPanel } from './panels/panel-host.js';
@@ -85,9 +86,12 @@ export function createActions(view) {
       if (patch.mode && patch.mode !== (session || state.draft).mode) await confirmMode(patch.mode);
       if (session) await api.updateSession(session.id, patch);
       else Object.assign(state.draft, patch);
+      rememberFolderSettings(session?.cwd || state.draft.cwd || state.config.defaultCwd, patch);
       view.refresh();
     },
     setMode: mode => actions.updateSettings({ mode }).catch(report),
+    /** updateSettings for a menu with no error handling of its own: a refused value (400) becomes a toast. */
+    trySettings: patch => actions.updateSettings(patch).catch(report),
     cycleMode() {
       const current = activeSession()?.mode || state.draft.mode;
       const cycle = MODE_CYCLE.filter(mode => availableModes(state.capabilities.permissionModes).some(item => item.value === mode));

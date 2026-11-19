@@ -1,0 +1,11 @@
+/* The working line's stall note and Stop button (js/stall/stall-note.js). Theme tokens only, so light and dark both work. */
+.working { flex-wrap: wrap; }
+.working .stall-box { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; }
+.working .stall-box:empty, .working .stall-text:empty { display: none; }
+.working .stall-box[data-stalled="true"] { color: var(--warning); font-variant-numeric: tabular-nums; }
+.working .stall-stop {
+  border: 1px solid var(--border-strong); background: var(--warning-soft); color: var(--text); border-radius: 6px;
+  padding: 2px 10px; font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.working .stall-stop:hover { background: var(--danger-soft); color: var(--danger); }
+.working .stall-stop[hidden] { display: none; }

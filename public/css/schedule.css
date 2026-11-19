@@ -1,0 +1,49 @@
+/* Local scheduled tasks (public/js/schedule/). */
+.schedule-form { display: grid; gap: 10px; margin-block: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.schedule-folder { display: flex; gap: 6px; align-items: center; }
+.schedule-folder input { flex: 1; min-width: 0; }
+.schedule-fields, .schedule-parts { display: grid; gap: 8px; }
+.schedule-days { display: flex; flex-wrap: wrap; gap: 10px; }
+.schedule-days label, .schedule-active, .schedule-toggle { display: inline-flex; gap: 4px; align-items: center; font-weight: 400; cursor: pointer; }
+.schedule-preview { color: var(--muted); font-size: 13px; }
+.schedule-preview.invalid { color: var(--danger); }
+.schedule-warning { padding: 8px 10px; border-radius: 8px; background: var(--warning-soft); color: var(--warning); font-size: 13px; }
+.schedule-warning.danger { background: var(--danger-soft); color: var(--danger); font-weight: 600; }
+.schedule-history { margin-top: 14px; }
+.session-row .schedule-badge { display: inline-flex; width: 13px; height: 13px; margin-inline-end: 4px; vertical-align: -2px; color: var(--muted); }
+.session-row .schedule-badge svg { width: 13px; height: 13px; }
+/* The flexible schedule form (schedule-fields.js and its sections). */
+.schedule-rule { display: grid; gap: 10px; }
+.schedule-section { display: grid; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.schedule-section > legend, .schedule-limits > summary { padding-inline: 4px; color: var(--text); font-weight: 600; font-size: 13px; }
+.schedule-limits > summary { cursor: pointer; padding: 0; }
+.schedule-part { display: grid; gap: 8px; }
+.schedule-part[hidden], .schedule-section[hidden], .schedule-rule[hidden], .schedule-fields .field[hidden], .schedule-group[hidden] { display: none; }
+.schedule-inline { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--text); font-weight: 400; }
+.schedule-inline input, .schedule-group select { padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; }
+.schedule-number { width: 6em; }
+.schedule-number.wide { width: 9em; }
+.schedule-time, .schedule-date, .schedule-number { direction: ltr; text-align: left; }
+.schedule-rows { display: grid; gap: 6px; }
+.schedule-row { display: flex; gap: 6px; align-items: center; }
+.schedule-rowlist { display: grid; gap: 6px; justify-items: start; }
+.schedule-chips, .schedule-presets { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.schedule-presets > span { color: var(--muted); font-size: 12.5px; }
+.schedule-chip { min-width: 34px; padding: 4px 10px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.schedule-chip:hover { border-color: var(--accent); }
+.schedule-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+.schedule-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.schedule-chip.static { display: inline-flex; gap: 4px; align-items: center; cursor: default; }
+.schedule-chip-x { padding: 0 2px; border: 0; background: none; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
+.schedule-chip-x:hover { color: var(--danger); }
+.schedule-month-grid { display: grid; grid-template-columns: repeat(7, minmax(34px, 1fr)); max-width: 340px; }
+.schedule-month-grid .schedule-chip { padding: 4px 0; border-radius: 6px; }
+.schedule-month-grid .schedule-chip:last-child { grid-column: span 2; }
+.schedule-check { display: inline-flex; gap: 6px; align-items: center; color: var(--text); font-weight: 400; font-size: 13px; cursor: pointer; }
+.schedule-note { margin: 0; color: var(--faint); font-size: 12px; font-weight: 400; }
+.schedule-datelist { display: grid; gap: 6px; }
+.schedule-preview-box { display: grid; gap: 6px; padding: 10px 12px; border-radius: 8px; background: var(--bg-sidebar); border: 1px solid var(--border); }
+.schedule-summary { color: var(--text); font-size: 13px; }
+.schedule-next-title { color: var(--muted); font-size: 12.5px; }
+.schedule-next { margin: 0; padding-inline-start: 20px; display: grid; gap: 2px; font-size: 13px; color: var(--text); }
+.schedule-next .badge { margin-inline-start: 6px; }

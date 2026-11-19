@@ -7,21 +7,32 @@ const { loadConfig } = require('./lib/config');
 const { isAllowedRequest, sendJson } = require('./lib/http-utils');
 const { handleApi } = require('./lib/api-routes');
 const { serveStatic } = require('./lib/static-files');
+const { isPreviewPath, sendPreviewError } = require('./lib/preview/preview-routes');
 const cliSync = require('./lib/session-cli-sync');
 const { sweepAttachments } = require('./lib/session-service');
+const { envOf, displayUrl } = require('./lib/model-list');
+const { migrateTemplates } = require('./lib/templates/template-migration');
 
 const config = loadConfig();
 cliSync.start(config); // sessions show their CLI conversations, kept up to date
 sweepAttachments(); // after the first build: the items now show what they refer to
+migrateTemplates(config); // data/templates.json (before 2026-10-30) -> the user's CLI commands
+require('./lib/keep-awake').start(config); // keeps the machine awake while Claude works (Windows)
+require('./lib/schedule/schedule-service').start(config); // local scheduled tasks: catch up, then wake at the next due run
 
 const server = http.createServer(async (request, response) => {
   try {
-    if (!isAllowedRequest(request, config.port)) return sendJson(response, 403, { error: 'forbidden' });
+    if (!isAllowedRequest(request, config.port)) {
+      // A preview URL keeps its sandbox CSP on a refusal too (an opaque-origin page's CORS request carries Origin: null)
+      if (isPreviewPath(new URL(request.url, 'http://localhost').pathname)) return sendPreviewError(response, 403, 'forbidden');
+      return sendJson(response, 403, { error: 'forbidden' });
+    }
     if (request.url.startsWith('/api/')) return await handleApi(request, response, config);
     serveStatic(request, response);
   } catch (error) {
     // 501 = this Claude Code version lacks the feature; the browser shows a neutral note, so it is not a failure to log.
-    if (error.status !== 501) console.error('[server] request failed:', request.method, request.url, error);
+    // Client mistakes and refusals (4xx) are answered, not logged: a refused framed or header-less request is routine noise.
+    if (!error.status || error.status >= 500 && error.status !== 501) console.error('[server] request failed:', request.method, request.url, error);
     if (!response.headersSent) sendJson(response, error.status || 500, { error: error.message });
   }
 });
@@ -34,6 +45,7 @@ server.on('error', error => {
 // Bound to loopback only: this server can run commands on the machine.
 server.listen(config.port, '127.0.0.1', () => {
   console.log(`Claude GUI is running: http://127.0.0.1:${config.port}`);
-  const baseUrl = config.env.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_BASE_URL || '(not set)';
+  const rawUrl = envOf(config, 'ANTHROPIC_BASE_URL'); // printed without user:password or query
+  const baseUrl = rawUrl ? displayUrl(rawUrl) || '(invalid URL)' : '(not set)';
   console.log(`claudePath: ${config.claudePath} | model: ${config.model || '(CLI default)'} | ANTHROPIC_BASE_URL: ${baseUrl}`);
 });

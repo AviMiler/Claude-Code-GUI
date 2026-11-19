@@ -2,14 +2,20 @@
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
 
+/** "כותרת (/cmd)", "(--flag)" or a trailing " /cmd" -> the title and the command in an LTR isolate (in RTL the plain text shows "(cmd/)"). */
+export function labelNode(text) {
+  const match = typeof text === 'string' && (/^(.*?)\s*\(((?:\/|--)[\w:-]+)\)$/.exec(text) || /^(.*?\S)\s+(\/[\w:-]+)$/.exec(text));
+  return match ? [match[1], h('code', { class: 'cmd-hint', dir: 'ltr' }, match[2])] : text;
+}
+
 export const section = (title, lead, ...children) =>
-  h('section', { class: 'panel-section' }, title ? h('h4', null, title) : null, lead ? h('p', { class: 'lead' }, lead) : null, ...children);
+  h('section', { class: 'panel-section' }, title ? h('h4', null, labelNode(title)) : null, lead ? h('p', { class: 'lead' }, lead) : null, ...children);
 
 export const badge = (text, tone = '') => h('span', { class: `badge ${tone}` }, text);
 
 export function button(label, onClick, { variant = '', iconName, small = true, title } = {}) {
   return h('button', { type: 'button', class: `btn ${variant} ${small ? 'small' : ''}`, onClick, title },
-    iconName ? icon(iconName) : null, label);
+    iconName ? icon(iconName) : null, labelNode(label));
 }
 
 /** Runs an async action from a button, disabling it meanwhile and reporting errors. */
@@ -37,7 +43,7 @@ export const loading = (text = 'טוען…') => h('div', { class: 'loading' }, 
 export const errorBox = error => h('div', { class: 'error-box', dir: 'auto' }, error?.message || String(error));
 
 export function field(label, control, { wide = false, hint } = {}) {
-  return h('label', { class: `field${wide ? ' wide' : ''}` }, label, control, hint ? h('span', { class: 'hint' }, hint) : null);
+  return h('label', { class: `field${wide ? ' wide' : ''}` }, h('span', null, labelNode(label)), control, hint ? h('span', { class: 'hint' }, hint) : null);
 }
 
 export function select(options, value) {

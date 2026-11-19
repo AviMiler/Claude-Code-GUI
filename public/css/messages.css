@@ -6,6 +6,8 @@
 .msg-user:hover .msg-actions, .msg-assistant-wrap:hover .msg-actions, .msg-actions:focus-within { opacity: 1; }
 .msg-actions .icon-button { width: 26px; height: 26px; }
 .msg-actions .icon-button .icon { width: 15px; height: 15px; }
+/* The message's time beside its buttons (transcript/message-time.js) */
+.msg-time { align-self: center; padding-inline: 4px; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: default; }
 .msg-assistant-wrap { margin-bottom: 4px; }
 .msg-assistant-wrap > .msg-assistant { margin-bottom: 0; }
 @media (hover: none) { .msg-actions { opacity: 1; } }

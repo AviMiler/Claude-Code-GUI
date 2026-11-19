@@ -7,15 +7,20 @@ import { turnStats } from './turn-stats.js';
 import { imageUrl, fileUrl, formatSize } from './attachments.js';
 import { renderShellItem, shellItemMarkdown } from './terminal/shell-item.js';
 import { rewindButton } from './rewind/rewind-button.js';
+import { renderVerifyItem } from './verify/verify-item.js';
+import { messageTime } from './transcript/message-time.js';
 
 const LOOKS_LIKE_MARKDOWN = /(^|\n)(#{1,4} |\|.*\||[-*] |\*\*)/;
 const copySources = new WeakMap(); // copy button -> the message's original text (Markdown for Claude's answers)
 
-/** "Copy" under a message (shown on hover); the thread's click handler copies copySourceOf(button). */
-function copyButton(text) {
+/**
+ * "Copy" under a message (shown on hover) and the message's time (transcript/message-time.js); the thread's click
+ * handler copies copySourceOf(button): the source text only, never the time.
+ */
+function copyButton(text, item) {
   const button = h('button', { type: 'button', class: 'icon-button', title: 'העתקה', 'aria-label': 'העתקת ההודעה', dataset: { copyMessage: '' } }, icon('copy'));
   copySources.set(button, text);
-  return h('div', { class: 'msg-actions' }, button);
+  return h('div', { class: 'msg-actions' }, button, messageTime(item));
 }
 
 /** Text a message copy button stands for (null for any other element). */
@@ -43,8 +48,8 @@ function renderUser(item) {
   // A correction sent while Claude worked (it joined the running turn at its next step).
   const label = item.correction ? h('span', { class: 'correction-label' }, icon('pencil'), 'תיקון באמצע התור') : null;
   const point = item.cliUuid && !item.correction; // a message the CLI can go back to (rewind/)
-  const actions = item.text ? copyButton(item.text) : null;
-  if (point && actions) actions.append(rewindButton());
+  const actions = item.text ? copyButton(item.text, item) : null;
+  if (point && actions) actions.firstChild.after(rewindButton()); // beside the copy button, before the time
   return h('div', { class: `msg-user${item.correction ? ' correction' : ''}`, dataset: point ? { rewindUuid: item.cliUuid } : null }, label, images, files, bubble, actions);
 }
 
@@ -58,8 +63,8 @@ export function renderThinking(text, open = false) {
 }
 
 /** Claude's answer and its copy button; the button sits outside the Markdown so live re-renders never touch it. */
-function withCopy(node, text) {
-  return h('div', { class: 'msg-assistant-wrap' }, node, copyButton(text));
+function withCopy(node, item) {
+  return h('div', { class: 'msg-assistant-wrap' }, node, copyButton(item.text, item));
 }
 
 /** @param {object} item @param {number|null} toolCalls tool calls of the turn (turn-stats.js), null when unknown */
@@ -79,9 +84,10 @@ function renderCommandOutput(item) {
 }
 
 function build(item, context) {
+  if (item.verify) return renderVerifyItem(item); // a failed automatic check, with its output tail (verify/)
   switch (item.kind) {
     case 'user': return renderUser(item);
-    case 'text': return item.parent ? renderAssistantText(item.text) : withCopy(renderAssistantText(item.text), item.text);
+    case 'text': return item.parent ? renderAssistantText(item.text) : withCopy(renderAssistantText(item.text), item);
     case 'thinking': return renderThinking(item.text);
     case 'tool': return renderTool(item);
     case 'result': return renderResult(item, context?.toolCalls ?? null);

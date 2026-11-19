@@ -11,16 +11,20 @@ import { queueList, sendTitle } from './composer-queue.js';
 import { contextRing, drawContextRing } from './context-ring.js';
 import { createHistory } from './composer-history.js';
 import { createAttachments } from './composer-attachments.js';
+import { createDraftSlot } from './composer-drafts.js';
 
 /**
  * @param {HTMLElement} root Container (.composer-area).
  * @param {{onSubmit:(text:string, attachments:object[], options:{delivery?:'correct'|'queue'})=>Promise<boolean>, onStop:()=>void,
  *   onCommand:(command:object)=>void, onModeMenu:(anchor:HTMLElement)=>void, onModelMenu:(anchor:HTMLElement)=>void,
  *   onPlusMenu:(anchor:HTMLElement)=>void, onContext:()=>void, onCycleMode:()=>void, getHistory:()=>string[],
- *   onQueueRemove:(entry:object)=>void, onQueueEdit:(entry:object)=>void, onQueueResume:()=>void, onTyping?:()=>void}} handlers
+ *   onQueueRemove:(entry:object)=>void, onQueueEdit:(entry:object)=>void, onQueueResume:()=>void, onTyping?:()=>void,
+ *   label?:string, getScope?:()=>object}} handlers label: the box's accessible name (unique per pane); getScope: the catalog
+ *   and file scope of the / and @ menus (state.js currentScope by default)
+ * @returns {object} the composer: textarea, chips, focus, pickFiles, insert, restore, update
  */
 export function createComposer(root, handlers) {
-  const textarea = h('textarea', { rows: 1, dir: 'auto', 'aria-label': 'הודעה ל-Claude' });
+  const textarea = h('textarea', { rows: 1, dir: 'auto', 'aria-label': handlers.label || 'הודעה ל-Claude' });
   const plus = h('button', { type: 'button', class: 'round-button', title: 'הוספה: קבצים, פקודות, תיקיות' }, icon('plus'));
   const modeChip = h('button', { type: 'button', class: 'composer-chip', title: 'מצב הרשאות (Shift+Tab להחלפה)' });
   const modelChip = h('button', { type: 'button', class: 'composer-chip', title: 'מודל ומאמץ' });
@@ -46,14 +50,16 @@ export function createComposer(root, handlers) {
     const empty = !textarea.value.trim() && !files.get().length;
     send.disabled = empty;
     send.hidden = running && empty; // while Claude works, an empty box shows only the stop button
+    draft.save();
   };
   const files = createAttachments({ form, strip, textarea, onChange: autosize, onTyping: handlers.onTyping });
   const history = createHistory(textarea, handlers.getHistory, autosize);
   // A command picked from the menu replaces what was typed to find it ("/sk" -> /skills).
   const menus = attachComposerMenus(textarea, form, {
     onCommand: command => { textarea.value = ''; autosize(); handlers.onCommand(command); },
-    onChange: autosize,
+    onChange: autosize, getScope: handlers.getScope,
   });
+  const draft = createDraftSlot({ textarea, files, onSwitch: () => { menus.close(); history.reset(); } });
 
   /** @param {'correct'|'queue'} delivery what a message does while Claude works (into the turn, or after it) */
   async function submit(delivery) {
@@ -92,11 +98,11 @@ export function createComposer(root, handlers) {
   modeChip.addEventListener('click', () => handlers.onModeMenu(modeChip));
   let modelSwitchable = true;
   modelChip.addEventListener('click', () => { if (modelSwitchable) handlers.onModelMenu(modelChip); });
-  ring.addEventListener('click', () => handlers.onContext());
-  autosize();
+  ring.addEventListener('click', () => handlers.onContext()); autosize();
 
   return {
     textarea,
+    chips: [modeChip, modelChip],
     focus: () => textarea.focus(),
     /** Opens the file picker (the + menu): files of any type. */
     pickFiles: () => picker.click(),
@@ -120,8 +126,9 @@ export function createComposer(root, handlers) {
       textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
       autosize();
     },
-    /** modelSwitchable=false: the system has one model, so the chip is a plain label instead of a menu. */
-    update({ mode, modelLabel, fallbackModel = '', modelSwitchable: switchable = true, isRunning, contextPercent, hasSession, queue = [] }) {
+    /** modelSwitchable=false: the system has one model, so the chip is a plain label instead of a menu; draftKey: whose draft the box shows. */
+    update({ mode, modelLabel, fallbackModel = '', modelSwitchable: switchable = true, isRunning, contextPercent, hasSession, queue = [], draftKey = null }) {
+      draft.bind(draftKey);
       running = isRunning;
       const info = modeInfo(mode);
       modeChip.className = `composer-chip mode-${info.value}`;

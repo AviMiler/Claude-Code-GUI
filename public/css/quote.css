@@ -1,0 +1,8 @@
+/* The floating "הוספה לצ'אט" button over a text selection (public/js/quote/). Fixed, so it is placed in window coordinates. */
+.quote-button { position: fixed; z-index: 60; display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+  font-size: 12.5px; white-space: nowrap; box-shadow: var(--shadow-lg); cursor: pointer; animation: fade-in .12s ease-out; }
+.quote-button[hidden] { display: none; }
+.quote-button:hover { background: var(--surface-2); }
+.quote-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.quote-button .icon { width: 14px; height: 14px; color: var(--accent); }

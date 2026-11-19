@@ -1,7 +1,11 @@
 /**
  * Small, dependency-free Markdown renderer: fenced code (with copy), headings, lists, quotes, tables, rules,
- * **bold**, *italic*, `code`, [links](https://...). Input is always escaped first, so the output is safe HTML.
+ * **bold**, *italic*, `code`, [links](https://...). Input is always escaped first, so the output is safe HTML; a closed
+ * code fence is coloured by highlight.js (its own escaped output, highlight/highlight.js), an open one stays plain.
  */
+import { highlightHtml } from './highlight/highlight.js';
+import { fenceLanguage } from './highlight/languages.js';
+
 const escapeHtml = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 function renderInline(text) {
@@ -56,12 +60,14 @@ function renderBlock(block) {
   return `<p dir="auto">${lines.map(renderInline).join('<br>')}</p>`;
 }
 
-function renderCode(part) {
+function renderCode(part, closed) {
   const language = (part.match(/^([^\n]*)\n/) || [, ''])[1].trim();
   const code = part.replace(/^[^\n]*\n/, '').replace(/\n$/, '');
+  // A fence still being streamed is not coloured: it would be highlighted again on every frame
+  const html = closed ? highlightHtml(code, fenceLanguage(language)) : null;
   return `<div class="code-block"><div class="code-head"><span>${escapeHtml(language || 'code')}</span>`
     + '<button class="btn ghost small" type="button" data-copy-code>העתקה</button></div>'
-    + `<pre dir="ltr"><code>${escapeHtml(code)}</code></pre></div>`;
+    + `<pre dir="ltr"><code${html === null ? '>' : ' class="hljs">'}${html ?? escapeHtml(code)}</code></pre></div>`;
 }
 
 /**
@@ -71,8 +77,9 @@ function renderCode(part) {
  */
 export function renderMarkdown(source) {
   // Odd parts are code; an unterminated fence (while streaming) still renders as code.
-  return String(source).split('```').map((part, index) => {
-    if (index % 2 === 1) return renderCode(part);
+  const parts = String(source).split('```');
+  return parts.map((part, index) => {
+    if (index % 2 === 1) return renderCode(part, index < parts.length - 1);
     return part.split(/\n{2,}/).filter(block => block.trim()).map(renderBlock).join('');
   }).join('');
 }

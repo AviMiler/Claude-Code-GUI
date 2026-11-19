@@ -2,6 +2,8 @@
 import { h } from '../dom.js';
 import { section, button, empty } from './kit.js';
 import { COLORS } from '../session-color/palette.js';
+import { toolLimitsSection } from '../tool-limits/tool-limits-section.js';
+import { verifySection } from '../verify/verify-panel.js';
 
 const checkbox = (label, checked, onChange) => {
   const box = h('input', { type: 'checkbox', checked });
@@ -15,7 +17,7 @@ function promptSection(session, flags, apply, toast) {
     return section('הנחיית מערכת', lead, h('p', { class: 'detail-muted' }, 'הגרסה המותקנת של Claude Code לא תומכת בכך (אין --append-system-prompt-file).'));
   }
   const replace = session.systemPromptMode === 'replace';
-  const area = h('textarea', { rows: 6, dir: 'auto', maxLength: 20000, placeholder: 'ההנחיות שלך…' }, session.systemPrompt || '');
+  const area = h('textarea', { class: 'code prompt-editor', rows: 6, dir: 'auto', maxLength: 20000, placeholder: 'ההנחיות שלך…' }, session.systemPrompt || '');
   const mode = value => h('label', { class: 'option-check' }, h('input', { type: 'radio', name: 'prompt-mode', value, checked: (value === 'replace') === replace,
     disabled: value === 'replace' && !flags.includes('--system-prompt-file') }), value === 'replace' ? 'החלפה של הנחיית המערכת (מסיר גם את ההנחיות של Claude Code לכלים)' : 'הוספה להנחיית המערכת (מומלץ)');
   const modes = h('div', { class: 'option-group' }, mode('append'), mode('replace'));
@@ -39,7 +41,8 @@ export function renderSessionOptionsPanel(body, context) {
           onClick: () => apply({ color: color.key }) }, h('span', { class: 'color-dot', style: `background:${color.hex}` }), color.label))])),
     section('חשיבה', 'כיבוי החשיבה המורחבת (extended thinking) בסשן הזה: Claude עונה בלי לחשוב קודם. נכנס לתוקף בהודעה הבאה. אם המודל שלך לא משתמש בחשיבה מורחבת, אין לכך השפעה.',
       checkbox('כיבוי חשיבה', Boolean(session.thinkingOff), thinkingOff => apply({ thinkingOff }).catch(error => context.toast(error.message, 'error')))),
-    promptSection(session, flags, apply, context.toast),
+    promptSection(session, flags, apply, context.toast), toolLimitsSection(context),
+    verifySection(session, context),
     section('מצב בטוח', 'בסשן הזה תמיד אדם מאשר: אי אפשר לעבור למצב "הכול מותר" או למצב האוטומטי, והם מוסתרים מהתפריטים. זה לא מגביל את Claude בתוך המצבים האחרים, ולא את פקודות ה-! ועורך הקבצים שאתה מפעיל בעצמך.',
       checkbox('מצב בטוח', Boolean(session.safeMode), safeMode => apply({ safeMode }).catch(error => context.toast(error.message, 'error')))));
 }

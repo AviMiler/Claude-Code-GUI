@@ -11,7 +11,7 @@ const OUTWARD_COMMANDS = {
   design: 'מעניק או מבטל ל-Claude גישה לפרויקטי Design בחשבון.',
   'design-consent': 'מעניק ל-Claude גישה לפרויקטי Design בחשבון.',
   'design-revoke': 'מבטל ל-Claude גישה לפרויקטי Design בחשבון.',
-  schedule: 'יוצר או מריץ סוכני ענן מתוזמנים (routines) בחשבון.',
+  schedule: 'יוצר או מריץ סוכני ענן מתוזמנים (routines) בחשבון. למשימות מתוזמנות שרצות במחשב הזה: "מתוזמנות" בסרגל הצד.',
   ultrareview: 'מפעיל סוכן ענן לסקירת קוד. עלות: בערך $5–$25.',
   'usage-credits': 'משנה הגדרות קרדיטים וחיוב בחשבון, או שולח בקשה למנהל.',
   'extra-usage': 'משנה הגדרות קרדיטים וחיוב בחשבון.',
@@ -89,6 +89,12 @@ export const guardedApi = {
   async cli(args, cwd) {
     await confirmRisk(`claude ${args.slice(0, 3).join(' ')}`, cliReasons(args));
     return api.cli(args, cwd);
+  },
+  /** Like a hook: the command will run by itself at the end of Claude's turns. */
+  async saveVerifyCheck(id, check, folder) {
+    await confirmRisk('בדיקה אוטומטית', check.enabled ? [`הפקודה תרוץ מעצמה בסוף כל תור שבו Claude ערך קבצים, בכל סשן של התיקייה ${folder}: ${check.command}`,
+      'אם היא נכשלת, הפלט שלה נשלח ל-Claude כדי שימשיך לתקן.'] : [], 'שמירה');
+    return api.saveVerifyCheck(id, check);
   },
 };
 

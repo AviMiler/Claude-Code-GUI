@@ -1,6 +1,7 @@
 /** Work done ahead of the user: start Claude Code while a message is typed, and fetch the catalog before a menu opens. */
 import { api } from './api.js';
 import { state, activeSession, currentScope, getCatalog } from './state.js';
+import { chatWanted } from './chat/chat-toggle.js';
 import { worktreeLikely } from './worktree/worktree-toggle.js';
 
 const WARM_REPEAT_MS = 60000;
@@ -13,10 +14,11 @@ export function warmUp() {
   const session = activeSession();
   if (session?.status === 'running' || session?.archived) return; // an archived one may have lost its worktree folder
   // A new session in its own worktree runs in a folder that does not exist yet: a process warmed here would go unused.
-  if (!session && worktreeLikely(state.draft.cwd || state.config.defaultCwd)) return;
+  const chat = !session && chatWanted();
+  if (!session && !chat && worktreeLikely(state.draft.cwd || state.config.defaultCwd)) return;
   const { draft } = state;
   const target = session ? { sessionId: session.id }
-    : { cwd: draft.cwd || state.config.defaultCwd, mode: draft.mode, model: draft.model, effort: draft.effort };
+    : { ...(chat ? { chat: true } : { cwd: draft.cwd || state.config.defaultCwd }), mode: draft.mode, model: draft.model, effort: draft.effort };
   const key = JSON.stringify(target);
   if (key === lastWarm.key && Date.now() - lastWarm.at < WARM_REPEAT_MS) return;
   lastWarm = { key, at: Date.now() };

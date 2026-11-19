@@ -1,5 +1,6 @@
 /* Changes pane (panes/pane-changes.js, diff-view.js): the session's diff file by file, with line comments. */
-.changes-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; align-items: center; padding: 4px 2px 8px; background: var(--bg-sidebar); font-size: 12.5px; color: var(--muted); }
+.pane[data-pane="changes"] .pane-body { padding-top: 0; } /* the sticky toolbar sits on the pane's top edge */
+.changes-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; align-items: center; padding: 8px 2px; background: var(--bg-sidebar); font-size: 12.5px; color: var(--muted); }
 .changes-toolbar .spacer { flex: 1; }
 .changes-hint { color: var(--faint); font-size: 12px; }
 .diff-counts { display: inline-flex; gap: 6px; font: 12px var(--font-mono); }
@@ -10,7 +11,11 @@
 .diff-file-head .icon { flex: none; width: 13px; height: 13px; color: var(--muted); transition: transform .12s; }
 .diff-file-head .icon.collapsed { transform: rotate(90deg); }
 [dir="rtl"] .diff-file-head .icon.collapsed { transform: rotate(-90deg); }
-.diff-path { flex: 1; min-width: 0; overflow: hidden; font: 12px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.diff-file-bar { display: flex; align-items: center; background: var(--surface-2); } .diff-file-bar > .diff-file-head { flex: 1; min-width: 0; }
+.diff-file-discard { flex: none; width: 26px; height: 26px; margin-inline-end: 4px; color: var(--muted); }
+.diff-file-discard:hover, .diff-file-discard:focus-visible { color: var(--danger); }
+.diff-file-discard .icon { width: 14px; height: 14px; }
+.diff-path { flex: 1; min-width: 0; overflow: hidden; font: 12px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 .diff-status { flex: none; padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 11px; line-height: 18px; }
 .diff-status.added { background: var(--success-soft); color: var(--success); } .diff-status.deleted { background: var(--danger-soft); color: var(--danger); }
 .diff-table { width: 100%; border-collapse: collapse; font: 12px/1.5 var(--font-mono); direction: ltr; }
@@ -21,6 +26,11 @@
 .diff-row.add { background: color-mix(in srgb, var(--success) 12%, transparent); }
 .diff-row.del { background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .diff-hunk td { padding: 2px 8px; background: var(--surface-2); color: var(--muted); }
+.diff-hunk-line { display: flex; gap: 8px; align-items: center; } .diff-hunk-line > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.diff-hunk-revert { display: inline-flex; flex: none; gap: 4px; align-items: center; padding: 1px 6px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); color: var(--muted); font: 11.5px var(--font-ui); direction: rtl; cursor: pointer; }
+.diff-hunk-revert:hover, .diff-hunk-revert:focus-visible { border-color: var(--danger); color: var(--danger); }
+.diff-hunk-revert .icon { width: 12px; height: 12px; }
 .diff-add-comment { position: absolute; inset-block-start: 1px; left: -2px; display: none; place-items: center; width: 16px; height: 16px; padding: 0;
   border: 0; border-radius: 4px; background: var(--accent); color: var(--on-accent); }
 .diff-add-comment .icon { width: 11px; height: 11px; }
@@ -39,3 +49,35 @@
 .changes-footer .spacer { flex: 1; }
 .pane-body:focus { outline: none; }
 .pane-body:has(> .changes-footer:not([hidden])) { padding-bottom: 0; } /* the sticky footer sits on the pane's edge */
+.commit-box { display: grid; gap: 8px; margin-top: 10px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-size: 13px; }
+.commit-box[hidden] { display: none; }
+.commit-box > div:first-child { display: grid; gap: 8px; }
+.commit-branch, .commit-files-head, .commit-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.commit-branch > .icon { width: 16px; height: 16px; color: var(--muted); }
+.commit-branch .spacer, .commit-files-head .spacer { flex: 1; }
+.commit-files { display: grid; max-height: 180px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.commit-file { display: flex; gap: 8px; align-items: center; padding: 3px 8px; cursor: pointer; }
+.commit-file:hover { background: var(--hover, var(--warning-soft)); }
+.commit-file-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.commit-message { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-sidebar); color: var(--text); font: 13px var(--font-ui); resize: vertical; }
+.commit-message:focus { outline: none; border-color: var(--accent); }
+.commit-notice { padding: 6px 10px; border-radius: var(--radius-sm); white-space: pre-wrap; }
+.commit-notice.ok { background: var(--success-soft); color: var(--success); } .commit-notice.warn { background: var(--warning-soft); color: var(--warning); }
+.changes-toolbar .segmented { margin: 0; }
+.changes-toolbar .segmented button:disabled { opacity: .5; }
+
+/* Layout toggle (unified | side by side) and the side-by-side table (panes/diff-split.js): old on the left, new on the right. */
+.diff-layout-toggle { display: inline-flex; }
+.diff-layout-toggle .btn { border: 1px solid var(--border); border-radius: 0; }
+.diff-layout-toggle .btn:first-child { border-start-start-radius: var(--radius-sm); border-end-start-radius: var(--radius-sm); }
+.diff-layout-toggle .btn:last-child { border-start-end-radius: var(--radius-sm); border-end-end-radius: var(--radius-sm); border-inline-start: 0; }
+.diff-layout-toggle .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); }
+.diff-split { table-layout: fixed; }
+.diff-split col.no { width: 44px; }
+.diff-split td.no.new { border-inline-start: 1px solid var(--border); }
+.diff-split td.add { background: color-mix(in srgb, var(--success) 12%, transparent); }
+.diff-split td.del { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.diff-split td.empty { background: var(--surface-2); }
+.diff-split[data-col="old"] td.new, .diff-split[data-col="new"] td.old { user-select: none; } /* a drag stays in the column it began in */
+.diff-split .diff-row:hover .diff-add-comment { display: none; }
+.diff-split td.no:hover .diff-add-comment, .diff-split .diff-add-comment:focus-visible { display: grid; }

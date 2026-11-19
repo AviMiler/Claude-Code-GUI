@@ -11,6 +11,10 @@ import { viewModeEntries } from './transcript/view-mode.js';
 import { toggleShortcutsDialog } from './shortcuts/shortcuts-dialog.js';
 import { createWorktreeToggle } from './worktree/worktree-toggle.js';
 import { projectFolder } from './worktree/project-folder.js';
+import { paneButtons } from './panes/pane-toggles.js';
+import { fitPaneToggles } from './panes/pane-overflow.js';
+import { isChat, CHAT_LABEL } from './chat/chat-session.js';
+import { createChatToggle, chatWanted } from './chat/chat-toggle.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -32,9 +36,10 @@ function greeting() {
 /**
  * @param {HTMLElement} bar
  * @param {object|null} session
- * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit, onToggleDetails,
- *   detailsOpen:boolean, onToggleChanges, changesOpen:boolean, onToggleTerminal, terminalOpen:boolean, onToggleFiles, filesOpen:boolean, onTogglePane, paneOpen:(id:string)=>boolean, viewMode:()=>string, onViewMode, onArchive, onUnarchive, onNewSession}}
- *   handlers detailsOpen / changesOpen: that pane is open (its toggle shows pressed); viewMode: the transcript's current mode
+ * @param {{onToggleSidebar, onRename, onOpenPanel, onCopyLink, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit,
+ *   onTogglePane:(id:string)=>void, paneOpen:(id:string)=>boolean, paneActive:(id:string)=>boolean, viewMode:()=>string, onViewMode,
+ *   onArchive, onUnarchive, onNewSession}} handlers paneOpen / paneActive: a pane's tab is open / on screen (panes/pane-toggles.js; the panes are not in "עוד");
+ *   viewMode: the transcript's current mode
  */
 export function renderTopbar(bar, session, handlers) {
   const toggle = h('button', { type: 'button', class: 'icon-button', title: 'סרגל צד (Ctrl+B)', onClick: handlers.onToggleSidebar }, icon('sidebar'));
@@ -49,7 +54,8 @@ export function renderTopbar(bar, session, handlers) {
   title.addEventListener('keydown', event => { if (event.key === 'Enter') title.blur(); });
   const copyChip = (iconName, label, path, title) => h('button', { type: 'button', class: 'chip', title: `${title}\n(לחיצה מעתיקה את הנתיב)`,
     onClick: async () => { await copyText(path); toast('הנתיב הועתק'); } }, icon(iconName), h('span', { class: 'label', dir: 'auto' }, label));
-  const folder = copyChip('folder', folderName(projectFolder(session)), projectFolder(session), projectFolder(session));
+  const folder = isChat(session) ? h('span', { class: 'chip', title: 'שיחה כללית בלי פרויקט' }, icon('message'), CHAT_LABEL)
+    : copyChip('folder', folderName(projectFolder(session)), projectFolder(session), projectFolder(session));
   // A session in its own worktree (worktree/): its branch beside the project folder, like Desktop.
   const tree = session.worktree;
   const branch = tree ? copyChip('branch', tree.branch, tree.path, `ענף ${tree.branch}\nworktree: ${tree.path}`) : null;
@@ -70,11 +76,7 @@ export function renderTopbar(bar, session, handlers) {
     session.archived ? { icon: 'history', title: 'שחזור מהארכיון', onSelect: handlers.onUnarchive }
       : { icon: 'archive', title: 'העברה לארכיון', onSelect: handlers.onArchive },
     { icon: 'sliders', title: 'אפשרויות הסשן: צבע, חשיבה, הנחיית מערכת, מצב בטוח', hint: '/color', onSelect: () => handlers.onOpenPanel('session-options') },
-    { icon: 'map', title: handlers.paneOpen('plan') ? 'הסתרת חלונית התוכנית' : 'הצגת חלונית התוכנית', onSelect: () => handlers.onTogglePane('plan') },
-    { icon: 'list', title: handlers.paneOpen('tasks') ? 'הסתרת חלונית משימות הרקע' : 'הצגת חלונית משימות הרקע', onSelect: () => handlers.onTogglePane('tasks') },
-    { icon: 'folder', title: handlers.filesOpen ? 'הסתרת חלונית הקבצים' : 'הצגת חלונית הקבצים', onSelect: handlers.onToggleFiles },
-    { icon: 'terminal', title: handlers.terminalOpen ? 'הסתרת הטרמינל' : 'הצגת הטרמינל', hint: 'Ctrl+`', onSelect: handlers.onToggleTerminal },
-    { icon: 'panel-right', title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onSelect: handlers.onToggleDetails },
+    { icon: 'link', title: 'העתקת קישור לסשן', onSelect: handlers.onCopyLink },
     { icon: 'branch', title: 'ענף חדש מהשיחה', hint: '/fork', onSelect: handlers.onFork },
     { icon: 'refresh', title: 'שיחה חדשה (ניקוי הקשר)', hint: '/clear', onSelect: handlers.onClear },
     { icon: 'download', title: 'ייצוא ל-Markdown', hint: '/export', onSelect: handlers.onExport },
@@ -85,24 +87,19 @@ export function renderTopbar(bar, session, handlers) {
   ], { placement: 'bottom' }));
   bar.replaceChildren(...[toggle, colorDot(session), title, folder, branch, archived, extra, agent, tasks, h('span', { class: 'spacer' }),
     h('button', { type: 'button', class: 'icon-button', title: 'פיצול תצוגה: סשן נוסף לצד זה (Ctrl+Shift+\\)', onClick: handlers.onSplit }, icon('columns')),
-    h('button', { type: 'button', class: `icon-button${handlers.changesOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.changesOpen),
-      title: 'שינויים (Ctrl+Shift+D)', onClick: handlers.onToggleChanges }, icon('diff')),
-    h('button', { type: 'button', class: `icon-button${handlers.filesOpen ? ' on' : ''}`, 'aria-pressed': String(Boolean(handlers.filesOpen)),
-      title: 'קבצים', onClick: handlers.onToggleFiles }, icon('folder')),
-    h('button', { type: 'button', class: `icon-button${handlers.terminalOpen ? ' on' : ''}`, 'aria-pressed': String(Boolean(handlers.terminalOpen)),
-      title: 'טרמינל (Ctrl+`)', onClick: handlers.onToggleTerminal }, icon('terminal')),
     h('button', { type: 'button', class: 'icon-button', title: 'הקשר ושימוש (/context)', onClick: () => handlers.onOpenPanel('usage') }, icon('gauge')),
     h('button', { type: 'button', class: 'icon-button', title: 'הגדרות (Ctrl+,)', onClick: () => handlers.onOpenPanel('model') }, icon('settings')),
-    h('button', { type: 'button', class: `icon-button${handlers.detailsOpen ? ' on' : ''}`, 'aria-pressed': String(handlers.detailsOpen),
-      title: handlers.detailsOpen ? 'הסתרת פרטי הסשן' : 'הצגת פרטי הסשן', onClick: handlers.onToggleDetails }, icon('panel-right', 'mirror')),
+    paneButtons(handlers, session),
     more].filter(Boolean));
+  fitPaneToggles(bar); // no room: the pane buttons collapse into one "חלוניות" menu
 }
 
 /**
  * @param {HTMLElement} container
- * @param {{cwd:string, defaultCwd:string, onFolder:(cwd:string)=>void, onSuggestion:(command:string)=>void}} options
+ * @param {{cwd:string, defaultCwd:string, onFolder:(cwd:string)=>void, onSuggestion:(command:string)=>void, onChat:(on:boolean)=>void}} options
+ *   onChat: the "chat without a project" switch changed (chat/chat-toggle.js); while it is on the folder choice is not shown
  */
-export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggestion }) {
+export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggestion, onChat }) {
   const input = h('input', { value: cwd || defaultCwd, dir: 'ltr', 'aria-label': 'תיקיית עבודה', placeholder: defaultCwd, spellcheck: false });
   const worktree = createWorktreeToggle(() => input.value.trim() || defaultCwd);
   const chooseFolder = folder => { onFolder(folder); worktree.update(); };
@@ -114,13 +111,15 @@ export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggesti
     input.value = folder;
     chooseFolder(folder);
   });
-  const recents = recentFolders().filter(folder => folder !== input.value);
+  const chat = chatWanted();
+  const recents = chat ? [] : recentFolders().filter(folder => folder !== input.value);
   container.replaceChildren(...[
     crab(),
     h('h1', null, `${greeting()}, במה נעבוד היום?`),
-    h('p', null, 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
-    h('div', { class: 'folder-picker' }, icon('folder'), input, browse),
-    worktree.node,
+    h('p', null, chat ? 'שאלה כללית, בלי פרויקט: Claude יענה בלי לעבוד על תיקייה שלך.' : 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
+    chat ? null : h('div', { class: 'folder-picker' }, icon('folder'), input, browse),
+    chat ? null : worktree.node,
+    createChatToggle(onChat),
     recents.length ? h('div', { class: 'recent-folders' }, recents.map(folder => h('button', {
       type: 'button', class: 'chip', title: folder, onClick: () => { input.value = folder; chooseFolder(folder); },
     }, icon('history'), h('span', { class: 'label' }, folderName(folder))))) : null,

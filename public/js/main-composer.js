@@ -8,6 +8,9 @@ import { toast } from './ui.js';
 import { bangCommand, runBang } from './terminal/shell-command.js';
 import { createShellNote } from './terminal/shell-note.js';
 import { enableRewind } from './rewind/rewind-menu.js';
+import { enableRetry } from './retry/retry-button.js';
+import { createTodoStrip } from './plan/todo-strip.js';
+import { createContextWarning } from './context/context-warning.js';
 
 /**
  * @param {HTMLElement} area the composer's container
@@ -38,9 +41,14 @@ export function createMainComposer(area, { actions, runCommand }) {
     ...createChipMenus({ actions, getComposer: () => composer }),
   });
   enableRewind({ restore: entries => composer.restore(entries) });
+  enableRetry(document.getElementById('messages'), { actions, composer: { restore: entries => composer.restore(entries) } });
   const note = createShellNote();
   area.prepend(note.node);
   const showNote = () => note.update(activeSession(), composer.textarea.value);
   composer.textarea.addEventListener('input', showNote);
-  return { ...composer, update(args) { composer.update(args); showNote(); } };
+  const todos = createTodoStrip();
+  area.prepend(todos.node); // below the context warning and the side question, above the prompt cards
+  const warning = createContextWarning({ actions, putDraft: text => (composer.textarea.value.trim() ? composer.restore([{ text, attachments: [] }]) : composer.insert(text, { replace: true })) });
+  area.prepend(warning.node);
+  return { ...composer, update(args) { composer.update(args); showNote(); warning.update(activeSession()); todos.update(activeSession()); } };
 }

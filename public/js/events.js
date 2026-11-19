@@ -7,9 +7,11 @@
  */
 import { state, forgetCatalog } from './state.js';
 import { notify } from './notify.js';
-import { isTurnStart } from './turn-stats.js';
 import { applyShellEvent, forgetShellSession } from './terminal/shell-store.js';
 import { applyRewound } from './rewind/rewind-apply.js';
+import { noteStallEvent } from './stall/stall-clock.js';
+import { markUnseen } from './sidebar/unread.js';
+import { setGroups } from './sidebar/groups-store.js';
 
 /** Window event fired when a session's background tasks change (panels/panel-tasks.js listens while open). */
 export const TASKS_EVENT = 'claude-gui:tasks';
@@ -20,25 +22,13 @@ function mergeSession(update) {
 }
 
 /**
- * How the turn that just ended went, from the items after the last user message.
- * @returns {'done'|'error'|null} null when the user stopped it (nothing to tell them)
- */
-function turnOutcome(session) {
-  const items = session.items;
-  let start = items.length;
-  while (start > 0 && !isTurnStart(items[start - 1])) start -= 1;
-  const turn = items.slice(start);
-  if (turn.some(item => item.kind === 'notice' && item.stopped)) return null;
-  return turn.some(item => item.kind === 'error' || (item.kind === 'result' && item.isError)) ? 'error' : 'done';
-}
-
-/**
  * @param {{type:string, sessionId?:string}} event
- * @param {{thread:object, refresh:()=>void, selectSession:(id:string|null)=>void, fetchContext:(id:string)=>void,
+ * @param {{thread:object, refresh:()=>void, selectSession:(id:string|null)=>void, fetchContext:(id:string)=>void, items:object,
  *   onTurnFailed:()=>void, paneThread:(sessionId:string)=>object|null}} view paneThread: the split pane's thread
- *   when it shows this session (split-view.js)
+ *   when it shows this session (split-view.js); items: the lazy item sync (sync/item-sync.js)
  */
 export function handleEvent(event, view) {
+  noteStallEvent(event); // the session heard from its CLI (stall/)
   const session = event.sessionId ? state.sessions.get(event.sessionId) : null;
   const isActive = event.sessionId && event.sessionId === state.activeId;
   // Every thread on screen that shows this session: the main one and/or the split pane.
@@ -57,17 +47,20 @@ export function handleEvent(event, view) {
       break;
     case 'item':
       if (!session) return undefined;
-      session.items.push(event.item);
       session.updatedAt = Date.now();
+      if (!view.items.applyItem(event)) break; // held already, not loaded, or a gap being fetched (sync/item-sync.js)
       threads.forEach(thread => thread.append(event.item, session.items.length - 1, session.items));
       if (event.item.kind === 'divider' || event.item.kind === 'command-output') view.fetchContext(event.sessionId);
+      break;
+    case 'sidebar-groups':
+      setGroups(event.groups); // another tab (or this one) changed the custom groups
       break;
     case 'rewound':
       applyRewound(event, view);
       break;
     case 'history':
       if (!session) return undefined;
-      session.items = event.items;
+      view.items.applyHistory(event);
       threads.forEach(thread => thread.show(session));
       view.fetchContext(event.sessionId);
       break;
@@ -83,9 +76,10 @@ export function handleEvent(event, view) {
       if (event.status === 'running') session.turnStartedAt = Date.now();
       threads.forEach(thread => thread.setRunning(event.status === 'running', { startedAt: session.turnStartedAt }));
       if (event.status === 'idle') {
-        if ((!onScreen || document.hidden) && !session.archived) state.unread.add(event.sessionId); // an archived turn was stopped
+        if ((!onScreen || document.hidden) && !session.archived) markUnseen(event.sessionId); // an archived turn was stopped
         view.fetchContext(event.sessionId);
-        const outcome = turnOutcome(session);
+        const outcome = event.outcome; // computed by the server: this tab may hold no items of the session (lib/sync/turn-outcome.js)
+        session.lastOutcome = outcome || null; // the sidebar's error dot (sidebar/status.js)
         if (outcome) notify(outcome, session, { onScreen, onOpen: view.selectSession });
         if (outcome === 'error') view.onTurnFailed(); // was it the model server? (model-health.js)
       }

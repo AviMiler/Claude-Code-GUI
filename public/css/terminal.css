@@ -21,3 +21,21 @@
 .shell-item .head { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
 .shell-item .head .icon { width: 13px; height: 13px; }
 .shell-note { max-width: var(--column); margin: 0 auto 6px; padding: 4px 10px; border-radius: var(--radius-sm); background: var(--info-soft); color: var(--info); font-size: 12px; }
+/* Terminal tabs and the folder line (terminal/tab-strip.js) */
+.shell-tabs { flex: none; border-bottom: 1px solid var(--border); background: var(--bg-sidebar); }
+.shell-tab-list { display: flex; gap: 2px; align-items: center; padding: 4px 6px 0; overflow-x: auto; }
+.shell-tab { display: flex; flex: none; align-items: center; border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0; color: var(--muted); }
+.shell-tab:hover { background: var(--surface-2); color: var(--text-2); }
+.shell-tab.active { border-color: var(--border); background: var(--surface); color: var(--text); }
+.shell-tab-main { display: flex; gap: 6px; align-items: baseline; max-width: 190px; padding: 5px 8px; border: 0; background: none; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+.shell-tab-title { white-space: nowrap; }
+.shell-tab-folder { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 11px var(--font-mono); }
+.shell-tab-busy { width: 12px; height: 12px; align-self: center; color: var(--info); }
+.shell-tab-close { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-inline-end: 4px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.shell-tab-close:hover { background: var(--surface-3); color: var(--text); }
+.shell-tab-close .icon { width: 12px; height: 12px; }
+.shell-tab-add { flex: none; margin-inline-start: 4px; }
+.shell-cwd { display: flex; gap: 6px; align-items: center; padding: 4px 10px; border-top: 1px solid var(--border); background: var(--surface); color: var(--text-2); font: 11.5px var(--font-mono); }
+.shell-cwd .icon { flex: none; width: 13px; height: 13px; color: var(--muted); }
+.shell-cwd span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shell-strip { flex: none; }

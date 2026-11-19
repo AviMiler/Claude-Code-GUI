@@ -1,3 +1,5 @@
+import { isLocalModel } from './local-model.js';
+
 /** Permission modes and effort levels offered in the UI. Mode values must match VALID_MODES in lib/session-service.js. */
 export const MODES = [
   { value: 'default', label: 'שאל לפני פעולות', short: 'שואל', icon: 'hand',
@@ -30,7 +32,8 @@ export const EFFORT_LEVELS = [
  * @param {string[]} cliModes From capabilities.permissionModes. @param {boolean} safe the session is in safe mode
  */
 export function availableModes(cliModes = [], safe = false) {
-  const offered = safe ? MODES.filter(mode => !SAFE_FORBIDDEN.includes(mode.value)) : MODES; // safe mode: no mode that approves by itself
+  const withoutAuto = isLocalModel() ? MODES.filter(mode => mode.value !== 'auto') : MODES; // auto's classifier needs an Anthropic model
+  const offered = safe ? withoutAuto.filter(mode => !SAFE_FORBIDDEN.includes(mode.value)) : withoutAuto; // safe mode: no mode that approves by itself
   if (!cliModes.length) return offered;
   return offered.filter(mode => cliModes.includes(mode.value) || (mode.value === 'default' && cliModes.includes('manual')));
 }

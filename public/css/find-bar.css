@@ -1,0 +1,6 @@
+/* Ctrl+F find bar at the top of a transcript (transcript/find-bar.js); the pill, count and arrows are .search-bar (layout.css) */
+.find-bar .find-input { width: 200px; max-width: 40vw; min-width: 0; padding: 3px 4px; border: 0; outline: 0; background: transparent;
+  color: var(--text); font: inherit; font-size: 13px; }
+.find-bar .find-input::placeholder { color: var(--faint); }
+.find-bar:focus-within { border-color: var(--accent); }
+.find-bar .search-count { min-width: 4.5em; white-space: nowrap; font-variant-numeric: tabular-nums; }

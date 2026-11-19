@@ -46,6 +46,7 @@ export function openPanel(panelId, makeContext) {
   async function show(id) {
     const panel = PANELS.find(item => item.id === id) || PANELS[0];
     buttons.forEach((button, key) => button.setAttribute('aria-current', String(key === panel.id)));
+    buttons.get(panel.id).scrollIntoView({ block: 'nearest', inline: 'nearest' }); // the narrow layout's nav is one scrolling row
     title.textContent = panel.title;
     content.replaceChildren();
     content.scrollTop = 0;

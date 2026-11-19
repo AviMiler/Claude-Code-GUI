@@ -1,18 +1,45 @@
 /* Workspace panes beside the chat (panes/pane-host.js) and the session details rail (panes/pane-details.js). */
-.workspace { display: flex; flex: 1; min-height: 0; }
+.workspace { position: relative; display: flex; flex: 1; min-height: 0; }
 .chat { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
 
 .pane-area { position: relative; display: flex; flex: none; min-width: 0; border-inline-start: 1px solid var(--border); background: var(--bg-sidebar); }
 .pane-area[hidden] { display: none; }
 .pane-resizer { position: absolute; inset-block: 0; inset-inline-start: -3px; z-index: 2; width: 6px; cursor: col-resize; }
 .pane-resizer:hover, .pane-resizer:active { background: color-mix(in srgb, var(--accent) 35%, transparent); }
-.pane-stack { display: flex; flex: 1; flex-direction: column; min-width: 0; overflow: hidden; }
-.pane { display: flex; flex: 1; flex-direction: column; min-height: 0; border-top: 1px solid var(--border); }
-.pane:first-child { border-top: 0; }
-.pane-head { display: flex; gap: 8px; align-items: center; min-height: 40px; padding: 4px 8px 4px 12px; padding-inline: 12px 6px; color: var(--text-2); font-size: 13px; font-weight: 600; }
-.pane-head > .icon { width: 16px; height: 16px; color: var(--muted); }
-.pane-head .pane-title { flex: 1; }
-.pane-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 10px 12px; }
+.pane-frame { display: flex; flex: 1; flex-direction: column; min-width: 0; overflow: hidden; }
+.pane-views { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.pane { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.pane[hidden] { display: none; }
+.pane-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 10px 12px; }
+/* A pane with nothing to show (Plan, Background tasks, …): one framed, centred note */
+.pane-body > p.detail-muted:only-child { margin: 14px 4px; padding: 18px 16px; border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  line-height: 1.6; text-align: center; }
+
+/* Tab strip: one tab per open pane, the shown one raised onto the pane's own background (pane-tabs.js) */
+.pane-tabs { display: flex; flex: none; gap: 2px; align-items: flex-end; min-height: 40px; padding: 6px 6px 0; overflow-x: auto; overflow-y: hidden;
+  border-bottom: 1px solid var(--border); scrollbar-width: none; }
+.pane-tabs::-webkit-scrollbar { display: none; }
+.pane-tab { position: relative; display: flex; flex: none; align-items: center; min-width: 0; height: 33px; margin-bottom: -1px;
+  border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0; color: var(--muted); }
+.pane-tab:hover { background: var(--surface-2); color: var(--text-2); }
+.pane-tab.active { border-color: var(--border); background: var(--bg-sidebar); color: var(--text); }
+.pane-tab.active::before { content: ""; position: absolute; inset-inline: 8px; top: -1px; height: 2px; border-radius: 2px; background: var(--accent); }
+.pane-tab-main { display: flex; gap: 6px; align-items: center; min-width: 0; height: 100%; padding-inline: 10px 4px; border: 0; border-radius: inherit;
+  background: none; color: inherit; font: 600 13px var(--font-ui); cursor: pointer; }
+.pane-tab-main > .icon { flex: none; width: 15px; height: 15px; }
+.pane-tab.active .pane-tab-main > .icon { color: var(--accent); }
+.pane-tab-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-tab-main:focus-visible, .pane-tab-close:focus-visible { outline-offset: -2px; }
+.pane-tab-close { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 22px; height: 22px; margin-inline-end: 4px;
+  padding: 0; border: 0; border-radius: 5px; background: none; color: var(--muted); cursor: pointer; visibility: hidden; }
+.pane-tab-close .icon { width: 13px; height: 13px; }
+.pane-tab-close:hover { background: var(--surface-3); color: var(--text); }
+.pane-tab.active .pane-tab-close, .pane-tab:hover .pane-tab-close, .pane-tab:focus-within .pane-tab-close { visibility: visible; }
+/* Titles that do not fit (pane-tabs.js adds "compact"): background tabs show their icon only, the title is the tooltip. */
+.pane-tabs.compact .pane-tab:not(.active) .pane-tab-title { display: none; }
+.pane-tabs.compact .pane-tab:not(.active) .pane-tab-main { padding-inline: 9px 2px; }
+.pane-tabs.compact .pane-tab:not(.active):not(:hover):not(:focus-within) .pane-tab-close { display: none; }
+.pane-tabs.compact .pane-tab:not(.active):not(:hover):not(:focus-within) .pane-tab-main { padding-inline: 9px; }
 
 /* Session details cards */
 .detail-cards { display: grid; gap: 8px; }
@@ -41,5 +68,26 @@ button.detail-card-head:hover { background: var(--surface-2); }
 .detail-list .icon { flex: none; width: 13px; height: 13px; color: var(--accent); }
 .detail-context { padding: 0 12px 12px; font-size: 12.5px; }
 .detail-context .legend { font-size: 12px; }
-.topbar .icon-button.on { background: var(--surface-3); color: var(--text); }
+.topbar .icon-button.on { background: var(--surface-2); color: var(--text); }
+/* Topbar pane toggles: "on" = a tab is open in the area, "active" = that tab is on screen (pane-toggles.js) */
+.pane-toggles { display: flex; flex: none; gap: 8px; align-items: center; }
+.pane-toggles .icon-button { position: relative; flex: none; }
+.pane-toggles .pane-overflow, .pane-toggles.collapsed .pane-toggle { display: none; }
+.pane-toggles.collapsed .pane-overflow { display: inline-flex; }
+.topbar .pane-toggle.active { background: var(--surface-3); color: var(--text); }
+.topbar .pane-toggle.active::after { content: ""; position: absolute; inset-inline: 9px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--accent); }
+/* New content in a pane (a plan, a background task) during a turn: a small dot, nothing opens by itself */
+.pane-dot { position: absolute; top: 5px; inset-inline-end: 5px; width: 7px; height: 7px; border: 1.5px solid var(--bg); border-radius: 50%; background: var(--accent); }
+
+/* No room beside the chat: the area is an overlay drawer from the pane side, under the top bar (pane-drawer.js) */
+.workspace.pane-narrow { overflow: hidden; }
+.pane-area.drawer { position: absolute; inset-block: 0; inset-inline-end: 0; z-index: 20; max-width: 100%; box-shadow: var(--shadow-lg);
+  animation: pane-drawer-in .2s ease-out; --drawer-from: 100%; }
+[dir="rtl"] .pane-area.drawer { --drawer-from: -100%; }
+.pane-area.drawer .pane-resizer { display: none; }
+.pane-backdrop { position: absolute; inset: 0; z-index: 19; background: rgba(20, 20, 19, .32); animation: pane-fade .15s ease-out; }
+.pane-backdrop[hidden] { display: none; }
+@keyframes pane-drawer-in { from { transform: translateX(var(--drawer-from)); } }
+@keyframes pane-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pane-area.drawer, .pane-backdrop { animation: none; } }
 [dir="rtl"] .icon.mirror svg { transform: scaleX(-1); } /* panel icons whose bar sits on the side the pane opens */

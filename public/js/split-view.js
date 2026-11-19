@@ -1,31 +1,31 @@
 /**
  * Split view: a second pane beside the main thread with another session — its live thread, its approval cards and a
- * compact composer (text, send, stop). The same session is never shown in both panes. Per browser (localStorage).
+ * full composer (split-composer.js: attachments, / and @ menus, chips, stop, queue, drafts, /btw) for ITS session. The same session is never shown in both panes. Per browser (localStorage).
+ * Which pane has the focus is split-focus.js; opening or choosing a session here focuses this pane.
  */
 import { api } from './api.js';
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { state } from './state.js';
+import { markSeen } from './sidebar/unread.js';
 import { createThread } from './thread.js';
 import { renderPromptCards } from './prompt-cards.js';
 import { showDropdown } from './popover.js';
 import { enableFileLinks } from './file-viewer.js';
 import { toast } from './ui.js';
-import { confirmOutwardCommand, isCancelled } from './risk.js';
+import { createSplitComposer } from './split-composer.js';
+import { remember, recall, isNarrow, refuseWhenNarrow, onTooNarrow } from './split-guard.js';
 
 const OPEN_KEY = 'claude-gui.split-open';
 const SESSION_KEY = 'claude-gui.split-session';
-const NARROW = matchMedia('(max-width: 1000px)');
-const remember = (key, value) => { try { localStorage.setItem(key, value); } catch { /* storage may be blocked */ } };
-const recall = key => { try { return localStorage.getItem(key) || ''; } catch { return ''; } };
 
 /**
  * @param {{app:HTMLElement, pane:HTMLElement, selectMain:(id:string|null)=>void, openChanges:()=>void,
- *   onChange:()=>void}} options app gets the `split` class; pane is the empty <aside> to fill; selectMain opens a session
+ *   onChange:()=>void, focus:{set:(where:'main'|'split')=>void}, askSide:Function, focusSide:Function, openPanel:Function}} options askSide / focusSide: the side question tab; focus: split-focus.js; app gets the `split` class; pane is the empty <aside> to fill; selectMain opens a session
  *   in the main pane; onChange re-renders the page (sidebar dots, title) after the pane's session changed
- * @returns {{toggle:()=>void, refresh:()=>void, threadFor:(sessionId:string)=>object|null, sessionId:()=>string|null}}
+ * @returns {{toggle:()=>void, refresh:()=>void, threadFor:(sessionId:string)=>object|null, sessionId:()=>string|null, composer:object, actions:object, area:HTMLElement, session:()=>object|null, messages:HTMLElement}}
  */
-export function createSplitView({ app, pane, selectMain, openChanges, onChange }) {
+export function createSplitView({ app, pane, selectMain, openChanges, onChange, focus, askSide, focusSide, openPanel }) {
   let sessionId = recall(SESSION_KEY) || null;
   let shownId = null; // the session the thread currently renders
   const title = h('button', { type: 'button', class: 'split-title', title: 'בחירת סשן לחלון הזה' });
@@ -33,27 +33,27 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
   const messages = h('div', { class: 'thread-column messages', 'aria-live': 'polite' });
   scroller.append(messages);
   const cards = h('div', { class: 'prompt-cards' });
-  const input = h('textarea', { rows: 1, dir: 'auto', placeholder: 'הודעה לסשן הזה…', 'aria-label': 'הודעה לסשן בחלון המפוצל' });
-  const send = h('button', { type: 'button', class: 'send-button', title: 'שליחה (Enter)' }, icon('arrow-up'));
-  const stop = h('button', { type: 'button', class: 'stop-button', title: 'עצירה', hidden: true }, icon('stop'));
   const swap = h('button', { type: 'button', class: 'icon-button', title: 'פתיחה בחלון הראשי (החלפה)' }, icon('sidebar'));
   const close = h('button', { type: 'button', class: 'icon-button', title: 'סגירת הפיצול (Ctrl+Shift+\\)' }, icon('x'));
   const empty = h('div', { class: 'split-empty' }, 'בחר סשן להצגה לצד הסשן הראשי.');
   // The thread's git button means "this session's changes": show the session in the main pane, then its git panel.
+  const area = h('div', { class: 'composer-area' });
   const thread = createThread({ scroller, messages, onOpenGit: () => { swapPanes(); openChanges(); } });
   pane.append(h('div', { class: 'split-head' }, title, h('span', { class: 'spacer' }), swap, close), empty, scroller,
-    h('div', { class: 'split-composer-area' }, cards, h('div', { class: 'split-composer' }, input, stop, send)));
+    h('div', { class: 'split-composer-area' }, cards, area));
   enableFileLinks(messages, () => shownId);
 
   // An archived session is not offered and leaves the pane empty (restore it, or open it in the main pane).
   const session = () => (sessionId && sessionId !== state.activeId && !state.sessions.get(sessionId)?.archived ? state.sessions.get(sessionId) || null : null);
+  const box = createSplitComposer(area, { session, refresh: () => onChange(), askSide, focusSide, openPanel });
 
   function choose(id) {
     sessionId = id;
-    state.unread.delete(id); // on screen now
+    markSeen(id); // on screen now
     remember(SESSION_KEY, id || '');
+    focus.set('split');
     onChange(); // also redraws this pane
-    input.focus();
+    box.composer.focus();
   }
 
   function pick() {
@@ -73,28 +73,6 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     selectMain(current.id);
   }
 
-  /** @param {'correct'|'queue'} delivery while the session works: into the running turn (Enter) or after it (Alt+Enter) */
-  async function submit(delivery) {
-    const current = session();
-    const text = input.value.trim();
-    if (!current || !text) return;
-    input.value = '';
-    try {
-      await confirmOutwardCommand(text); // the same warning as the main composer for commands that reach the cloud
-      await api.sendMessage(current.id, text, null, null, delivery);
-    } catch (error) {
-      input.value = text;
-      toast(error.message, isCancelled(error) ? 'info' : 'error');
-    }
-  }
-
-  async function stopTurn() {
-    const current = session();
-    if (!current) return;
-    const result = await api.stop(current.id).catch(error => { toast(error.message, 'error'); return null; });
-    if (result?.queued?.length) input.value = [...result.queued.map(entry => entry.text), input.value].filter(Boolean).join('\n\n');
-  }
-
   /** Re-renders the header, cards and composer state; re-renders the thread only when the session changed. */
   function refresh() {
     const open = app.classList.contains('split');
@@ -105,9 +83,8 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     empty.hidden = Boolean(current);
     scroller.hidden = !current;
     swap.disabled = !current;
-    input.disabled = !current;
     if ((current?.id || null) !== shownId) { shownId = current?.id || null; thread.show(current); }
-    stop.hidden = current?.status !== 'running';
+    box.update(current);
     renderPromptCards(cards, current?.pendingPermissions || [], (prompt, answer) =>
       api.answerPermission(current.id, prompt.requestId, answer).catch(error => toast(error.message, 'error')));
   }
@@ -116,6 +93,7 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
     app.classList.toggle('split', open);
     pane.hidden = !open;
     remember(OPEN_KEY, open ? '1' : '');
+    focus.set('main'); // a pane just opened or closed: the main pane has the focus until the user works in the other
     shownId = null;
     if (open) refresh();
   }
@@ -123,28 +101,32 @@ export function createSplitView({ app, pane, selectMain, openChanges, onChange }
   title.addEventListener('click', pick);
   swap.addEventListener('click', swapPanes);
   close.addEventListener('click', () => setOpen(false));
-  send.addEventListener('click', () => submit('correct'));
-  stop.addEventListener('click', stopTurn);
-  input.addEventListener('keydown', event => {
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submit(event.altKey ? 'queue' : 'correct'); }
+  // The window got narrower than a split needs: close it cleanly. Its session stays in the sidebar, and the page redraws
+  // (the sidebar's "also open" mark and the Ctrl+Alt+Down/Up stepping must not still treat it as visible).
+  onTooNarrow(() => {
+    if (!app.classList.contains('split')) return;
+    setOpen(false);
+    onChange();
+    toast('הפיצול נסגר: החלון צר מדי');
   });
-  NARROW.addEventListener('change', () => { if (NARROW.matches && app.classList.contains('split')) setOpen(false); });
-  if (recall(OPEN_KEY) && !NARROW.matches) setOpen(true);
+  if (recall(OPEN_KEY) && !isNarrow()) setOpen(true);
 
   return {
     toggle() {
-      if (!app.classList.contains('split') && NARROW.matches) return toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
+      if (!app.classList.contains('split') && refuseWhenNarrow()) return;
       return setOpen(!app.classList.contains('split'));
     },
     /** Shows a session in the pane, opening the split first (a sidebar row's menu). */
     open(id) {
-      if (!app.classList.contains('split') && NARROW.matches) return toast('החלון צר מדי לפיצול. הרחב אותו ונסה שוב.');
+      if (!app.classList.contains('split') && refuseWhenNarrow()) return;
       if (!app.classList.contains('split')) setOpen(true);
       return choose(id);
     },
     refresh,
     /** The pane's thread when it shows this session (events.js sends it the session's live updates). */
     threadFor: id => (app.classList.contains('split') && id && id === shownId ? thread : null),
-    sessionId: () => (app.classList.contains('split') ? shownId : null),
+    /** The session the pane shows now (valid before the pane's own redraw); null when the split is closed or empty. */
+    sessionId: () => (app.classList.contains('split') ? session()?.id || null : null),
+    composer: box.composer, actions: box.actions, area, session, messages, // messages: the pane's transcript (the Ctrl+F bar, transcript/find-shortcut.js)
   };
 }
