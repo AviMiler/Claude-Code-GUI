@@ -1,5 +1,10 @@
 # Decisions
 
+## [2026-11-19] The GUI keeps creating worktrees itself with git; the move to the CLI's `--worktree` (2026-10-29) is cancelled (the user's decision)
+**Decision:** Worktree creation stays in `lib/git/worktree*.js` (D5). The 2026-10-29 intention to use `--worktree` is withdrawn.
+**Alternatives considered:** Move to `--worktree` (CLI 2.1.314, tested in a scratch repo): it works in `-p` mode, the init event's `cwd` is the worktree, the branch is `worktree-<name>`, and an existing name is reused.
+**Why:** Measured differences the GUI cannot override (`--help` has no base option): the base is `origin/main`, not the local HEAD (a local commit ahead was missing from the worktree), so unpushed work would not be in it; the worktree is always `<root>/.claude/worktrees/<name>` (the subfolder mapping is lost); no `info/exclude` line is written (`.claude/` shows as untracked); the worktree stays `locked` after the process exits. Not tested: hook failure, Windows, CLI 2.1.246.
+
 ## [2026-11-19] The preview pane may start dev servers from `.claude/launch.json`, only on a click (the user's decision; reverses "passive only" for that action)
 **Decision:** The user was asked and chose "yes, only on click". A click opens a confirmation with the exact resolved program path, folder, port, URL and env; the request carries `{ name, hash }` and the server re-hashes (409 if changed); no shell except `.cmd` / `.bat` through cmd.exe with its own quoting; a bare program is resolved on the GUI's own PATH + PATHEXT, never from `.`, a relative, network or session-folder entry; `launch.json` is read without symlinks, junctions or hard links and stays in the session folder; GUI port refused; the child environment is scrubbed (`ANTHROPIC_*`, `CLAUDE_*`, anything TOKEN / SECRET / PASSWORD / KEY / AUTH / CREDENTIAL); one server per session and config; killed on stop, delete, archive and exit. Details in spec.md "Dev servers from launch.json".
 **Alternatives considered:** Keep the preview passive; start automatically (rejected: a project file, which Claude can edit, would run a command by itself).

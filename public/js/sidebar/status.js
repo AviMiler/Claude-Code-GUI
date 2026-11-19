@@ -1,9 +1,13 @@
 /** The one status dot of a session row. Priority: waiting for approval > error > running > unread. */
 import { h } from '../dom.js';
+import { icon } from '../icons.js';
 
 const TITLES = {
   waiting: 'ממתין לאישור שלך', error: 'הריצה האחרונה נכשלה', running: 'Claude עובד', unread: 'יש תשובה חדשה', idle: '',
 };
+
+/** States drawn as an icon instead of a plain dot (running keeps the pulsing dot, like Claude Desktop; unread and idle keep the dot). */
+const ICONS = { waiting: 'hand', error: 'alert' };
 
 /**
  * @param {object} session
@@ -18,10 +22,11 @@ export function statusOf(session, unread) {
   return unseen || session.markedUnread ? 'unread' : 'idle';
 }
 
-/** @returns {HTMLElement} the dot with its Hebrew tooltip (an empty dot keeps the column) */
+/** @returns {HTMLElement} the dot (or state icon) with its Hebrew tooltip (an empty dot keeps the column) */
 export function statusDot(status) {
   const title = TITLES[status];
-  return h('span', { class: `dot ${status}`, title: title || null, role: title ? 'img' : null, 'aria-label': title || null });
+  const name = ICONS[status];
+  return h('span', { class: `dot ${status}${name ? ' has-icon' : ''}`, title: title || null, role: title ? 'img' : null, 'aria-label': title || null }, name ? icon(name) : null);
 }
 
 /** "Unread" for the filter and the menu: a finished turn not seen in this tab, or marked by hand (stored on the server). */

@@ -55,6 +55,12 @@
 .dot.waiting { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
 .dot.unread { background: var(--accent); }
 .dot.idle { background: transparent; }
+/* state icons (waiting / error): inline SVG drawn in the state colour; running stays the pulsing dot */
+.dot.has-icon { display: inline-flex; width: 15px; height: 15px; align-items: center; justify-content: center; color: var(--accent); }
+.dot.has-icon.waiting { color: var(--warning); }
+.dot.has-icon.error { color: var(--danger, #d33); }
+.dot.has-icon.waiting, .dot.has-icon.error { background: none; box-shadow: none; animation: none; }
+.dot.has-icon .icon { width: 100%; height: 100%; }
 .sidebar-footer { display: flex; gap: 4px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--border); }
 .sidebar-footer .version { margin-inline-start: auto; color: var(--faint); font-size: 12px; direction: ltr; }
 

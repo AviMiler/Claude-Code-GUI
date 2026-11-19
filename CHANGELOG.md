@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-11-19 (worktree decision closed)
+Docs only. The planned move to the CLI's `--worktree` is cancelled by the user: measured on CLI 2.1.314 in a scratch repo, it bases on `origin/main` instead of the local HEAD, drops the subfolder, writes no exclude line and leaves the worktree locked. The GUI keeps `lib/git/worktree*.js` (D5). Updated `DECISIONS.md`, `ARCHITECTURE.md`, `AGENT_CONTEXT.md`.
+
 ## 2026-11-19 (worktree cleanup list, diff colors and side-by-side, dev servers from launch.json)
 All three verified GO by independent verify-agents; 449 tests pass. Nothing tested on the real closed machine or the real CLI 2.1.246.
 - Added (worktree cleanup): `lib/git/worktree-list.js`, `worktree-cleanup.js`, `worktree-routes.js` (`GET /api/worktrees`, `POST /api/worktrees/remove { path }`), `merge-status.js` exports `commitsAhead`, `public/js/panels/panel-worktrees.js` (+ `registry.js`, `api.js` `worktrees` / `removeWorktree`), `test/git-worktree-list.test.js`. Roots only from stored sessions' `worktree.root`; removable only with no live session, clean, not locked; never `--force`, the branch stays. Follow-ups: "ניקוי רשומה" runs a repo-wide `git worktree prune`; `unarchiveSession` takes no repo lock; an unbounded `Promise.all` per entry

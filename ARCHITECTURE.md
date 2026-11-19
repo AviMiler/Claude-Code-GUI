@@ -135,7 +135,7 @@ as GUI-only on purpose. Claims about what the CLI offers are marked UNVERIFIED w
 | `!` and the Terminal pane (D10) | Runs the shell itself and writes the CLI's bash-mode tags into the next message (`terminal/shell-context.js`) | The CLI's own `!` bash mode; output is not in the CLI transcript until the next message |
 | Safe mode (D16) | A GUI policy on permission modes | The CLI's permission settings (a bypass-disable setting, UNVERIFIED key) |
 | Custom system prompt (D16) | Text owned by the GUI (`data/session-settings/`), passed with the CLI's file flags | The CLI's own `CLAUDE.md` and output styles |
-| Worktree per session (D5) | Runs `git worktree` itself | The CLI's `--worktree`: checked by the developer to work in `-p` mode without a terminal; to move to it (DECISIONS.md) |
+| Worktree per session (D5) | Runs `git worktree` itself | The CLI's `--worktree` works in `-p` mode but bases on `origin/main`, drops the subfolder and leaves the worktree locked; the developer decided to keep git (DECISIONS.md 2026-11-19) |
 | Prompt templates | Each is a CLI custom command file in the user's commands folder (since 2026-10-30; the fill form and insert-without-send are GUI additions) | Aligned: the terminal's `/name` uses the same files. Limit: `$1`/`$2` expansion by the real CLI UNVERIFIED |
 | `/color` | GUI-only color | The CLI's `/color` is cosmetic; decision recorded |
 | Model list (`model-list.js`) | Reads the model server, not the CLI | Decision recorded (custom base URL) |
@@ -155,8 +155,8 @@ Permission prompts (`can_use_tool`), elicitation, `/btw` (`side_question`), live
 - Done 2026-10-30: the session list shows every CLI conversation of every project folder (a terminal conversation is a
   light row, built into a session only when opened; the newest 500; `--resume --all` itself not verified), with a
   choice between three search modes and an explanation of each (DECISIONS.md).
-- To change: the worktree per session moves to the CLI's `--worktree`
-  (the developer checked that it works in `-p` mode without a terminal; the D5 reason no longer holds).
+- Accepted, stays as is (2026-11-19): the worktree per session is still created by the GUI with git; the planned
+  move to the CLI's `--worktree` is cancelled (base `origin/main`, no subfolder, locked worktree; DECISIONS.md).
 - To check against the CLI first: that picking a model really switches the CLI's model (`set_model`, `--model`).
 
 ### GUI-only on purpose (no CLI equivalent)
