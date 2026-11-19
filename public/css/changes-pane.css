@@ -65,3 +65,19 @@
 .commit-notice.ok { background: var(--success-soft); color: var(--success); } .commit-notice.warn { background: var(--warning-soft); color: var(--warning); }
 .changes-toolbar .segmented { margin: 0; }
 .changes-toolbar .segmented button:disabled { opacity: .5; }
+
+/* Layout toggle (unified | side by side) and the side-by-side table (panes/diff-split.js): old on the left, new on the right. */
+.diff-layout-toggle { display: inline-flex; }
+.diff-layout-toggle .btn { border: 1px solid var(--border); border-radius: 0; }
+.diff-layout-toggle .btn:first-child { border-start-start-radius: var(--radius-sm); border-end-start-radius: var(--radius-sm); }
+.diff-layout-toggle .btn:last-child { border-start-end-radius: var(--radius-sm); border-end-end-radius: var(--radius-sm); border-inline-start: 0; }
+.diff-layout-toggle .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--text); }
+.diff-split { table-layout: fixed; }
+.diff-split col.no { width: 44px; }
+.diff-split td.no.new { border-inline-start: 1px solid var(--border); }
+.diff-split td.add { background: color-mix(in srgb, var(--success) 12%, transparent); }
+.diff-split td.del { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.diff-split td.empty { background: var(--surface-2); }
+.diff-split[data-col="old"] td.new, .diff-split[data-col="new"] td.old { user-select: none; } /* a drag stays in the column it began in */
+.diff-split .diff-row:hover .diff-add-comment { display: none; }
+.diff-split td.no:hover .diff-add-comment, .diff-split .diff-add-comment:focus-visible { display: grid; }

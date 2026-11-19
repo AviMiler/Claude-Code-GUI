@@ -53,23 +53,37 @@ function viewerSource(range, lines) {
   return { ...whole, text: exact ?? whole.text, path: dialog?.querySelector('.file-path')?.title || null, host: dialog || document.body };
 }
 
+/** The column a side-by-side selection belongs to: where it starts (the table's guard decides what the pointer can reach). */
+function splitColumn(range, table) {
+  const node = range.startContainer;
+  const cell = (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest('td.old, td.new');
+  return cell ? (cell.classList.contains('old') ? 'old' : 'new') : (table.dataset.col === 'old' ? 'old' : 'new');
+}
+
 /**
  * A diff: the new version's lines (context and added); when only deleted lines are selected, the old version's, marked.
- * Mixed selections leave the deleted lines out, so the range is one version's.
+ * Mixed selections leave the deleted lines out, so the range is one version's. A side-by-side diff (table.diff-split)
+ * quotes one column only: the new version's, or the old version's lines (context and deleted) when the selection began there.
  */
 function diffSource(range, table) {
   const rows = touched(range, table.querySelectorAll('tr.diff-row'));
   if (!rows.length) return null;
-  const deleted = row => row.classList.contains('del');
-  const onlyDeleted = rows.every(deleted);
-  const kept = onlyDeleted ? rows : rows.filter(row => !deleted(row));
-  const lineOf = row => intNumber(row.querySelectorAll('td.no')[onlyDeleted ? 0 : 1]);
-  const textOf = row => { const cell = row.querySelector('td.code'); const sign = cell?.querySelector('.sign')?.textContent ?? ''; return (cell?.textContent ?? '').slice(sign.length); };
-  const whole = joinRows(kept.map(row => ({ line: lineOf(row), text: textOf(row) })));
-  const exact = fragment(range, kept, 'td.code');
+  const split = table.classList.contains('diff-split');
+  const column = split ? splitColumn(range, table) : null;
+  const cellSelector = split ? `td.code.${column}` : 'td.code';
+  const kept = split ? rows.filter(row => !row.querySelector(cellSelector).classList.contains('empty')) : null;
+  const deleted = row => (split ? row.querySelector(cellSelector).classList.contains('del') : row.classList.contains('del'));
+  const own = split ? kept : rows;
+  const onlyDeleted = own.every(deleted) && (!split || column === 'old');
+  const lines = split ? own : rows.filter(row => onlyDeleted || !deleted(row));
+  const lineOf = row => intNumber(split ? row.querySelector(`td.no.${column}`) : row.querySelectorAll('td.no')[onlyDeleted ? 0 : 1]);
+  const textOf = row => { const cell = row.querySelector(cellSelector); const sign = cell?.querySelector('.sign')?.textContent ?? ''; return (cell?.textContent ?? '').slice(sign.length); };
+  const whole = joinRows(lines.map(row => ({ line: lineOf(row), text: textOf(row) })));
+  const exact = fragment(range, lines, cellSelector);
   const path = table.closest('.diff-file')?.querySelector('[data-file-path]')?.dataset.filePath || null;
   const sign = range.startContainer.parentElement?.closest('.sign') || range.startContainer.matches?.('td.code'); // only then does the fragment start with the +/− sign
-  return { ...whole, text: (sign ? exact?.replace(/^[+−-]/, '') : exact) ?? whole.text, path, note: onlyDeleted ? '(שורות שנמחקו)' : '', host: document.body };
+  const note = onlyDeleted ? '(שורות שנמחקו)' : split && column === 'old' ? '(הגרסה הקודמת)' : '';
+  return { ...whole, text: (sign ? exact?.replace(/^[+−-]/, '') : exact) ?? whole.text, path, note, host: document.body };
 }
 
 /** The first non-empty box of a range (its first line), or its bounding box. */

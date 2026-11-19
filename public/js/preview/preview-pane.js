@@ -1,12 +1,14 @@
 /**
- * Preview pane: a passive look at a project file (HTML, image, PDF) or a local page (http://localhost:<port>). Claude does
- * not see or drive it. It follows the main session; switching sessions clears it. No live reload: a reload button.
+ * Preview pane: a look at a project file (HTML, image, PDF) or a local page (http://localhost:<port>). Claude does not see
+ * or drive it, and it starts nothing by itself: a dev server of .claude/launch.json starts only on the user's confirmed
+ * click (launch-list.js), and its page is shown through the same localhost path as a typed address. It follows the main session; switching sessions clears it. No live reload: a reload button.
  */
 import { h } from '../dom.js';
 import { icon } from '../icons.js';
 import { checkLocalUrl, previewKind, previewSrc } from './preview-url.js';
 import { previewNode } from './preview-view.js';
 import { registerPreviewOpener } from './open-preview.js';
+import { createLaunchList } from './launch-list.js';
 
 const ISOLATED = 'הדף רץ מבודד: בלי גישה לממשק, לרשת, לחלונות קופצים או לאחסון. גופנים וסקריפטים מסוג module לא נטענים.';
 
@@ -30,7 +32,8 @@ export function createPreviewPane({ rerender, openPane }) {
   const external = h('a', { class: 'icon-button', target: '_blank', rel: 'noopener noreferrer', title: 'פתיחה בכרטיסייה חדשה בדפדפן' }, icon('external'));
   const notes = h('div', { class: 'preview-notes' });
   const view = h('div', { class: 'preview-view' });
-  const node = h('div', { class: 'preview-pane' }, form, h('div', { class: 'preview-bar' }, label, reload, external), notes, view);
+  const launch = createLaunchList({ onReady: url => { if (session) showUrl(url); } });
+  const node = h('div', { class: 'preview-pane' }, form, launch.node, h('div', { class: 'preview-bar' }, label, reload, external), notes, view);
 
   function showUrl(text) {
     const checked = checkLocalUrl(text, location.port || (location.protocol === 'https:' ? '443' : '80'));
@@ -74,6 +77,7 @@ export function createPreviewPane({ rerender, openPane }) {
     render(body, current) {
       if (session && session.id !== current.id) { target = null; error = ''; } // the preview belongs to the session it was opened for
       session = current;
+      launch.show(current.id);
       if (!body.contains(node)) body.replaceChildren(node);
       if (wanted?.sessionId === current.id) { const { path } = wanted; wanted = null; showFile(path); return; }
       draw();

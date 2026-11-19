@@ -5,7 +5,8 @@
 import { h } from '../dom.js';
 import { parseDiff } from './diff-parse.js';
 import { renderDiffFile, renderUnplacedComments } from './diff-view.js';
-import { changesToolbar, changesNotes, changesFooter } from './changes-chrome.js';
+import { changesToolbar, changesNotes, changesFooter, layoutToggle } from './changes-chrome.js';
+import { createDiffLayout } from './diff-layout.js';
 import { commentsOf, addComment, removeComment, clearComments, composeMessage } from './diff-comments.js';
 import { createSessionFetch } from './session-fetch.js';
 import { notRepoText } from './pane-details.js';
@@ -33,6 +34,7 @@ export function createChangesPane({ send, rerender }) {
   let box = null; // the open comment box: { sessionId, anchor, draft, focus }
   let sendingFor = null; // the session whose comments are on their way (one send at a time)
   let frame = { toolbar: null, unplaced: null, footer: null };
+  const layout = createDiffLayout(() => { if (body && data && !data.error && data.isRepo) drawAll(); }); // unified / side by side
 
   const commentsHere = () => commentsOf(session.id);
   const keepFocus = () => body.focus({ preventScroll: true }); // Ctrl+Enter reaches the pane only while it has focus
@@ -42,7 +44,7 @@ export function createChangesPane({ send, rerender }) {
     const key = `${session.id}|${file.path}`;
     const myBox = box && box.sessionId === session.id && box.anchor.path === file.path ? box : null;
     return renderDiffFile(file, {
-      comments: commentsHere().filter(comment => comment.path === file.path), box: myBox, collapsed: collapsed.has(key),
+      comments: commentsHere().filter(comment => comment.path === file.path), box: myBox, collapsed: collapsed.has(key), split: layout.isSplit(),
       fullPath: joinPath(data.root, file.path), // the diff's paths are from the repository's top (the file menu needs them whole)
       onToggle: () => { if (!collapsed.delete(key)) collapsed.add(key); redrawFile(file.path); keepFocus(); },
       onComment: anchor => openBox(anchor),
@@ -77,7 +79,7 @@ export function createChangesPane({ send, rerender }) {
     const paths = new Set(data.files.map(file => file.path));
     const next = {
       toolbar: changesToolbar(data, commentsHere().length, () => { commitBox.reload(session); diffs.get(session, rerender, true); },
-        branchToggle(session.id, data, () => diffs.get(session, rerender, true))),
+        branchToggle(session.id, data, () => diffs.get(session, rerender, true)), layoutToggle(layout)),
       unplaced: renderUnplacedComments(commentsHere().filter(comment => !paths.has(comment.path)), 'הערות על קבצים שכבר אינם בשינויים:', id => {
         removeComment(session.id, id);
         redrawFrame();
@@ -129,6 +131,7 @@ export function createChangesPane({ send, rerender }) {
       if (body !== element) {
         body = element;
         body.tabIndex = -1;
+        layout.observe(body);
         // Ctrl+Enter sends the comments; on the pane, not the page: the composer has its own Ctrl+Enter.
         body.addEventListener('keydown', event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); submit(); } });
       }

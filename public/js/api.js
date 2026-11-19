@@ -1,5 +1,6 @@
 /** Thin client for the server API. All user-facing errors come back as Error(message in Hebrew). */
 import { scheduleApi } from './schedule/schedule-api.js';
+import { devServerApi } from './preview/dev-server-api.js';
 
 async function request(method, url, body, { keepalive = false } = {}) {
   const response = await fetch(url, {
@@ -146,10 +147,15 @@ export const api = {
   searchCliConversations: query => request('POST', '/api/cli-conversations/search', { query }),
   files: (scope, q) => request('GET', `/api/files?${query({ ...scope, q })}`),
   git: scope => request('GET', `/api/git?${query(scope)}`),
+  /** Session worktrees per project: { projects: [{ root, worktrees: [{ path, branch, owner: 'live'|'archived'|'none', ownerName, ahead, dirty, exists, removable, reason }] }] }. */
+  worktrees: () => request('GET', '/api/worktrees'),
+  /** Removes one listed worktree folder (never --force, the branch stays) -> { ok, branch, path }; a 409 carries the Hebrew reason. */
+  removeWorktree: path => request('POST', '/api/worktrees/remove', { path }),
   /** { enabled, active, available, reason } (lib/keep-awake/); setKeepAwake(enabled) flips the switch kept in the data folder */
   keepAwake: () => request('GET', '/api/keep-awake'),
   setKeepAwake: enabled => request('PUT', '/api/keep-awake', { enabled }),
   schedule: scheduleApi(request), // local scheduled tasks (schedule/schedule-api.js)
+  devServers: devServerApi(request), // the preview pane's dev servers from .claude/launch.json (preview/dev-server-api.js)
   folders: (path, hidden) => request('GET', `/api/folders?${query({ path, hidden: hidden ? '1' : '' })}`),
   createFolder: (path, name) => request('POST', '/api/folders', { path, name }),
 };
