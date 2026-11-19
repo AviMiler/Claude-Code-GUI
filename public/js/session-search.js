@@ -4,6 +4,7 @@
  * (lib/sync/session-search.js, the same rules).
  */
 import { projectFolder } from './worktree/project-folder.js';
+import { isChat, CHAT_LABEL } from './chat/chat-session.js';
 
 const SNIPPET_BEFORE = 28;
 const SNIPPET_AFTER = 70;
@@ -88,7 +89,7 @@ export function searchSessions(sessions, query, hits = null) {
   const results = new Map();
   if (!needle) return results;
   for (const session of sessions) {
-    const byName = Boolean(findIn(`${session.name} ${projectFolder(session)} ${session.worktree?.branch || ''}`, needle));
+    const byName = Boolean(findIn(`${session.name} ${isChat(session) ? CHAT_LABEL : projectFolder(session)} ${session.worktree?.branch || ''}`, needle));
     const content = hits?.get(session.id) || null;
     if (byName || content) results.set(session.id, { byName, content });
   }

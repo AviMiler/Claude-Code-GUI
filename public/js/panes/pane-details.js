@@ -13,6 +13,7 @@ import { contextInfo, contextLevel, percentText, describeContext } from '../cont
 import { loadContext } from '../context/context-live.js';
 import { createSessionFetch } from './session-fetch.js';
 import { projectFolder } from '../worktree/project-folder.js';
+import { isChat, CHAT_LABEL } from '../chat/chat-session.js';
 import { toolLimitRows } from '../tool-limits/details-rows.js';
 
 // The git summary of the shown session, fetched again when a turn starts or ends, or another session is shown.
@@ -38,7 +39,7 @@ function environmentCard(session, summary, modelLabel) {
   const copyLink = path => h('button', { type: 'button', class: 'link-value', title: `${path}\n(לחיצה מעתיקה)`,
     onClick: async () => { await copyText(path); toast('הנתיב הועתק'); } }, folderName(path));
   return card({ title: 'סביבה', iconName: 'monitor', value: 'מקומי' },
-    row('תיקייה', copyLink(projectFolder(session))),
+    row('תיקייה', isChat(session) ? CHAT_LABEL : copyLink(projectFolder(session))),
     session.worktree ? row('worktree', copyLink(session.worktree.path)) : null, // the session runs there (worktree/)
     summary?.isRepo ? row('ענף', branchName(summary.branch), summary.branch) : null,
     (session.addDirs || []).length ? row('תיקיות נוספות', String(session.addDirs.length), session.addDirs.join('\n')) : null,

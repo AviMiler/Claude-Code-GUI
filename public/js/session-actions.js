@@ -9,6 +9,8 @@ import { worktreeChoice } from './worktree/worktree-toggle.js';
 import { confirmWorktreeRemoval, reportWorktreeRemoval } from './worktree/worktree-delete.js';
 import { projectFolder } from './worktree/project-folder.js';
 import { offerMergeBeforeArchive } from './worktree/merge-action.js';
+import { chatWanted } from './chat/chat-toggle.js';
+import { CHAT_LABEL } from './chat/chat-session.js';
 import { refreshLightRows } from './cli-list/light-rows.js';
 
 /**
@@ -21,14 +23,16 @@ export function createSessionActions(view, report) {
   /** Creates a session from the draft settings (folder, mode, model, worktree switch) for a first message. */
   async function createFromDraft(firstText, attachments = []) {
     const draft = state.draft;
+    const chat = chatWanted(); // a chat without a project: the server picks the folder, so no cwd and no worktree
     const cwd = draft.cwd || state.config.defaultCwd;
     const name = firstText && !firstText.startsWith('/') ? firstText.replace(/\s+/g, ' ').slice(0, 48)
-      : attachments.length ? attachments[0].name : folderName(cwd);
-    const worktree = await worktreeChoice(cwd);
+      : attachments.length ? attachments[0].name : chat ? CHAT_LABEL : folderName(cwd);
+    const worktree = !chat && await worktreeChoice(cwd);
     if (worktree) toast('יוצר worktree…');
-    const session = await api.createSession({ name, cwd, mode: draft.mode, model: draft.model, effort: draft.effort, worktree });
+    const settings = { name, mode: draft.mode, model: draft.model, effort: draft.effort };
+    const session = await api.createSession(chat ? { ...settings, chat: true } : { ...settings, cwd, worktree });
     if (session.notice) toast(session.notice);
-    rememberFolder(projectFolder(session));
+    if (!session.chat) rememberFolder(projectFolder(session));
     state.sessions.set(session.id, session);
     view.selectSession(session.id);
     return session;

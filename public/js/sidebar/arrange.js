@@ -4,6 +4,7 @@
  */
 import { folderName } from '../dom.js';
 import { projectFolder } from '../worktree/project-folder.js';
+import { isChat, CHAT_GROUP_TITLE } from '../chat/chat-session.js';
 
 const DAY_MS = 86400000;
 /** @typedef {{id:string, title:string, tooltip?:string, group?:{id:string,name:string}, sessions:object[]}} Section */
@@ -41,7 +42,9 @@ function byDate(sessions, sort) {
 
 function byProject(sessions, sort) {
   const folders = new Map(); // a worktree session belongs to the folder it was opened from (projectFolder)
+  const chats = sessions.filter(isChat); // chats have no project: their own group, after the projects
   for (const session of sessions) {
+    if (isChat(session)) continue;
     const folder = projectFolder(session);
     if (!folders.has(folder)) folders.set(folder, { id: `p:${folder}`, title: folderName(folder), tooltip: folder, sessions: [] });
     folders.get(folder).sessions.push(session);
@@ -50,7 +53,7 @@ function byProject(sessions, sort) {
   if (sort === 'name') list.sort((a, b) => a.title.localeCompare(b.title, 'he'));
   const names = list.map(section => section.title);
   list.forEach(section => { if (names.filter(name => name === section.title).length > 1) section.title = longFolderName(section.tooltip); });
-  return list;
+  return chats.length ? [...list, { id: 'chats', title: CHAT_GROUP_TITLE, sessions: chats }] : list;
 }
 
 /**

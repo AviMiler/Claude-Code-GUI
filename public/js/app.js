@@ -78,6 +78,7 @@ function refresh() {
     renderWelcome(els.welcome, {
       cwd: state.draft.cwd, defaultCwd: state.config.defaultCwd,
       onFolder: cwd => { chooseDraftFolder(cwd); prefetchCatalog(); setTimeout(refresh); },
+      onChat: () => { prefetchCatalog(); setTimeout(refresh); },
       onSuggestion: async text => { const command = findCommand(await getCommands(), text.slice(1)); if (command) runCommand(command, '', { fromMenu: true }); },
     });
   }
