@@ -10,6 +10,7 @@ import { openContextMenu, hasSelection } from './menu.js';
 import { openMoveMenu } from '../sidebar/move-menu.js';
 import { isUnread } from '../sidebar/status.js';
 import { state } from '../state.js';
+import { copySessionLink } from '../sync/session-link.js';
 
 let current = { sessions: new Map(), activeId: null, actions: null, onSelect: null }; // from the latest sidebar render
 const lists = new WeakSet();
@@ -29,6 +30,7 @@ function entriesFor(session) {
       : { icon: 'eye', title: 'סימון כלא נקרא', onSelect: () => actions.setUnread(session.id, true) }),
     live && { icon: 'check-circle', title: session.completed ? 'ביטול סימון הושלם' : 'סימון כהושלם', onSelect: () => actions.setCompleted(session.id, !session.completed) },
     live && session.claudeSessionId && { icon: 'branch', title: 'ענף חדש מהשיחה', onSelect: () => actions.fork(session.id) },
+    { icon: 'link', title: 'העתקת קישור לסשן', onSelect: () => copySessionLink(session.id) },
     { icon: 'copy', title: 'העתקת נתיב התיקייה', onSelect: () => copyPath(projectFolder(session)) },
     session.worktree && { icon: 'copy', title: 'העתקת נתיב ה-worktree', onSelect: () => copyPath(session.worktree.path) },
     live ? { icon: 'archive', title: 'העברה לארכיון', onSelect: () => actions.archive(session.id) }

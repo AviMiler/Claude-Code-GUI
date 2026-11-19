@@ -26,7 +26,7 @@ import { viewModeLabel } from './transcript/view-mode.js';
 import { showLiveShells } from './terminal/shell-live.js';
 import { contextInfo } from './context/context-info.js'; import { refreshContext } from './context/context-live.js';
 import { createItemSync } from './sync/item-sync.js';
-import { createStateLoader, rememberActive } from './sync/load-state.js';
+import { createStateLoader, rememberActive } from './sync/load-state.js'; import { watchSessionLinks, copySessionLink } from './sync/session-link.js';
 
 applyTheme();
 const byId = id => document.getElementById(id);
@@ -64,7 +64,7 @@ function refresh() {
   const editing = node => typing && node.contains(document.activeElement) && node.dataset.sessionId === String(session?.id ?? '');
   if (!editing(els.topbar)) renderTopbar(els.topbar, session, {
     onToggleSidebar: toggleSidebar, onRename: name => actions.rename(name), onOpenPanel: id => actions.openPanel(id),
-    onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
+    onCopyLink: () => session && copySessionLink(session.id), onFork: () => actions.fork(), onClear: () => actions.clear(), onExport: () => actions.exportChat(),
     onFocus: () => actions.toggleFocus(), onDelete: () => actions.remove(), onSplit: () => split.toggle(), onPin: () => session && actions.setPinned(session.id, !session.pinned),
     onArchive: () => actions.archive(), onUnarchive: () => actions.unarchive(),
     onTogglePane: id => panes.toggle(id), paneOpen: id => panes.isOpen(id), paneActive: id => panes.isActive(id),
@@ -117,6 +117,7 @@ function toggleSidebar() {
 }
 
 const loadState = createStateLoader({ versionLabel: els.version, selectSession, refresh, itemSync });
+watchSessionLinks(selectSession); // #session=<id> pasted into this tab
 
 // The context reading never starts a CLI process by itself (ifRunning, context/context-live.js).
 const eventView = { thread, refresh, selectSession, onTurnFailed: () => modelHealth.afterFailedTurn(), paneThread: id => split.threadFor(id),

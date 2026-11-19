@@ -34,7 +34,7 @@ function greeting() {
 /**
  * @param {HTMLElement} bar
  * @param {object|null} session
- * @param {{onToggleSidebar, onRename, onOpenPanel, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit,
+ * @param {{onToggleSidebar, onRename, onOpenPanel, onCopyLink, onFork, onClear, onExport, onFocus, onDelete, onPin, onSplit,
  *   onTogglePane:(id:string)=>void, paneOpen:(id:string)=>boolean, paneActive:(id:string)=>boolean, viewMode:()=>string, onViewMode,
  *   onArchive, onUnarchive, onNewSession}} handlers paneOpen / paneActive: a pane's tab is open / on screen (panes/pane-toggles.js; the panes are not in "עוד");
  *   viewMode: the transcript's current mode
@@ -73,6 +73,7 @@ export function renderTopbar(bar, session, handlers) {
     session.archived ? { icon: 'history', title: 'שחזור מהארכיון', onSelect: handlers.onUnarchive }
       : { icon: 'archive', title: 'העברה לארכיון', onSelect: handlers.onArchive },
     { icon: 'sliders', title: 'אפשרויות הסשן: צבע, חשיבה, הנחיית מערכת, מצב בטוח', hint: '/color', onSelect: () => handlers.onOpenPanel('session-options') },
+    { icon: 'link', title: 'העתקת קישור לסשן', onSelect: handlers.onCopyLink },
     { icon: 'branch', title: 'ענף חדש מהשיחה', hint: '/fork', onSelect: handlers.onFork },
     { icon: 'refresh', title: 'שיחה חדשה (ניקוי הקשר)', hint: '/clear', onSelect: handlers.onClear },
     { icon: 'download', title: 'ייצוא ל-Markdown', hint: '/export', onSelect: handlers.onExport },

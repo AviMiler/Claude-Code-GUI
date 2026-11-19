@@ -7,6 +7,7 @@ import { api } from '../api.js';
 import { state, getModels } from '../state.js';
 import { chooseDraftFolder } from '../folder-defaults.js';
 import { setGroups } from '../sidebar/groups-store.js';
+import { openSessionLink } from './session-link.js';
 
 const ACTIVE_KEY = 'claude-gui.active-session';
 
@@ -36,7 +37,8 @@ export function createStateLoader({ versionLabel, selectSession, refresh, itemSy
     let remembered = null;
     try { remembered = localStorage.getItem(ACTIVE_KEY); } catch { /* storage may be blocked */ }
     itemSync.connected(); // subscribe to the sessions on screen and fetch what they missed
-    selectSession(state.activeId || remembered); // a session that comes on screen now is loaded by its refresh (watch)
+    // A session link (#session=<id>) wins over the remembered session (sync/session-link.js).
+    if (!openSessionLink(selectSession)) selectSession(state.activeId || remembered); // a session that comes on screen now is loaded by its refresh (watch)
     getModels().then(refresh).catch(() => {});
   };
 }
