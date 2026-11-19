@@ -13,6 +13,8 @@ import { createWorktreeToggle } from './worktree/worktree-toggle.js';
 import { projectFolder } from './worktree/project-folder.js';
 import { paneButtons } from './panes/pane-toggles.js';
 import { fitPaneToggles } from './panes/pane-overflow.js';
+import { isChat, CHAT_LABEL } from './chat/chat-session.js';
+import { createChatToggle, chatWanted } from './chat/chat-toggle.js';
 
 const SUGGESTIONS = [
   { command: '/init', text: 'יצירת CLAUDE.md שמתעד את הפרויקט' },
@@ -52,7 +54,8 @@ export function renderTopbar(bar, session, handlers) {
   title.addEventListener('keydown', event => { if (event.key === 'Enter') title.blur(); });
   const copyChip = (iconName, label, path, title) => h('button', { type: 'button', class: 'chip', title: `${title}\n(לחיצה מעתיקה את הנתיב)`,
     onClick: async () => { await copyText(path); toast('הנתיב הועתק'); } }, icon(iconName), h('span', { class: 'label', dir: 'auto' }, label));
-  const folder = copyChip('folder', folderName(projectFolder(session)), projectFolder(session), projectFolder(session));
+  const folder = isChat(session) ? h('span', { class: 'chip', title: 'שיחה כללית בלי פרויקט' }, icon('message'), CHAT_LABEL)
+    : copyChip('folder', folderName(projectFolder(session)), projectFolder(session), projectFolder(session));
   // A session in its own worktree (worktree/): its branch beside the project folder, like Desktop.
   const tree = session.worktree;
   const branch = tree ? copyChip('branch', tree.branch, tree.path, `ענף ${tree.branch}\nworktree: ${tree.path}`) : null;
@@ -93,9 +96,10 @@ export function renderTopbar(bar, session, handlers) {
 
 /**
  * @param {HTMLElement} container
- * @param {{cwd:string, defaultCwd:string, onFolder:(cwd:string)=>void, onSuggestion:(command:string)=>void}} options
+ * @param {{cwd:string, defaultCwd:string, onFolder:(cwd:string)=>void, onSuggestion:(command:string)=>void, onChat:(on:boolean)=>void}} options
+ *   onChat: the "chat without a project" switch changed (chat/chat-toggle.js); while it is on the folder choice is not shown
  */
-export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggestion }) {
+export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggestion, onChat }) {
   const input = h('input', { value: cwd || defaultCwd, dir: 'ltr', 'aria-label': 'תיקיית עבודה', placeholder: defaultCwd, spellcheck: false });
   const worktree = createWorktreeToggle(() => input.value.trim() || defaultCwd);
   const chooseFolder = folder => { onFolder(folder); worktree.update(); };
@@ -107,13 +111,15 @@ export function renderWelcome(container, { cwd, defaultCwd, onFolder, onSuggesti
     input.value = folder;
     chooseFolder(folder);
   });
-  const recents = recentFolders().filter(folder => folder !== input.value);
+  const chat = chatWanted();
+  const recents = chat ? [] : recentFolders().filter(folder => folder !== input.value);
   container.replaceChildren(...[
     crab(),
     h('h1', null, `${greeting()}, במה נעבוד היום?`),
-    h('p', null, 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
-    h('div', { class: 'folder-picker' }, icon('folder'), input, browse),
-    worktree.node,
+    h('p', null, chat ? 'שאלה כללית, בלי פרויקט: Claude יענה בלי לעבוד על תיקייה שלך.' : 'בחר תיקיית עבודה וכתוב משימה. Claude Code יעבוד בתיקייה הזו.'),
+    chat ? null : h('div', { class: 'folder-picker' }, icon('folder'), input, browse),
+    chat ? null : worktree.node,
+    createChatToggle(onChat),
     recents.length ? h('div', { class: 'recent-folders' }, recents.map(folder => h('button', {
       type: 'button', class: 'chip', title: folder, onClick: () => { input.value = folder; chooseFolder(folder); },
     }, icon('history'), h('span', { class: 'label' }, folderName(folder))))) : null,

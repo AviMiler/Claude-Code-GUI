@@ -15,13 +15,14 @@ import { viewBar } from './sidebar/view-bar.js';
 import { lightRows, lightRowNode, capNotice } from './cli-list/light-rows.js';
 import { applySearch, searchModeControl } from './cli-list/search-modes.js';
 import { projectFolder } from './worktree/project-folder.js';
+import { isChat, CHAT_LABEL } from './chat/chat-session.js';
 import { showingArchive, sessionsForList, archiveSwitch, restoreButton } from './archive/archive-list.js';
 import { sessionMenuButton, enableSessionMenus } from './context-menu/session-menu.js';
 import { markSessionRows } from './split-focus.js';
 
 /** The row's second line: the project folder (not repeated under its own group title) and a worktree session's branch. */
 function placeLine(session, inProjectGroup) {
-  const text = [inProjectGroup ? null : folderName(projectFolder(session)), session.worktree?.branch].filter(Boolean).join(' · ');
+  const text = [isChat(session) ? CHAT_LABEL : inProjectGroup ? null : folderName(projectFolder(session)), session.worktree?.branch].filter(Boolean).join(' · ');
   return text ? h('small', { dir: 'auto' }, text) : null;
 }
 
@@ -66,7 +67,7 @@ export function renderSidebar(container, { sessions, activeId, unread, filter, o
       const mark = status === 'unread';
       const content = results?.get(session.id)?.content;
       const row = h('button', {
-        type: 'button', class: 'session-row', title: session.cwd, 'data-unread': mark ? 'true' : null,
+        type: 'button', class: 'session-row', title: isChat(session) ? CHAT_LABEL : session.cwd, 'data-unread': mark ? 'true' : null,
         onClick: event => (event.altKey && onSplit && !archive ? onSplit(session.id) : onSelect(session.id, content ? { indexes: content.indexes, query } : undefined)),
       }, statusDot(status),
       h('span', null, h('strong', { dir: 'auto' }, colorDot(session), session.scheduled ? icon('clock', 'schedule-badge') : null, session.completed ? icon('check-circle', 'done-badge') : null, session.name), placeLine(session, section.id.startsWith('p:')),

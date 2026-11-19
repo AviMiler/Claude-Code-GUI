@@ -6,6 +6,7 @@ import { h, copyText } from '../dom.js';
 import { icon } from '../icons.js';
 import { toast } from '../ui.js';
 import { projectFolder } from '../worktree/project-folder.js';
+import { isChat } from '../chat/chat-session.js';
 import { openContextMenu, hasSelection } from './menu.js';
 import { openMoveMenu } from '../sidebar/move-menu.js';
 import { isUnread } from '../sidebar/status.js';
@@ -31,7 +32,7 @@ function entriesFor(session) {
     live && { icon: 'check-circle', title: session.completed ? 'ביטול סימון הושלם' : 'סימון כהושלם', onSelect: () => actions.setCompleted(session.id, !session.completed) },
     live && session.claudeSessionId && { icon: 'branch', title: 'ענף חדש מהשיחה', onSelect: () => actions.fork(session.id) },
     { icon: 'link', title: 'העתקת קישור לסשן', onSelect: () => copySessionLink(session.id) },
-    { icon: 'copy', title: 'העתקת נתיב התיקייה', onSelect: () => copyPath(projectFolder(session)) },
+    !isChat(session) && { icon: 'copy', title: 'העתקת נתיב התיקייה', onSelect: () => copyPath(projectFolder(session)) },
     session.worktree && { icon: 'copy', title: 'העתקת נתיב ה-worktree', onSelect: () => copyPath(session.worktree.path) },
     live ? { icon: 'archive', title: 'העברה לארכיון', onSelect: () => actions.archive(session.id) }
       : { icon: 'history', title: 'שחזור מהארכיון', onSelect: () => actions.unarchive(session.id) },

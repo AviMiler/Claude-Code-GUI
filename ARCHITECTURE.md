@@ -323,6 +323,9 @@ The browser loads metadata (`/api/state`), then the items of the sessions on scr
   default). Applied like effort: idle restart with `--resume`, `set_model` does not touch it. Passed as `--fallback-model <v>`
   only if `--help` lists it and the value differs from the main model; validated by a whitelist (see spec.md "Fallback model")
 
+## Chat without a project (`lib/chat-folder.js`)
+- A session with `chat: true` runs in the one shared folder `<data>/chats` (seed `.claude/` and `CLAUDE.md`, best-effort `git init`); the server picks it, the request only carries the boolean. Boundary: the CLI looks for CLAUDE.md in parent folders, so a data folder inside a repository lets that repository's CLAUDE.md in (keep `CLAUDE_GUI_DATA` outside it). Spec: "Chat without a project".
+
 ## Per-session CLI options (`lib/session-options.js`)
 - One place for session settings that become CLI flags: `textChanges(patch, current, config)` trims and validates a PATCH
   (model, effort, agent, outputStyle, fallbackModel) and `optionArgs(session, config, supports)` returns flags whose values are
